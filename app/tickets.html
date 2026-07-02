@@ -42,12 +42,10 @@
 
 <div class="overlay" id="tkModal" hidden><div class="modal tk-new-modal"><div class="section-head"><div><div class="section-kicker">Registro interno</div><h3>Nuevo ticket</h3><p class="mut">Crea un caso interno y, si hay correo, avisa al cliente con su enlace de seguimiento.</p></div><button class="icon-btn" id="tkClose" type="button">✕</button></div><div class="grid tk-new-grid"><div class="grid-2"><input class="input" id="tkCliente" placeholder="Cliente ID o empresa"><input class="input" id="tkNombre" placeholder="Contacto / usuario"></div><div class="grid-2"><input class="input" id="tkCorreo" placeholder="Correo para avisar"><input class="input" id="tkTelefono" placeholder="Teléfono"></div><div class="grid-2"><input class="input" id="tkSistema" placeholder="Equipo Janome (modelo o tipo)"><select class="select" id="tkPrioridad"><option value="baja">Baja</option><option value="media" selected>Media</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div><input class="input" id="tkTitulo" placeholder="Título del caso"><textarea class="area" id="tkDesc" placeholder="Descripción breve del problema"></textarea><div class="grid-2"><select class="select" id="tkTipo"><option value="soporte">Soporte / falla</option><option value="garantia">Garantía</option><option value="refaccion">Refacción / accesorio</option><option value="asesoria">Asesoría de uso</option></select><label class="thread-opt tk-notify-opt"><input type="checkbox" id="tkNotificar" checked><span>Avisar al cliente por correo</span></label></div><div class="actions"><button class="btn btn-brand" id="tkSave" type="button">Crear ticket</button><button class="btn btn-ghost" id="tkCancel" type="button">Cancelar</button></div><div class="mut" id="tkStatus">Completa título, descripción y correo si deseas avisar al cliente.</div></div></div></div>
 
-<script>window.TICKET_CORE_CONFIG = window.TICKET_CORE_CONFIG || {};</script>
+<script src="supabase.config.public.js"></script>
 <script type="module" src="./tickets.js"></script>
 </html>
 
 <script src="notif-sound-test.js?v=1"></script>
 
 <script type="module" src="tickets-assignment.js?v=b26-canonical-popups-20260628_212704"></script>
-
-<div style="position:fixed;left:8px;bottom:8px;z-index:99999;font:12px/1 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a1018cc;color:#fff;padding:6px 10px;border-radius:8px;opacity:.84;box-shadow:0 4px 18px rgba(0,0,0,.25)">Demo pública · datos ficticios</div>

@@ -1,0 +1,830 @@
+body[data-page="ticket"] .app-hero,body[data-page="ticket"] .shell-hero{display:none!important}
+
+body[data-page="ticket"]{overflow:hidden}
+.ticket-page{width:min(1800px,calc(100% - 12px));height:calc(100dvh - 12px);min-height:0;margin:6px auto;padding:0;display:grid;grid-template-columns:minmax(340px,390px) minmax(0,1fr);gap:10px}
+.ticket-side{position:sticky;top:12px;max-height:calc(100dvh - 24px);overflow:auto;overflow-x:hidden;padding:10px;gap:10px}
+.ticket-side *,.ticket-main *{box-sizing:border-box}
+.ticket-side>.panel,.ticket-side>.inset,.ticket-side>.fold-card,.ticket-side details:not(.fold-card){border-radius:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 99%,transparent),color-mix(in srgb,var(--panel-2) 100%,transparent));box-shadow:0 6px 18px rgba(15,23,42,.04)}
+.ticket-side .section-kicker{display:none}
+.side-head h1{margin:0;font-size:clamp(28px,3vw,36px);line-height:.98;letter-spacing:-.04em;font-weight:760}
+#tkType{display:none!important}
+.tk-system-chip span{display:none!important}
+.box-grid,.case-grid,.contact-mini-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.case-grid .span-2,.contact-mini-list>.box-grid{grid-column:1/-1}
+.ticket-side .box{min-width:0;min-height:82px;border:1px solid var(--line);border-radius:18px;padding:15px 14px;background:color-mix(in srgb,var(--panel) 98%,transparent);box-shadow:0 10px 24px rgba(15,23,42,.035)}
+.contact-fold:not([open])>.fold-body{display:none}
+.contact-fold[open]>.fold-head{display:none}
+.contact-open-head{justify-content:flex-end;margin-bottom:8px}
+.contact-hours-grid .span-2{grid-column:1/-1}
+.availability-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.info-mini{width:28px;height:28px;min-width:28px;min-height:28px;border-radius:999px;padding:0;font-weight:800}
+.hidden{display:none!important}
+.ticket-side .box .k,.contact-mini-row .k{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 86%,transparent)}
+.ticket-side .box .v.small,.contact-actions a,.fold-body .v.small{font-size:15px;font-weight:560;line-height:1.28;color:color-mix(in srgb,var(--text) 94%,transparent)}
+.fold-card{padding:0;overflow:visible}
+.fold-card:not([open]){overflow:hidden}.fold-card[open]{overflow:visible}
+.fold-head{min-height:82px;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 14px;cursor:pointer;list-style:none;border:0}
+.fold-head::-webkit-details-marker{display:none}
+.fold-head span:first-child{display:none}
+.fold-head .tag,.fold-head .fold-kicker{margin:auto;border:1px solid var(--line);border-radius:999px;padding:10px 18px;background:color-mix(in srgb,var(--panel) 96%,transparent);font-size:14px;font-weight:650;letter-spacing:0;text-transform:none;color:color-mix(in srgb,var(--text) 88%,transparent)}
+.fold-card[open]>.fold-head{min-height:42px;justify-content:space-between;border-bottom:1px solid var(--line)}
+.fold-card[open]>.fold-head span:first-child{display:none}
+.fold-card[open]>.fold-head .tag,.fold-card[open]>.fold-head .fold-kicker{font-size:12px;font-weight:560;padding:6px 10px}
+.fold-body{padding:14px}
+
+
+.contact-mini-row{position:relative;display:grid;grid-template-columns:1fr;gap:8px;min-height:112px;padding:14px!important;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--panel) 98%,transparent);overflow:hidden}.contact-mini-row .icon-k{display:flex;align-items:center;justify-content:flex-start}.contact-actions{display:block!important;min-width:0}.contact-actions a{position:absolute;left:14px;right:56px;bottom:18px;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none;border-bottom:1px dashed color-mix(in srgb,var(--brand) 40%,var(--line))}.contact-actions .copy-icon-btn{position:absolute;right:14px;bottom:12px;display:none;place-items:center;width:34px;height:34px;min-width:34px;min-height:34px;padding:0;border-radius:12px;font-size:0}.contact-pref-badge{position:absolute;right:14px;top:14px;width:max-content;font-size:10px;font-weight:800;padding:4px 8px;border-radius:999px}#tkEmailRow .copy-icon-btn,#tkRemoteAccessPill .copy-icon-btn{display:grid}#tkPhoneRow .copy-icon-btn,#tkPhoneRow .contact-pref-badge{display:none!important}#tkPhoneRow .contact-actions a{right:14px;white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;font-size:15px;font-weight:800}
+
+.copy-icon-btn img{display:block;width:17px;height:17px;object-fit:contain}
+.icon-k img{width:22px;height:22px;object-fit:contain;opacity:.82}
+
+.contact-mini-row.is-preferred{border-color:color-mix(in srgb,var(--ok) 30%,var(--line));background:color-mix(in srgb,var(--ok) 6%,var(--panel))}
+#tkPhoneRow.is-whatsapp .icon-k img{content:url("../IMG/whatsapp.svg");filter:none;opacity:.95}
+.contact-ops-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+.contact-ops-row>#tkConsolidationHint,.contact-ops-row>#tkRemoteAccessPill{width:100%;height:42px;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;overflow:hidden;white-space:nowrap}
+.remote-access-pill{border:1px solid color-mix(in srgb,#ef4444 55%,var(--line));background:transparent;color:#b91c1c;padding:6px 10px;font-weight:800}.remote-access-pill.has-access{background:transparent}.remote-access-pill #tkRemoteAccess{color:#b91c1c;font-weight:850}
+
+.remote-access-pill>img{width:18px;height:18px;object-fit:contain;flex:0 0 auto}
+.remote-access-pill #tkRemoteAccess{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.remote-access-pill .copy-icon-btn{margin-left:auto;width:32px;height:32px;min-width:32px;min-height:32px}
+.tag.muted{border-color:var(--line)!important;background:color-mix(in srgb,var(--panel) 96%,transparent)!important;color:color-mix(in srgb,var(--muted) 92%,transparent)!important}
+#tkContactMoreBtn{width:14px;height:14px;min-width:14px;min-height:14px;padding:0;border-radius:50%;font-size:0;box-shadow:none}
+#tkContactMoreBtn img,#tkContactMoreBtn:after{display:none!important}
+#tkContactMoreBtn.needs-review{background:#f59e0b;border-color:#f59e0b}
+#tkContactMoreBtn.clean-contact{background:var(--ok);border-color:var(--ok)}
+.tk-radar-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tk-radar-grid>div{min-height:86px;border:1px solid var(--line);border-radius:18px;padding:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);box-shadow:0 10px 24px rgba(15,23,42,.035)}
+#tkRadarHint{margin-top:10px;font-size:13px;color:color-mix(in srgb,var(--muted) 88%,transparent)}
+.heat-periods{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:0 0 6px;margin:0 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
+.heat-periods::-webkit-scrollbar{display:none}
+.heat-period{flex:0 0 112px;min-width:112px;min-height:36px;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--panel) 96%,transparent);font-weight:650;font-size:12px;cursor:pointer;scroll-snap-align:center}
+
+.heat-period.is-active{border-color:color-mix(in srgb,var(--brand) 44%,var(--line));background:color-mix(in srgb,var(--brand) 10%,var(--panel))}
+#tkHeatChips,#tkPortalChips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+#tkHeatChips .tag,#tkPortalChips .tag{font-weight:560;border-radius:999px;padding:8px 14px;background:color-mix(in srgb,var(--panel) 96%,transparent);border-color:var(--line)}
+.tk-system-item{border:1px solid var(--line);border-radius:18px;padding:12px;background:color-mix(in srgb,var(--panel) 98%,transparent)}
+.tk-system-title{font-weight:650;font-size:14px}
+.tk-system-logo{width:28px;height:28px;border-radius:8px;object-fit:contain}
+#tkSystemsList{display:grid;gap:10px}
+#tkAddSystemBtn{width:100%;min-height:44px;border-radius:16px;font-weight:650}
+.ticket-main{min-height:0;overflow:hidden}.ticket-thread{height:100%;min-height:0;display:grid;grid-template-rows:40px minmax(160px,1fr) auto;overflow:hidden}.thread-topbar{position:relative;z-index:60;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:40px;padding:0 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--panel) 98%,transparent);backdrop-filter:saturate(1.08) blur(10px);-webkit-backdrop-filter:saturate(1.08) blur(10px)}.thread-left-actions,.thread-actions,.thread-gear-wrap{height:40px;display:flex;align-items:center}.thread-left-actions{gap:6px}.thread-actions{gap:8px;justify-content:flex-end}.tk-back-arrow{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;font-size:19px;font-weight:900;padding:0;display:grid;place-items:center;line-height:1}#tkThreadStamp{text-align:center;font-size:14px;font-weight:720;color:color-mix(in srgb,var(--text) 86%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.thread-gear-wrap{position:relative;justify-self:end}.tk-resolve-head{height:32px;min-height:32px;border-radius:12px;padding:0 13px;font-weight:800;font-size:13px;display:inline-flex;align-items:center;justify-content:center;line-height:1;color:color-mix(in srgb,var(--ok) 78%,var(--text));border-color:color-mix(in srgb,var(--ok) 28%,var(--line));background:color-mix(in srgb,var(--ok) 6%,var(--panel))}
+
+.log-area{min-height:0;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px}.log-msg{width:max-content;max-width:min(760px,82%);padding:12px 14px;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 10px 26px rgba(15,23,42,.04)}.log-msg.me{align-self:flex-end;border-radius:20px 20px 8px 20px;background:color-mix(in srgb,var(--brand) 8%,var(--panel));border-color:color-mix(in srgb,var(--brand) 24%,var(--line))}.log-msg.other{align-self:flex-start;border-radius:20px 20px 20px 8px;background:color-mix(in srgb,var(--panel) 98%,transparent)}.log-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px;color:color-mix(in srgb,var(--muted) 86%,transparent)}.log-meta b{font-weight:800;color:color-mix(in srgb,var(--text) 88%,transparent)}.log-text{font-size:15px;line-height:1.42;color:var(--text);white-space:pre-wrap}.log-notice{align-self:center;width:min(760px,88%);padding:8px;border:1px solid color-mix(in srgb,var(--line) 72%,transparent);border-radius:18px;background:color-mix(in srgb,var(--panel) 86%,transparent);box-shadow:none}.log-notice>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:color-mix(in srgb,var(--muted) 88%,transparent)}.log-notice b{font-size:12px;color:color-mix(in srgb,var(--text) 84%,transparent)}.log-notice p{margin:4px 0 0;font-size:13px;line-height:1.35}.log-files{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0}.log-file{border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:7px 11px;font-size:12px;font-weight:750;cursor:pointer;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tk-quickboot-hint{display:none!important}
+
+.composer{position:relative;z-index:5;min-height:0;max-height:28dvh;overflow:auto;padding:4px 8px calc(6px + env(safe-area-inset-bottom));gap:4px;background:color-mix(in srgb,var(--panel) 97%,transparent);border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.composer:before{content:"";display:block;width:54px;height:5px;margin:0 auto 6px;border-radius:999px;background:color-mix(in srgb,var(--muted) 28%,transparent)}@media(max-height:520px) and (orientation:landscape){.ticket-thread{grid-template-rows:38px minmax(90px,1fr) auto}.composer{max-height:45dvh;resize:vertical;overflow:auto}.composer:before{width:72px;background:color-mix(in srgb,var(--brand) 26%,var(--muted) 18%)}.composer-modebar{min-height:36px}.pill-switch{min-height:32px}.composer-chatbox{min-height:118px}.quick-replies-wrap{display:grid!important}.log-area{padding:6px 12px}}
+
+.composer-head{display:flex;justify-content:center;align-items:center}
+.composer-modebar{width:min(560px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:4px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--panel) 94%,transparent)}
+.pill-switch{min-width:0;border:0;border-radius:14px;background:transparent;min-height:38px;padding:8px 14px;font-weight:760;color:color-mix(in srgb,var(--muted) 92%,var(--text))}
+.pill-switch.is-active{background:color-mix(in srgb,var(--brand) 12%,var(--panel));color:var(--text)}
+
+.composer-chatbox{display:grid;gap:5px;min-height:104px;padding:7px;border-radius:18px;background:color-mix(in srgb,#eff6ff 78%,var(--panel));border:1px solid color-mix(in srgb,#3b82f6 28%,var(--line))}
+.composer-chatbox.is-note{background:color-mix(in srgb,#fff7ed 78%,var(--panel))}
+.composer-input-wrap{position:relative;display:grid;align-items:center;height:50px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:19px;background:var(--panel);overflow:hidden}
+.composer-input-wrap .attach-btn,.composer-input-wrap #saveLogBtn{position:absolute;top:50%;transform:translateY(-50%);border-radius:50%}
+.composer-input-wrap .attach-btn{left:7px;width:36px;height:36px;min-width:36px;min-height:36px}
+.composer-input-wrap #saveLogBtn{right:7px;width:38px;height:38px;min-width:38px;min-height:38px;padding:0;font-size:0!important;display:grid;place-items:center;background-image:url("../IMG/enviar.png")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:21px 21px!important}
+.composer-input-wrap #saveLogBtn:after{content:""}
+.composer-input-wrap #logText{height:46px;min-height:46px;max-height:72px;padding:11px 54px 9px 52px;border:0;box-shadow:none;background:transparent;resize:none;overflow-y:auto;font-size:14px;line-height:1.32}
+.composer-bottom{display:block;margin:0}
+.composer-right{display:contents}
+.composer-left #logFilesMeta,#logStatus,#tkComposerModeText{display:none!important}
+.quick-replies-wrap{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:6px;overflow:hidden;margin-top:0}
+.quick-replies{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;max-width:100%;padding-bottom:4px;scrollbar-width:thin;mask-image:linear-gradient(90deg,#000 0,#000 86%,transparent 100%)}
+.quick-replies .mini{flex:0 0 auto;width:auto;min-width:max-content;max-width:170px;min-height:34px;padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.quick-edit-btn{width:38px;min-width:38px;height:38px;border-radius:13px}
+.log-msg.close,.log-msg.me.close{width:auto;height:auto;min-height:unset;aspect-ratio:auto;overflow:visible;border-radius:18px 18px 8px 18px;padding:12px 14px;max-width:min(780px,88%)}
+.log-msg.close *{max-height:none;overflow:visible;white-space:normal;text-overflow:clip}
+.thread-gear-wrap .icon-only{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;display:grid;place-items:center;line-height:1;padding:0}.thread-gear-menu{position:absolute;top:calc(100% + 8px);right:0;width:min(360px,92vw);padding:14px;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 22px 60px rgba(2,6,23,.18);z-index:80}
+.tk-side-close{display:none!important}#tkSideToggle{display:none!important}
+@media(max-width:1180px){#tkSideToggle{display:inline-flex!important}}
+@media(max-width:1180px){body[data-page="ticket"]{overflow:hidden}.ticket-page{display:block;width:100vw;height:100dvh;margin:0}.ticket-main,.ticket-thread{width:100vw;height:100dvh;margin:0;border-radius:0}.ticket-thread{grid-template-rows:40px minmax(120px,1fr) auto}.thread-topbar{grid-template-columns:auto minmax(0,1fr) auto;height:40px;min-height:40px;padding:0 8px}.thread-left-actions{gap:6px}.tk-back-arrow,#tkSideToggle,.thread-gear-wrap .icon-only{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;display:grid;place-items:center;line-height:1;padding:0}#tkThreadStamp{font-size:12px;font-weight:760}.ticket-side{position:fixed;inset:0 auto 0 0;width:min(430px,92vw);max-width:92vw;height:100dvh;max-height:100dvh;z-index:60;transform:translateX(-105%);transition:transform .22s ease;border-right:1px solid var(--line);box-shadow:24px 0 60px rgba(2,6,23,.18);background:var(--panel);padding-top:10px}body.tk-side-open .ticket-side{transform:translateX(0)}body.tk-side-open:before{content:"";position:fixed;inset:0;background:rgba(15,23,42,.32);z-index:55}.side-head,.tk-side-close,.side-head #tkTopChips{display:none!important}.log-area{padding:8px 10px}.log-msg{max-width:90%}.log-msg.me{max-width:88%}.log-msg.close,.log-msg.note{max-width:96%}.composer{max-height:32dvh;padding:4px 6px calc(6px + env(safe-area-inset-bottom))}.composer-chatbox{min-height:104px}.composer-input-wrap{height:50px}.composer-input-wrap #logText{height:46px;min-height:46px;max-height:70px}}
+
+@media(max-width:520px){.contact-mini-list{grid-template-columns:repeat(2,minmax(0,1fr))}.contact-mini-row{min-height:112px;padding:14px!important}.contact-actions a{font-size:13px}.contact-ops-row{grid-template-columns:repeat(2,minmax(0,1fr))}.contact-ops-row>#tkConsolidationHint,.contact-ops-row>#tkRemoteAccessPill{font-size:12px;padding-inline:8px}.composer{padding-left:4px;padding-right:4px}.pill-switch{font-size:13px;padding:8px 6px}}
+@media(max-height:520px) and (orientation:landscape){.quick-replies-wrap,.composer-statusline{display:none!important}.composer-input-wrap #logText{min-height:46px;max-height:82px}.composer{padding:6px}.thread-topbar{padding:6px 10px}}
+
+@media(max-width:520px){.ticket-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(96px,auto);align-content:stretch;gap:14px;padding:18px 16px calc(28px + env(safe-area-inset-bottom));height:100dvh}.case-grid{grid-column:1/-1;margin:0 0 4px;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.case-grid>.box{min-height:126px;border:1px solid var(--line)!important;background:color-mix(in srgb,var(--panel) 98%,transparent)!important;border-radius:24px!important;box-shadow:0 12px 28px rgba(15,23,42,.04)}.case-grid>.span-2{grid-column:1/-1;min-height:126px}.ticket-side>.fold-card{grid-column:auto;min-height:112px!important;border-radius:24px!important}.ticket-side>.fold-card:not([open]){overflow:hidden}.ticket-side>.fold-card:not([open])>.fold-head{min-height:112px}.ticket-side>.fold-card[open]{grid-column:1/-1;min-height:auto!important;overflow:visible;margin:0}.ticket-side>#tkSystemsFold:not([open]){grid-column:auto}.ticket-side>#tkSystemsFold[open]{grid-column:1/-1}.fold-body{padding:14px}}
+
+#tkPortalChips{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#tkPortalChips .tag{justify-content:center;text-align:center}#tkRadarHint{display:none!important}
+
+#tkHeatFold .box{min-height:68px!important;padding:10px 12px!important}#tkHeatFold .box .v.small{font-size:18px!important;line-height:1.1}#tkHeatChips{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#tkHeatChips .tag{justify-content:center;text-align:center;padding:8px 10px!important}
+.tk-info-pop{position:fixed;z-index:9999;max-width:250px;padding:10px 12px;border-radius:14px;background:#111827;color:#fff;font-size:13px;line-height:1.35;box-shadow:0 16px 40px rgba(2,6,23,.22)}
+
+#tkQrModal{position:fixed!important;inset:0!important;z-index:9999!important;display:grid!important;place-items:center!important;padding:18px!important;background:rgba(15,23,42,.24)!important;backdrop-filter:blur(10px)!important}#tkQrModal[hidden]{display:none!important}#tkQrModal .tk-qr-modal{width:min(760px,calc(100vw - 28px))!important;max-height:min(760px,calc(100dvh - 28px))!important;overflow:auto!important;border-radius:28px!important;padding:22px!important;background:var(--panel)!important;box-shadow:0 30px 90px rgba(15,23,42,.24)!important}.tk-qr-top{display:grid;gap:12px;margin:10px 0 16px}.tk-qr-tabs,.tk-qr-scope{display:grid;gap:0;padding:5px;border:1px solid var(--line);border-radius:22px;background:color-mix(in srgb,var(--panel) 94%,transparent)}.tk-qr-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tk-qr-scope{grid-template-columns:repeat(3,minmax(0,1fr))}.tk-qr-tabs .mini,.tk-qr-scope .mini{min-height:44px;border:0;border-radius:16px;background:transparent;font-weight:850}.tk-qr-tabs .is-on,.tk-qr-scope .is-on{background:color-mix(in srgb,var(--brand) 11%,var(--panel));color:var(--text)}#tkQrRows{display:grid;gap:8px;margin-top:10px}.tk-qr-row{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:8px}.tk-qr-row input{height:40px;border:0!important;background:transparent!important;font-weight:750;color:var(--text);outline:0}.tk-qr-row textarea{grid-column:1/-1;min-height:58px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 86%,var(--panel));padding:10px 12px;resize:vertical;color:var(--text)}.tk-qr-help,.tk-qr-chip,.tk-qr-actions [data-qr-act="up"],.tk-qr-actions [data-qr-act="down"],.tk-qr-actions [data-qr-act="use"]{display:none!important}.tk-qr-actions{display:flex;justify-content:flex-end}.tk-qr-actions .danger{width:36px;height:36px;min-width:36px;min-height:36px;padding:0;border-radius:999px;font-size:0;color:#dc2626}.tk-qr-actions .danger:before{content:"−";font-size:24px;font-weight:900;line-height:1}#tkQrAddRow,#tkQrSaveAll{width:54px;height:54px;min-width:54px;min-height:54px;padding:0!important;border-radius:18px!important;font-size:0!important;background-position:center!important;background-repeat:no-repeat!important;background-size:24px 24px!important}#tkQrAddRow{background-image:url("../IMG/mas.png")!important}
+#tkQrSaveAll{background-image:url("../IMG/guardar.png")!important}
+.tk-qr-pick-pop{position:fixed;z-index:10000;display:grid;gap:6px;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 18px 48px rgba(2,6,23,.18)}.tk-qr-pick-pop button{border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 96%,transparent);padding:9px 12px;font-weight:850;color:var(--text);cursor:pointer}#tkQrModal .tk-qr-modal{width:min(760px,calc(100vw - 28px))!important;max-height:min(720px,calc(100dvh - 22px))!important;padding:18px!important}#tkQrRows{gap:6px!important}.tk-qr-row{grid-template-columns:minmax(160px,.72fr) minmax(0,1.4fr) 36px!important;gap:7px!important;padding:7px!important;align-items:center!important;border-radius:13px!important}.tk-qr-row input{height:34px!important;padding:0 6px!important}.tk-qr-row textarea{grid-column:auto!important;min-height:46px!important;height:46px!important;padding:8px 10px!important;resize:none!important}.tk-qr-row .danger{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;align-self:center}.tk-qr-top{gap:8px!important;margin:6px 0 10px!important}.tk-qr-tabs .mini,.tk-qr-scope .mini{min-height:38px!important}#tkQrAddRow,#tkQrSaveAll{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;border-radius:15px!important}.qr-pill b{display:none!important}
+
+.tk-qr-pick-pop{position:fixed!important;z-index:10000!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding:8px!important;border:1px solid var(--line)!important;border-radius:16px!important;background:var(--panel)!important;box-shadow:0 18px 48px rgba(2,6,23,.22)!important}
+.tk-qr-pick-pop button{border:1px solid var(--line)!important;border-radius:12px!important;background:color-mix(in srgb,var(--panel) 96%,transparent)!important;padding:9px 12px!important;font-weight:850!important;color:var(--text)!important;cursor:pointer!important;white-space:nowrap!important}
+
+
+
+
+#tkSystemOverlay{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(15,23,42,.42);backdrop-filter:blur(10px)}#tkSystemOverlay .ticket-system-modal{width:min(1180px,94vw);max-height:92dvh;overflow:auto;border-radius:30px;padding:28px;background:color-mix(in srgb,var(--panel) 98%,white)}#tkSystemOverlay .section-kicker{font-size:12px;letter-spacing:.14em;color:color-mix(in srgb,var(--muted) 82%,transparent)}#tkSystemOverlay h3{margin:4px 0 10px;font-size:26px;letter-spacing:-.03em}#tkSystemOverlay .composer-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px}#tkSystemOverlay .field.span-2{grid-column:span 2}#tkSystemOverlay .lbl{position:absolute;opacity:0;pointer-events:none}#tkSystemOverlay .input,#tkSystemOverlay .select,#tkSystemOverlay .area{min-height:52px;border-radius:18px;font-size:15px}#tkSystemOverlay .area{min-height:96px}#tkSystemOverlay .sys-kind-tabs{display:inline-grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--panel) 94%,transparent)}#tkSystemOverlay .sys-picker{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:14px}#tkSystemOverlay .sys-pick{min-height:86px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--panel) 96%,transparent);display:grid;place-items:center;gap:6px;padding:10px;cursor:pointer}#tkSystemOverlay .sys-pick img{width:48px;height:48px;object-fit:contain;filter:none}#tkSystemOverlay .sys-pick span{font-size:12px;font-weight:750;color:color-mix(in srgb,var(--text) 86%,transparent)}#tkSystemOverlay .sys-pick.is-active{border-color:color-mix(in srgb,var(--brand) 42%,var(--line));background:color-mix(in srgb,var(--brand) 8%,var(--panel))}#tkSystemOverlay .actions{justify-content:flex-end}#tkSystemOverlay .sys-img-btn{display:inline-flex;align-items:center;gap:8px;border-radius:16px}#tkSystemOverlay .sys-img-btn img{width:18px;height:18px;object-fit:contain}@media(max-width:760px){#tkSystemOverlay .ticket-system-modal{width:94vw;padding:20px}#tkSystemOverlay .composer-grid{grid-template-columns:1fr}#tkSystemOverlay .field.span-2{grid-column:auto}}
+
+
+.ev-menu-wrap{position:relative;display:inline-flex}.ev-menu{position:absolute;left:0;bottom:calc(100% + 8px);z-index:90;width:190px;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 18px 50px rgba(2,6,23,.18);display:none}.ev-menu.open{display:grid;gap:4px}.ev-menu button{display:flex;align-items:center;gap:9px;width:100%;min-height:38px;border:0;border-radius:12px;background:transparent;padding:8px 10px;font-size:13px;font-weight:750;color:var(--text);cursor:pointer;text-align:left}.ev-menu button:hover{background:color-mix(in srgb,var(--brand) 8%,transparent)}.ev-menu img{width:18px;height:18px;object-fit:contain}
+
+#tkSystemOverlay .sys-picker{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}#tkSystemOverlay .sys-pick{min-height:78px;padding:10px 8px}#tkSystemOverlay .sys-pick img{width:34px;height:34px;object-fit:contain}#tkSystemOverlay .sys-pick span{font-size:12px;line-height:1.15;text-align:center}
+@media(min-width:1181px){.ticket-side{display:grid;grid-template-columns:1fr;grid-template-rows:auto repeat(5,minmax(92px,1fr));gap:14px;padding:14px 12px 18px}.case-grid{gap:14px;margin-bottom:0}.ticket-side>.fold-card:not([open]){min-height:clamp(92px,12dvh,128px);display:flex}.ticket-side>.fold-card:not([open])>.fold-head{width:100%;min-height:100%;padding:18px}.ticket-side>.fold-card{border-radius:24px}.fold-head .tag,.fold-head .fold-kicker{box-shadow:0 8px 20px rgba(15,23,42,.035)}.ticket-side .box{border-radius:20px}.case-grid>.box{min-height:96px}.case-grid>.span-2{min-height:104px}#tkHeatFold .heat-periods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:hidden}#tkHeatFold .heat-period{flex:auto;min-width:0;width:100%}#tkHeatFold[open]{overflow:hidden}#tkHeatFold[open] .fold-body{overflow:hidden}}
+#tkComposerStateTag{display:none!important}
+
+@media(max-width:740px) and (orientation:portrait){body[data-page="ticket"] #appShell>header{display:none!important}body[data-page="ticket"] #appShell>.app-hero,body[data-page="ticket"] #appShell>.shell-hero{display:none!important}body[data-page="ticket"] .ticket-page{width:100vw;height:100dvh;margin:0}body[data-page="ticket"] .ticket-main,body[data-page="ticket"] .ticket-thread{width:100vw;height:100dvh;margin:0;border-radius:0}body[data-page="ticket"] .ticket-thread{grid-template-rows:52px minmax(120px,1fr) auto}body[data-page="ticket"] .thread-topbar{position:relative;height:52px;min-height:52px;padding:10px 8px 0}body[data-page="ticket"] .thread-topbar:before{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);width:62px;height:5px;border-radius:999px;background:color-mix(in srgb,var(--muted) 26%,transparent)}body[data-page="ticket"] .thread-left-actions,body[data-page="ticket"] .thread-actions,body[data-page="ticket"] .thread-gear-wrap{height:42px}body[data-page="ticket"] #tkSideToggle{display:grid!important}body[data-page="ticket"] #tkBackInline{display:grid!important}body[data-page="ticket"] #tkThreadStamp{font-size:12px;font-weight:760}}
+
+.overlay[hidden],#tkSystemOverlay[hidden],#tkContactOverlay[hidden],#tkQrModal[hidden],#evModal[hidden]{display:none!important;pointer-events:none!important;visibility:hidden!important}
+
+/* Adjuntos del composer (chips con miniatura, visibles al seleccionar) */
+.tk-attach-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.tk-attach-chip{display:inline-flex;align-items:center;gap:8px;max-width:240px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);padding:5px 8px}
+.tk-attach-thumb{width:34px;height:34px;border-radius:8px;object-fit:cover;flex:0 0 auto;background:var(--panel-3);display:grid;place-items:center;font-size:17px}
+.tk-attach-name{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tk-attach-del{flex:0 0 auto;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+.tk-attach-del:hover{color:var(--danger)}
+
+/* Reproductor de video en el visor de evidencia */
+.ev-video{max-width:100%;max-height:72vh;width:auto;border-radius:14px;background:#000;display:block;margin:0 auto}
+
+/* img4: panel lateral angosto — evitar que las fold-cards abiertas se encimen */
+@media(max-width:1180px){
+  body[data-page="ticket"] .fold-card[open]{grid-column:1/-1!important;min-height:auto!important;height:auto!important}
+}
+@media(max-width:740px){
+  body[data-page="ticket"] .ticket-side{grid-template-rows:auto!important;grid-auto-rows:auto!important;align-content:start!important}
+  body[data-page="ticket"] .fold-card{min-height:auto!important;height:auto!important}
+  body[data-page="ticket"] .fold-head{min-height:56px!important}
+}
+
+/* Pills Respuesta/Nota interna fijos arriba del input del composer */
+.composer-modebar{position:sticky!important;top:0!important;z-index:4!important;background:color-mix(in srgb,var(--panel) 97%,transparent)!important;padding-bottom:6px!important}
+
+/* Engrane del ticket: estilo más limpio (acorde al de tickets) */
+.thread-gear-menu .thread-gear-section{display:grid;gap:10px;padding:2px}
+.thread-gear-menu .thread-gear-section+.thread-gear-section{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.thread-gear-menu .thread-gear-title{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.thread-gear-menu .thread-opt{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:650;min-height:34px;cursor:pointer}
+.thread-gear-menu .thread-opt input[type=checkbox]{width:18px;height:18px;flex:0 0 auto}
+.thread-gear-menu .range-opt{justify-content:space-between}
+.thread-gear-menu #tkMuteTicketBtn{width:100%;justify-content:center}
+
+/* Botón "Cerrar caso" en el composer */
+.tk-close-case{margin-left:auto;color:color-mix(in srgb,var(--ok) 78%,var(--text));border-color:color-mix(in srgb,var(--ok) 30%,var(--line));background:color-mix(in srgb,var(--ok) 7%,var(--panel));font-weight:800}
+.tk-close-case:hover{background:color-mix(in srgb,var(--ok) 14%,var(--panel))}
+.composer-bottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+
+/* TC COMPOSER COMPACT JANOME — evita scroll interno y reduce aire vertical */
+.composer,
+.reply-composer,
+#composer,
+#replyComposer,
+#tkComposer{
+  overflow:visible !important;
+  max-height:none !important;
+}
+
+.composer textarea,
+.reply-composer textarea,
+#composer textarea,
+#replyComposer textarea,
+#tkComposer textarea,
+#replyText,
+#tkReplyText,
+#messageText{
+  min-height:42px !important;
+  max-height:82px !important;
+  height:42px;
+  resize:vertical;
+  line-height:1.35;
+}
+
+.composer input[type="text"],
+.reply-composer input[type="text"],
+#composer input[type="text"],
+#tkComposer input[type="text"]{
+  min-height:42px !important;
+}
+
+.pill-switch,
+.mode-switch,
+.reply-mode-switch,
+.composer-tabs,
+#replyModeTabs,
+#tkReplyModeTabs{
+  position:relative !important;
+  z-index:5;
+  margin-bottom:6px !important;
+  flex-shrink:0 !important;
+}
+
+.composer .quick-replies,
+.reply-composer .quick-replies,
+#composer .quick-replies,
+#tkComposer .quick-replies,
+.qr-row,
+.quick-row{
+  max-height:none !important;
+  overflow:visible !important;
+  gap:8px !important;
+}
+
+.composer button,
+.reply-composer button,
+#composer button,
+#tkComposer button{
+  min-height:38px;
+}
+
+#tkCloseComposerBtn,
+#closeComposerBtn,
+[data-action="close-case"],
+button.close-case{
+  align-self:flex-end;
+  white-space:nowrap;
+  min-height:38px !important;
+  padding:8px 14px !important;
+}
+
+/* El input real de archivo no debe meter aire visual si ya existe botón/icono de adjuntar */
+.composer input[type="file"],
+.reply-composer input[type="file"],
+#composer input[type="file"],
+#tkComposer input[type="file"]{
+  max-width:100%;
+  font-size:12px;
+}
+
+@media (max-width:599px){
+  .composer,
+  .reply-composer,
+  #composer,
+  #replyComposer,
+  #tkComposer{
+    padding:8px !important;
+    gap:8px !important;
+  }
+
+  .pill-switch,
+  .mode-switch,
+  .reply-mode-switch,
+  .composer-tabs,
+  #replyModeTabs,
+  #tkReplyModeTabs{
+    margin-bottom:4px !important;
+  }
+
+  .composer textarea,
+  .reply-composer textarea,
+  #composer textarea,
+  #replyComposer textarea,
+  #tkComposer textarea,
+  #replyText,
+  #tkReplyText,
+  #messageText{
+    min-height:40px !important;
+    height:40px;
+    max-height:72px !important;
+  }
+}
+
+
+/* TC THREAD CHRONO ATTACHMENTS JANOME */
+.log-msg.file-event{
+  max-width:min(620px,92%);
+}
+
+.thread-files-grid{
+  display:grid;
+  gap:8px;
+  margin-top:2px;
+}
+
+.thread-file-card{
+  display:grid;
+  grid-template-columns:64px 1fr;
+  gap:10px;
+  align-items:center;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--panel) 94%,transparent);
+  cursor:pointer;
+}
+
+.thread-file-card:hover{
+  border-color:color-mix(in srgb,var(--brand) 42%,var(--line));
+}
+
+.thread-file-thumb{
+  width:64px;
+  height:54px;
+  border-radius:13px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:color-mix(in srgb,var(--bg) 80%,var(--panel));
+  border:1px solid color-mix(in srgb,var(--line) 80%,transparent);
+}
+
+.thread-file-thumb-img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.thread-file-thumb-icon{
+  font-size:24px;
+}
+
+.thread-file-main{
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+
+.thread-file-main b{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+}
+
+.thread-file-main span{
+  font-size:12px;
+  color:var(--mut);
+}
+
+.thread-file-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:3px;
+}
+
+.thread-file-actions button{
+  border:1px solid var(--line);
+  background:var(--panel);
+  border-radius:999px;
+  padding:4px 8px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+@media(max-width:599px){
+  .log-msg.file-event{
+    max-width:96%;
+  }
+
+  .thread-file-card{
+    grid-template-columns:54px 1fr;
+    padding:7px;
+  }
+
+  .thread-file-thumb{
+    width:54px;
+    height:48px;
+  }
+
+  .thread-file-actions button{
+    padding:4px 7px;
+    font-size:10px;
+  }
+}
+
+
+/* TC THREAD FILES POLISH PREMIUM JANOME */
+.thread-file-card{
+  grid-template-columns:58px minmax(0,1fr) 34px !important;
+  min-height:68px;
+  padding:7px 8px !important;
+  gap:9px !important;
+}
+
+.thread-file-card .thread-file-main b{
+  font-size:13px !important;
+  line-height:1.1;
+}
+
+.thread-file-card .thread-file-main span{
+  font-size:11px !important;
+}
+
+.thread-file-download{
+  width:32px;
+  height:32px;
+  min-width:32px !important;
+  min-height:32px !important;
+  padding:0 !important;
+  border-radius:12px !important;
+  display:grid !important;
+  place-items:center !important;
+  background:var(--panel) !important;
+  border:1px solid var(--line) !important;
+}
+
+.thread-file-download img{
+  width:15px;
+  height:15px;
+  object-fit:contain;
+}
+
+.thread-file-actions{
+  display:none !important;
+}
+
+.thread-file-thumb{
+  width:58px !important;
+  height:50px !important;
+}
+
+.thread-file-thumb-img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+}
+
+@media(max-width:599px){
+  .thread-file-card{
+    grid-template-columns:54px minmax(0,1fr) 32px !important;
+    min-height:62px;
+  }
+
+  .thread-file-thumb{
+    width:54px !important;
+    height:46px !important;
+  }
+}
+
+
+/* TC COMPOSER ACTION ROW JANOME */
+.tcComposerActionRow{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:10px !important;
+  width:100% !important;
+  margin:4px 0 6px !important;
+}
+
+.tcComposerActionRow > *{
+  margin:0 !important;
+}
+
+.tcComposerActionRow > :first-child{
+  justify-self:flex-start;
+}
+
+.tcComposerActionRow > :last-child{
+  margin-left:auto !important;
+}
+
+.tcComposerActionRow button,
+.tcComposerActionRow .btn,
+.tcComposerActionRow .pill,
+.tcComposerActionRow .tag{
+  min-height:34px !important;
+  padding:7px 13px !important;
+  border-radius:14px !important;
+}
+
+.tcComposerActionRow button:last-child{
+  border-color:color-mix(in srgb,#16a34a 44%,var(--line)) !important;
+  background:color-mix(in srgb,#22c55e 10%,var(--panel)) !important;
+  color:#166534 !important;
+  font-weight:900 !important;
+}
+
+@media(max-width:599px){
+  .tcComposerActionRow{
+    margin-top:2px !important;
+    margin-bottom:4px !important;
+  }
+}
+
+
+/* TC CONTACT DESKTOP FIX JANOME */
+@media(min-width:900px){
+  .contact-mini-list{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(170px,1fr)) !important;
+    gap:10px !important;
+    align-items:stretch !important;
+    overflow:visible !important;
+  }
+
+  .contact-mini-row{
+    min-height:86px !important;
+    height:auto !important;
+    padding:12px !important;
+    overflow:hidden !important;
+    display:grid !important;
+    grid-template-columns:auto 1fr auto !important;
+    align-items:center !important;
+    gap:8px !important;
+  }
+
+  .contact-mini-row .icon-k{
+    grid-column:1;
+    grid-row:1 / span 2;
+    align-self:center !important;
+  }
+
+  .contact-actions{
+    grid-column:2;
+    min-width:0 !important;
+    display:block !important;
+  }
+
+  .contact-actions a{
+    position:static !important;
+    display:block !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  .contact-actions .copy-icon-btn{
+    position:static !important;
+    grid-column:3;
+    grid-row:1 / span 2;
+    align-self:center !important;
+  }
+
+  .contact-pref-badge{
+    position:static !important;
+    grid-column:3;
+    grid-row:1;
+    align-self:start !important;
+    justify-self:end !important;
+  }
+
+  .contact-ops-row{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:8px !important;
+  }
+}
+
+@media(min-width:900px) and (max-width:1180px){
+  .contact-mini-list{
+    grid-template-columns:1fr !important;
+  }
+}
+
+
+/* TC TICKET ASSIGN COMPACT JANOME */
+.tcAssignBox{
+  padding:10px !important;
+  gap:7px !important;
+  border-radius:16px !important;
+}
+
+.tcAssignBox__top{
+  gap:8px !important;
+}
+
+.tcAssignBox__k{
+  font-size:10px !important;
+}
+
+.tcAssignBox__v{
+  font-size:13px !important;
+}
+
+.tcAssignBox select{
+  min-height:38px !important;
+  font-size:13px !important;
+}
+
+
+/* D2C_TICKET_STABLE_SIDEBAR_COMPOSER */
+/* Objetivo: estabilizar ticket.html tipo app sin tocar JS. */
+
+/* Layout base: sidebar vertical, no mosaico roto */
+body[data-page="ticket"] .ticket-page{
+  min-height:0!important;
+  overflow:hidden!important;
+}
+
+body[data-page="ticket"] .ticket-side{
+  display:flex!important;
+  flex-direction:column!important;
+  grid-template-columns:none!important;
+  grid-auto-rows:auto!important;
+  align-content:start!important;
+  gap:10px!important;
+  height:calc(100dvh - 12px)!important;
+  max-height:calc(100dvh - 12px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  padding:0 10px 18px!important;
+  scrollbar-width:thin;
+  scrollbar-color:color-mix(in srgb,var(--brand) 36%,transparent) transparent;
+}
+
+body[data-page="ticket"] .ticket-side::-webkit-scrollbar{
+  width:9px;
+}
+
+body[data-page="ticket"] .ticket-side::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+body[data-page="ticket"] .ticket-side::-webkit-scrollbar-thumb{
+  border-radius:999px;
+  background:color-mix(in srgb,var(--brand) 34%,transparent);
+  border:2px solid transparent;
+  background-clip:content-box;
+}
+
+/* Ocultar caja grande de asignación; después se reemplaza por badge compacto */
+body[data-page="ticket"] #tcTicketAssignBox{
+  display:none!important;
+}
+
+/* Bloque superior: Contacto / Equipo sí en 2 columnas */
+body[data-page="ticket"] .case-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+  width:100%!important;
+  flex:0 0 auto!important;
+  margin:10px 0 0!important;
+}
+
+body[data-page="ticket"] .case-grid > .box{
+  min-height:94px!important;
+  border-radius:18px!important;
+}
+
+body[data-page="ticket"] .case-grid > .span-2{
+  grid-column:1/-1!important;
+}
+
+/* Acordeones/sidebar: cerrados como cards, abiertos a ancho completo */
+body[data-page="ticket"] .ticket-side > details.fold-card,
+body[data-page="ticket"] .ticket-side > .fold-card{
+  width:100%!important;
+  flex:0 0 auto!important;
+  grid-column:1/-1!important;
+  min-height:auto!important;
+  overflow:visible!important;
+  margin:0!important;
+  border-radius:22px!important;
+  position:relative!important;
+}
+
+body[data-page="ticket"] .ticket-side > details.fold-card:not([open]) > .fold-head{
+  min-height:74px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+body[data-page="ticket"] .ticket-side > details.fold-card[open]{
+  display:block!important;
+}
+
+body[data-page="ticket"] .ticket-side > details.fold-card[open] > .fold-body{
+  display:block!important;
+  position:relative!important;
+  z-index:1!important;
+  padding:14px!important;
+}
+
+/* Evita que Contacto abierto flote/encime como overlay */
+body[data-page="ticket"] #tkContactFold[open] .fold-body,
+body[data-page="ticket"] #tkPortalFold[open] .fold-body,
+body[data-page="ticket"] #tkRadarBox[open] .fold-body,
+body[data-page="ticket"] #tkHeatFold[open] .fold-body,
+body[data-page="ticket"] #tkSystemsFold[open] .fold-body{
+  width:100%!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+
+body[data-page="ticket"] .contact-mini-list,
+body[data-page="ticket"] .contact-hours-grid,
+body[data-page="ticket"] .tk-radar-grid,
+body[data-page="ticket"] #tkHeatFold .box-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+
+body[data-page="ticket"] .contact-mini-list > .contact-ops-row,
+body[data-page="ticket"] .contact-mini-list > .box-grid,
+body[data-page="ticket"] .contact-hours-grid > .span-2{
+  grid-column:1/-1!important;
+}
+
+/* En sidebar angosto, los detalles abiertos pasan a 1 columna interna para no romperse */
+@media(max-width:760px){
+  body[data-page="ticket"] .ticket-side{
+    display:flex!important;
+    flex-direction:column!important;
+    grid-template-columns:none!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    padding:0 10px calc(18px + env(safe-area-inset-bottom))!important;
+  }
+
+  body[data-page="ticket"] .case-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+
+  body[data-page="ticket"] details.fold-card[open] .contact-mini-list,
+  body[data-page="ticket"] details.fold-card[open] .contact-hours-grid,
+  body[data-page="ticket"] details.fold-card[open] .tk-radar-grid,
+  body[data-page="ticket"] details.fold-card[open] #tkHeatFold .box-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+
+/* Composer compacto: una zona baja, menos aire */
+body[data-page="ticket"] .composer{
+  max-height:clamp(118px,22dvh,210px)!important;
+  padding:6px 10px calc(7px + env(safe-area-inset-bottom))!important;
+  overflow:auto!important;
+}
+
+body[data-page="ticket"] .composer-chatbox{
+  min-height:86px!important;
+  padding:7px!important;
+  gap:6px!important;
+  border-radius:20px!important;
+}
+
+body[data-page="ticket"] .composer-input-wrap{
+  min-height:52px!important;
+  height:auto!important;
+  border-radius:20px!important;
+}
+
+body[data-page="ticket"] .composer-input-wrap #logText{
+  min-height:46px!important;
+  height:auto!important;
+  max-height:112px!important;
+  overflow-y:auto!important;
+  line-height:1.34!important;
+  padding-top:12px!important;
+  padding-bottom:10px!important;
+}
+
+/* Quitamos redundancias inferiores. Queda el cierre superior. */
+body[data-page="ticket"] #tkCloseCaseBtn,
+body[data-page="ticket"] #tkComposerModeText,
+body[data-page="ticket"] #logStatus{
+  display:none!important;
+}
+
+body[data-page="ticket"] .composer-bottom{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  flex-wrap:nowrap!important;
+  min-height:38px!important;
+  margin-top:0!important;
+}
+
+body[data-page="ticket"] .quick-replies-wrap{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  overflow:hidden!important;
+}
+
+body[data-page="ticket"] .quick-replies{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  gap:8px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding-bottom:2px!important;
+}
+
+body[data-page="ticket"] .quick-replies .mini{
+  min-height:34px!important;
+  max-height:34px!important;
+  white-space:nowrap!important;
+}
+
+body[data-page="ticket"] .quick-edit-btn{
+  flex:0 0 38px!important;
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+}
+
+/* /D2C_TICKET_STABLE_SIDEBAR_COMPOSER */

@@ -1,238 +1,160 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Ticket Core Demo · Detalle</title>
-  <link rel="icon" href="../favicon.ico">
-  <style>
-    :root{
-      color-scheme:dark;
-      --bg:#071018;
-      --panel:#0e1722;
-      --panel2:#111f2e;
-      --text:#f5f7fb;
-      --muted:#a8b3c2;
-      --line:#263649;
-      --accent:#6ee7ff;
-      --ok:#7cf29a;
-      --warn:#ffd166;
-      --bad:#ff7a90;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:radial-gradient(circle at top left,#132943 0,#071018 42%,#05080d 100%);
-      color:var(--text);
-      min-height:100vh;
-    }
-    header{
-      padding:22px 20px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      background:rgba(7,16,24,.72);
-      backdrop-filter:blur(12px);
-      position:sticky;
-      top:0;
-      z-index:5;
-    }
-    .wrap{max-width:980px;margin:0 auto}
-    .top{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    h1{font-size:22px;margin:0}
-    .back{
-      color:var(--accent);
-      text-decoration:none;
-      border:1px solid rgba(110,231,255,.35);
-      padding:9px 12px;
-      border-radius:999px;
-      background:rgba(110,231,255,.08);
-      font-weight:650;
-    }
-    main{padding:28px 20px 70px}
-    .card{
-      background:linear-gradient(180deg,rgba(17,31,46,.94),rgba(10,18,28,.94));
-      border:1px solid rgba(255,255,255,.1);
-      border-radius:22px;
-      box-shadow:0 24px 80px rgba(0,0,0,.35);
-      padding:24px;
-    }
-    .folio{font-size:13px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
-    .title{font-size:30px;line-height:1.1;margin:8px 0 16px}
-    .badges{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 22px}
-    .badge{
-      padding:7px 10px;
-      border-radius:999px;
-      background:#172638;
-      border:1px solid rgba(255,255,255,.1);
-      color:#dce7f5;
-      font-size:13px;
-      font-weight:700;
-    }
-    .alta{color:var(--bad)}
-    .media{color:var(--warn)}
-    .baja{color:var(--ok)}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
-    .box{
-      background:rgba(255,255,255,.045);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px;
-      padding:15px;
-    }
-    .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
-    .value{font-size:15px;word-break:break-word}
-    .desc{font-size:16px;line-height:1.6;color:#dce7f5;white-space:pre-wrap}
-    .notice{
-      margin-top:18px;
-      padding:13px 15px;
-      border:1px solid rgba(110,231,255,.22);
-      background:rgba(110,231,255,.07);
-      border-radius:16px;
-      color:#cfefff;
-      font-size:14px;
-    }
-    .demo{
-      position:fixed;
-      left:8px;
-      bottom:8px;
-      z-index:9999;
-      font:12px/1 system-ui;
-      background:#0a1018cc;
-      color:#fff;
-      padding:6px 10px;
-      border-radius:8px;
-      opacity:.84;
-      box-shadow:0 4px 18px rgba(0,0,0,.25);
-    }
-    .missing{color:var(--warn)}
-    @media(max-width:720px){
-      .grid{grid-template-columns:1fr}
-      .title{font-size:24px}
-      .card{padding:18px}
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="wrap top">
-      <h1>Ticket Core · Detalle demo</h1>
-      <a class="back" href="tickets.html">← Volver a Tickets</a>
-    </div>
-  </header>
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Ticket | Ticket Core</title><meta name="theme-color" content="#0a1018"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><script>try{document.documentElement.dataset.theme=localStorage.getItem("tc_theme")||"light"}catch(e){}</script><link rel="manifest" href="../site.webmanifest"><link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png"><link rel="apple-touch-icon" href="../apple-touch-icon.png"><link rel="stylesheet" href="global.css"><link rel="stylesheet" href="ticket.css?v=janome-06"><script>"serviceWorker"in navigator&&addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error))</script></head>
+<body data-surface="support" data-shell="app" data-page="ticket"> <div id="appShell"></div>
 
-  <main>
-    <div class="wrap">
-      <section class="card" id="ticketCard">
-        <div class="folio">Cargando ticket…</div>
-        <h2 class="title">Un momento</h2>
-      </section>
-    </div>
-  </main>
+<main class="ticket-page wrap" id="pageMount">
+<aside class="ticket-side"><button class="mini btn-ghost tk-side-close" id="tkSideClose" type="button" aria-label="Cerrar panel">✕</button>
 
-  <div class="demo">Demo pública · datos ficticios</div>
 
-  <script>
-    const params = new URLSearchParams(location.search);
-    const id = params.get("id") || "demo-001";
+<div class="box-grid hero-mini-grid case-grid">
+<div class="box"><div class="k">Contacto</div><div class="v small" id="tkClient">—</div></div>
+  <div class="box"><div class="k">Equipo</div><div class="v small" id="tkSystem">—</div><div class="mut mini" id="tkType">—</div></div>
+  <div class="box span-2 hidden" id="tkJanome"></div>
+<div class="box"><div class="k">Cuándo</div><div class="v small" id="tkSince">—</div></div>
+<div class="box"><div class="k">Cambio previo</div><div class="v small" id="tkLastChange">—</div></div>
+<div class="box span-2"><div class="k">Adicional</div><div class="v small" id="tkContextExtra">—</div></div>
+</div>
 
-    const safe = (v, fallback = "—") => {
-      if (v === null || v === undefined || v === "") return fallback;
-      return String(v);
-    };
 
-    const prettyEstado = estado => ({
-      abierto: "Abierto",
-      en_proceso: "En proceso",
-      esperando_cliente: "Esperando cliente",
-      resuelto: "Resuelto",
-      cerrado: "Cerrado"
-    })[estado] || safe(estado, "Demo");
+<details class="panel inset fold-card contact-fold" id="tkContactFold"><summary class="fold-head"><span>Contacto</span><span class="tag" id="tkContactSummary">Contacto</span></summary><div class="fold-body"><div class="contact-open-head" id="tkContactCollapse"><span class="contact-dot"></span><span class="tag">Contacto</span><button class="mini btn-ghost icon-only" id="tkContactMoreBtn" type="button" aria-label="Más opciones de contacto" title="Más opciones de contacto"><img src="../IMG/mas.png" alt=""></button></div><div class="contact-mini-list"><div class="contact-mini-row" id="tkEmailRow"><span class="k icon-k"><img src="../IMG/bandeja-de-entrada-de-correo.png" alt=""></span><span class="v small contact-actions"><a href="#" id="tkCapturedEmailLink">—</a><span class="tag ok contact-pref-badge" id="tkEmailPrefBadge" hidden>Mejor</span><button class="mini btn-ghost copy-icon-btn" type="button" id="tkCopyEmailBtn" aria-label="Copiar correo"><img src="../IMG/copy.png" alt=""></button></span></div><div class="contact-mini-row" id="tkPhoneRow"><span class="k icon-k"><img src="../IMG/contactos-telefonicos.png" alt=""></span><span class="v small contact-actions"><a href="#" id="tkCapturedPhoneLink">—</a><span class="tag ok contact-pref-badge" id="tkPhonePrefBadge" hidden>Mejor</span><button class="mini btn-ghost copy-icon-btn" type="button" id="tkCopyPhoneBtn" aria-label="Copiar teléfono"><img src="../IMG/copy.png" alt=""></button></span></div><div class="contact-ops-row"><span class="tag ok" id="tkConsolidationHint">Listo para operar</span></div><div class="box-grid contact-hours-grid"><div class="box"><div class="k">Horario</div><div class="v small" id="tkWorkHours">—</div></div><div class="box"><div class="k">Disponible</div><div class="v small availability-line"><span id="tkAvailability">—</span><button class="mini btn-ghost info-mini" id="tkAvailabilityInfo" type="button" title="Ver nota de horario">i</button></div></div><div class="box span-2 hidden" id="tkAvailabilityNoteBox"><div class="k">Nota de horario</div><div class="v small" id="tkAvailabilityNote">—</div></div></div></div></div></details>
 
-    const fallbackTicket = id => ({
-      id,
-      folio: String(id).toUpperCase(),
-      titulo: "Ticket demo " + String(id).replace(/^demo-?/i, "#"),
-      descripcion: "Este es un detalle demo generado para GitHub Pages. No usa Supabase, no consulta backend y no contiene datos reales.",
-      cliente_nombre: "Cliente Demo",
-      cliente_email: "cliente.demo@example.test",
-      estado: "abierto",
-      prioridad: "media",
-      categoria: "Demo",
-      asignado_a: "Soporte Demo",
-      asignado_en: null,
-      fecha_creacion: "2026-06-30T10:00:00.000Z",
-      fecha_actualizacion: "2026-06-30T10:30:00.000Z",
-      is_test: true,
-      missing_from_json: true
-    });
 
-    const render = ticket => {
-      const card = document.getElementById("ticketCard");
-      const prioridad = safe(ticket.prioridad, "media").toLowerCase();
-      const estado = safe(ticket.estado, "abierto");
+<details class="panel inset fold-card" id="tkPortalFold"><summary class="fold-head"><span>Portal</span><span class="tag" id="tkPortalSummary">Consulta</span></summary><div class="fold-body"><div class="box-grid"><div class="box"><div class="k">Última consulta</div><div class="v small" id="tkPortalLastView">—</div></div><div class="box"><div class="k">Vence</div><div class="v small" id="tkPortalExpires">—</div></div></div><div class="chips mt8" id="tkPortalChips"><span class="tag">Sin datos</span></div></div></details>
 
-      card.innerHTML = `
-        <div class="folio">${safe(ticket.folio, ticket.id)}</div>
-        <h2 class="title">${safe(ticket.titulo, "Ticket demo")}</h2>
+<details class="panel inset fold-card tk-radar" id="tkRadarBox"><summary class="fold-head"><span>Radar</span><span class="tag" id="tkRadarPulse">Sin presión</span></summary><div class="fold-body"><div class="tk-radar-grid"><div><div class="k">SLA</div><div class="v small" id="tkRadarSla">—</div></div><div><div class="k">Atención</div><div class="v small" id="tkRadarAttention">—</div></div></div><div class="mut" id="tkRadarHint">Sin alertas relevantes.</div></div></details>
 
-        <div class="badges">
-          <span class="badge">${prettyEstado(estado)}</span>
-          <span class="badge ${prioridad}">Prioridad: ${safe(ticket.prioridad, "media")}</span>
-          <span class="badge">${safe(ticket.categoria, "Demo")}</span>
-        </div>
 
-        <div class="box">
-          <div class="label">Descripción</div>
-          <div class="desc">${safe(ticket.descripcion, "Sin descripción demo.")}</div>
-        </div>
 
-        <div class="grid">
-          <div class="box">
-            <div class="label">Cliente</div>
-            <div class="value">${safe(ticket.cliente_nombre, "Cliente Demo")}</div>
-          </div>
-          <div class="box">
-            <div class="label">Correo</div>
-            <div class="value">${safe(ticket.cliente_email, "cliente.demo@example.test")}</div>
-          </div>
-          <div class="box">
-            <div class="label">Asignado a</div>
-            <div class="value">${safe(ticket.asignado_a, "Sin asignar")}</div>
-          </div>
-          <div class="box">
-            <div class="label">Última actualización</div>
-            <div class="value">${safe(ticket.fecha_actualizacion)}</div>
-          </div>
-          <div class="box">
-            <div class="label">ID</div>
-            <div class="value">${safe(ticket.id)}</div>
-          </div>
-          <div class="box">
-            <div class="label">Fuente</div>
-            <div class="value">GitHub Pages demo</div>
-          </div>
-        </div>
 
-        ${ticket.missing_from_json ? `
-          <div class="notice missing">
-            Este ID no estaba en <code>demo-tickets.json</code>, así que se generó una vista demo segura para evitar 404.
-          </div>
-        ` : `
-          <div class="notice">
-            Vista demo: datos ficticios, sin conexión a Supabase ni backend real.
-          </div>
-        `}
-      `;
-    };
 
-    fetch("demo-tickets.json?v=" + Date.now(), { cache: "no-store" })
-      .then(r => r.ok ? r.json() : [])
-      .then(rows => {
-        const ticket = Array.isArray(rows)
-          ? rows.find(t => String(t.id) === String(id) || String(t.folio) === String(id))
-          : null;
-        render(ticket || fallbackTicket(id));
-      })
-      .catch(() => render(fallbackTicket(id)));
-  </script>
+
+<details class="panel inset fold-card" id="tkHeatFold">
+<summary class="fold-head"><span>Historial</span><span class="tag" id="tkHeatPeriodBadge">Historial</span></summary>
+
+  <div class="fold-body">
+<div class="heat-periods" id="tkHeatPeriods"><button class="heat-period is-active" type="button" data-heat-days="30">1 mes</button><button class="heat-period" type="button" data-heat-days="90">3 meses</button><button class="heat-period" type="button" data-heat-days="180">6 meses</button><button class="heat-period" type="button" data-heat-days="365">1 año</button></div>
+<div class="box-grid">
+<div class="box"><div class="k">Tickets</div><div class="v small" id="tkHeatTotal">—</div></div>
+<div class="box"><div class="k">Urgentes</div><div class="v small" id="tkHeatUrgent">—</div></div>
+<div class="box"><div class="k">En espera</div><div class="v small" id="tkHeatWait">—</div></div>
+<div class="box"><div class="k">Ritmo</div><div class="v small" id="tkHeatLevel">—</div></div>
+</div>
+
+
+  </div>
+</details>
+
+
+<details class="panel inset fold-card" id="tkSystemsFold">
+<summary class="fold-head"><span>Equipos</span><span class="tag">Janome</span></summary>
+<div class="fold-body">
+
+<div class="stack-sm" id="tkSystemsList">
+<div class="empty-state">Sin equipos registrados para este cliente.</div>
+</div>
+<div class="actions mt8">
+<button class="btn btn-ghost" type="button" id="tkAddSystemBtn">Agregar equipo</button>
+</div>
+</div>
+</details>
+
+
+</aside>
+<section class="ticket-main">
+<section class="panel ticket-thread">
+<div class="thread-topbar">
+<div class="thread-left-actions"><button class="mini btn-ghost tk-side-btn" id="tkSideToggle" type="button" aria-label="Abrir panel">☰</button><a class="mini btn-ghost icon-only tk-back-arrow" href="tickets.html" id="tkBackInline" aria-label="Volver a tickets" title="Volver a tickets">←</a></div>
+<div class="log-sys" id="tkThreadStamp">Caso recibido · —</div>
+
+<div class="thread-actions">
+<button class="mini btn-ghost tk-resolve-head" type="button" id="tkResolveBtn">Cierre</button>
+<div class="thread-gear-wrap">
+<button class="mini btn-ghost icon-only" id="tkThreadGearBtn" type="button" aria-label="Opciones" title="Opciones">⚙️</button>
+
+  <div class="thread-gear-menu hidden" id="tkThreadGearMenu" hidden>
+<div class="thread-gear-section">
+<div class="thread-gear-title">Notificaciones</div>
+<label class="thread-opt"><input type="checkbox" id="tkNotifVisual"> <span>Visuales</span></label>
+<label class="thread-opt"><input type="checkbox" id="tkNotifSound"> <span>Sonido</span></label>
+<label class="thread-opt"><input type="checkbox" id="tkNotifStrongOnly"> <span>Solo cambios fuertes</span></label>
+<label class="thread-opt range-opt"><span>Volumen</span><input type="range" id="tkNotifVolume" min="0" max="1" step="0.1"></label>
+<label class="thread-opt"><input type="checkbox" id="tkEnterSends"> <span>Enter envía</span></label>
+<button class="mini btn-ghost" type="button" id="tkMuteTicketBtn">Silenciar este ticket</button>
+  </div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="log-area" id="logArea"></div>
+
+  <div class="hidden" id="tkDataMode" aria-hidden="true"></div>
+
+<div class="composer composer-inline">
+<div class="section-head composer-head"><div></div><div class="composer-modebar composer-modebar-2"><button class="pill-switch is-active" type="button" id="modeReplyBtn" data-kind="seguimiento" data-state="">Respuesta</button><button class="pill-switch" type="button" id="modeNoteBtn" data-kind="nota" data-state="">Nota interna</button></div></div>
+
+<div class="composer-chatbox">
+<div class="composer-input-wrap"><button class="mini btn-ghost attach-btn" id="pickPublicFilesBtn" type="button" title="Adjuntar archivo">📎</button><textarea class="area chat-area" id="logText" placeholder="Escribe una respuesta."></textarea><button class="btn btn-brand send-float-btn" id="saveLogBtn" type="button" aria-label="Enviar respuesta">➤</button></div>
+
+<div class="composer-bottom">
+<div class="composer-left">
+
+<input class="sr-only" id="logFiles" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.m4v">
+<div class="mut compact" id="logFilesMeta">Sin archivos adjuntos.</div>
+</div>
+<button class="mini btn-ghost tk-close-case" type="button" id="tkCloseCaseBtn" title="Cerrar caso (doble clic)">Cerrar caso</button>
+</div>
+
+<div class="composer-statusline">
+<span class="tag" id="tkComposerModeTag">Visible al cliente</span>
+<span class="tag" id="tkComposerStateTag">Sin cambio de estado</span>
+</div>
+<div class="mut" id="tkComposerModeText">Responde de forma breve, clara y fácil de continuar.</div>
+<div class="mut" id="logStatus">Se enviará como respuesta normal del caso.</div>
+
+<div class="quick-replies-wrap"><div class="quick-replies" id="quickReplies">
+<button class="mini btn-ghost" type="button" data-qr="modelo">Pedir modelo</button>
+<button class="mini btn-ghost" type="button" data-qr="evidencia">Pedir foto/video</button>
+<button class="mini btn-ghost" type="button" data-qr="garantia">Pedir garantía</button>
+<button class="mini btn-ghost" type="button" data-qr="horario">Pedir horario</button>
+<button class="mini btn-ghost" type="button" data-qr="espera">Quedar en espera</button>
+<button class="mini btn-ghost" type="button" data-qr="solucion">Confirmar solución</button>
+<button class="mini btn-ghost" type="button" data-qr="resuelto">Marcar resuelto</button>
+</div><button class="mini btn-ghost quick-edit-btn" id="tkQrEditBtn" type="button" title="Editar respuestas rápidas" aria-label="Editar respuestas rápidas">✎</button></div>
+</div>
+
+<select class="select sr-only" id="logKind">
+<option value="nota">Nota interna</option>
+<option value="seguimiento">Seguimiento visible</option>
+<option value="solicitud">Solicitud al cliente</option>
+<option value="solucion">Solución o cierre</option>
+</select>
+<select class="select sr-only" id="logState">
+<option value="">Sin cambio</option>
+<option value="abierto">Abierto</option>
+<option value="en_proceso">En proceso</option>
+<option value="esperando_cliente">Esperando cliente</option>
+<option value="resuelto">Resuelto</option>
+<option value="cerrado">Cerrado</option>
+</select>
+</div>
+</section>
+</section>
+
+</main>
+<div class="overlay" id="evModal" hidden><div class="modal ticket-ev-modal"><div class="section-head"><div><div class="section-kicker">Evidencia</div><h3 id="evTitle">Vista previa</h3></div><button class="icon-btn" id="evClose" type="button">✕</button></div><div class="ev-toolbar"><a class="btn btn-ghost" id="evOpenRaw" href="#" target="_blank" rel="noopener">Abrir original</a></div><div class="ev-body" id="evBody"><div class="empty-state">Sin vista previa.</div></div></div></div>
+  <div class="overlay" id="tkContactOverlay" hidden><div class="modal ticket-contact-modal"><div class="section-head"><div><div class="section-kicker">Contacto ampliado</div><h3>Detalle de contacto e identidad</h3></div><button class="icon-btn" id="tkContactClose" type="button">✕</button></div><div class="stack-md"><div class="box-grid"><div class="box"><div class="k">Cliente sugerido</div><div class="v small" id="tkSuggestedClient">—</div></div><div class="box"><div class="k">Contacto sugerido</div><div class="v small" id="tkSuggestedContact">—</div></div><div class="box"><div class="k">Match</div><div class="v small" id="tkMatchMeta">—</div></div><div class="box"><div class="k">Estado</div><div class="v small" id="tkConsolidationState">—</div></div></div><div class="chips" id="tkCrmChips"><span class="tag">Sin contexto CRM</span></div><div class="box-grid"><div class="box"><div class="k">Contacto ligado</div><div class="v small" id="tkLinkedContactName">—</div></div><div class="box"><div class="k">Correo contacto</div><div class="v small" id="tkLinkedContactEmail">—</div></div><div class="box"><div class="k">Teléfono contacto</div><div class="v small" id="tkLinkedContactPhone">—</div></div><div class="box"><div class="k">Puesto contacto</div><div class="v small" id="tkLinkedContactRole">—</div></div></div><div class="actions"><button class="btn" id="tkUseSuggestedClientBtn" type="button">Usar cliente sugerido</button><button class="btn btn-ghost" id="tkMarkNewContactBtn" type="button">Marcar contacto nuevo</button><button class="btn btn-ghost" id="tkMarkConsolidatedBtn" type="button">Marcar consolidado</button></div><div class="composer-grid"><div class="field span-2"><label class="lbl" for="tkExistingContact">Vincular contacto existente</label><select class="select" id="tkExistingContact"><option value="">Selecciona un contacto del cliente</option></select></div></div><div class="actions"><button class="btn" id="tkLinkExistingContactBtn" type="button">Vincular contacto existente</button></div><div class="box-grid" id="tkCrmMiniGrid"><div class="box"><div class="k">Estado operativo</div><div class="v small" id="tkCrmState">—</div></div><div class="box"><div class="k">Canal ideal</div><div class="v small" id="tkCrmChannel">—</div></div><div class="box"><div class="k">Horario sugerido</div><div class="v small" id="tkCrmHours">—</div></div><div class="box"><div class="k">Siguiente mejor acción</div><div class="v small" id="tkCrmNextAction">—</div></div></div><div class="mut" id="tkCrmHint">Aquí verás el contexto ampliado del contacto.</div></div></div></div>
+
+<div class="overlay" id="tkSystemOverlay" hidden><div class="modal ticket-system-modal"><div class="section-head"><div><div class="section-kicker">Producto del cliente</div><h3>Ficha Janome</h3></div><button class="icon-btn" id="tkSystemClose" type="button">✕</button></div><input type="hidden" id="tkSysId"><input type="hidden" id="tkSysKey"><div class="sys-kind-tabs"><button class="pill-switch is-active" type="button" data-sys-kind="escritorio">Máquinas</button><button class="pill-switch" type="button" data-sys-kind="nube">Accesorios</button></div><div class="sys-picker" id="tkSysPicker"></div><div class="composer-grid mt12"><div class="field"><label class="lbl" for="tkSysName">Máquina / producto</label><input class="input" id="tkSysName" placeholder="Modelo, máquina o accesorio"></div><div class="field"><label class="lbl" for="tkSysVersion">Modelo / versión</label><input class="input" id="tkSysVersion" placeholder="Ej. HD3000BE, MC500E, MB-7"></div><div class="field sys-desktop-field"><label class="lbl" for="tkSysWindows">Uso / entorno</label><input class="input" id="tkSysWindows" placeholder="Casa, taller, academia, tienda"></div><div class="field sys-desktop-field"><label class="lbl" for="tkSysSql">Accesorio / refacción</label><input class="input" id="tkSysSql" placeholder="Prensatelas, bastidor, bobina, pedal, etc."></div><div class="field sys-desktop-field"><label class="lbl" for="tkSysInstall">Tipo de producto</label><select class="select" id="tkSysInstall"><option value="">Selecciona</option><option value="maquina">Máquina</option><option value="accesorio">Accesorio</option><option value="refaccion">Refacción</option><option value="garantia">Garantía</option><option value="servicio">Servicio</option></select></div><div class="field sys-desktop-field"><label class="lbl" for="tkSysHost">Equipo / ubicación</label><input class="input" id="tkSysHost" placeholder="Máquina física, mostrador, taller o sucursal"></div><div class="field span-2 sys-desktop-field"><label class="lbl" for="tkSysPath">Datos de compra / serie</label><input class="input" id="tkSysPath" placeholder="Número de serie, fecha de compra o comprobante"></div><div class="field"><label class="lbl" for="tkSysBackupPlace">Evidencia requerida</label><input class="input" id="tkSysBackupPlace" placeholder="Foto, video ≤20s, muestra de puntada"></div><div class="field"><label class="lbl" for="tkSysBackupFreq">Mantenimiento</label><input class="input" id="tkSysBackupFreq" placeholder="Frecuencia o último servicio"></div><div class="field"><label class="lbl" for="tkSysLastBackup">Fecha de compra</label><input class="input" id="tkSysLastBackup" type="date"></div><div class="field"><label class="lbl" for="tkSysLastMaint">Último servicio</label><input class="input" id="tkSysLastMaint" type="date"></div><div class="field"><label class="lbl" for="tkSysTypeDefault">Caso habitual</label><input class="input" id="tkSysTypeDefault" placeholder="Puntada, tensión, aguja, motor, garantía"></div><div class="field"><label class="lbl" for="tkSysOrigin">Origen</label><input class="input" id="tkSysOrigin" placeholder="ticket / tienda / garantía / capacitación"></div><div class="field span-2"><label class="lbl" for="tkSysNotes">Notas</label><textarea class="area" id="tkSysNotes" rows="3" placeholder="Notas de seguimiento"></textarea></div></div><div class="actions mt12"><button class="btn btn-ghost danger" id="tkSystemDelete" type="button" hidden>Borrar</button><button class="btn btn-ghost" id="tkSystemCancel" type="button">Cancelar</button><button class="btn btn-brand" id="tkSystemSave" type="button">Guardar ficha</button></div></div></div>
+
+
+<div class="overlay" id="tkQrModal" hidden><div class="modal tk-qr-modal"><div class="section-head"><div><div class="section-kicker">Editor respuestas rápidas</div></div><button class="icon-btn" id="tkQrClose" type="button">✕</button></div><div class="tk-qr-top"><div class="tk-qr-tabs"><button class="mini btn-ghost is-on" type="button" data-qrmode="seguimiento">Respuesta</button><button class="mini btn-ghost" type="button" data-qrmode="nota">Nota interna</button><button class="mini btn-ghost" type="button" data-qrmode="solucion">Cierre</button></div><div class="tk-qr-scope"><button class="mini btn-ghost is-on" type="button" data-qrscope="global">Globales</button><button class="mini btn-ghost" type="button" data-qrscope="cliente">Cliente actual</button><button class="mini btn-ghost" type="button" data-qrscope="contacto">Usuario actual</button></div></div><div class="stack-sm" id="tkQrRows"></div><div class="actions mt8"><button class="btn btn-ghost" id="tkQrAddRow" type="button">Agregar respuesta</button><button class="btn btn-brand" id="tkQrSaveAll" type="button">Guardar</button></div></div></div>
+<script src="supabase.config.public.js"></script>
+<script type="module" src="ticket.js?v=10"></script>
+<script src="ticket-composer-polish.js?v=2"></script>
+<script src="notif-sound-test.js?v=2"></script>
+<script type="module" src="ticket-assignment.js?v=1"></script>
 </body>
 </html>

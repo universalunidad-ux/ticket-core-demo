@@ -499,8 +499,7 @@ const notifyTone=(hz=880,ms=120,delay=0,type="sine")=>setTimeout(()=>{try{const 
 const notifyBeep=()=>{const k=BOARD_NOTIF.soundType||"ding",p={ding:[[880,150,0,"sine"]],pop:[[520,90,0,"triangle"]],chime:[[660,90,0,"sine"],[990,140,110,"sine"]],doble:[[740,80,0,"triangle"],[740,100,130,"triangle"]],urgente:[[880,70,0,"square"],[660,70,90,"square"],[880,110,180,"square"]]};(p[k]||p.ding).forEach(x=>notifyTone(...x));return true};
 const notifyNewTickets=rows=>{rows=(rows||[]).filter(Boolean);if(BOARD_NOTIF.strongOnly)rows=rows.filter(t=>isCritical(t)||slaFrBreached(t)||slaRsBreached(t)||slaSoon(t));if(!rows.length||BOARD_NOTIF.muted)return;const n=rows.length,t=rows[0],empresa=t?.empresa_capturada||t?.clientes?.nombre||"Nuevo ticket";if(BOARD_NOTIF.visual)toast(`${n} ticket${n===1?"":"s"} nuevo${n===1?"":"s"} · ${empresa}`,"ok");if(BOARD_NOTIF.sound)notifyBeep()};
 window.__tkNotifyBeep=notifyBeep;window.__tkNotifyNewTickets=notifyNewTickets;
-const DEMO_MODE=()=>/github\.io$/.test(location.hostname)||!globalThis.TICKET_CORE_CONFIG?.supabaseUrl||new URLSearchParams(location.search).get("demo")==="1";
-const DEV_READONLY=()=>DEMO_MODE()||(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&new URLSearchParams(location.search).get("readonly")==="1");
+const DEV_READONLY=()=>/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&new URLSearchParams(location.search).get("readonly")==="1";
 const DEMO_NOW=()=>new Date().toISOString();
 const DEMO_PRODUCTS=[
   "MC550E LE","MC500E","MC100E","MB-7","HD3000BE","HD1000BE","3022HD","423S","3128","1600PQC",
