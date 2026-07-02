@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ticket Core Demo · Detalle</title>
+  <link rel="icon" href="../favicon.ico">
+  <style>
+    :root{
+      color-scheme:dark;
+      --bg:#071018;
+      --panel:#0e1722;
+      --panel2:#111f2e;
+      --text:#f5f7fb;
+      --muted:#a8b3c2;
+      --line:#263649;
+      --accent:#6ee7ff;
+      --ok:#7cf29a;
+      --warn:#ffd166;
+      --bad:#ff7a90;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:radial-gradient(circle at top left,#132943 0,#071018 42%,#05080d 100%);
+      color:var(--text);
+      min-height:100vh;
+    }
+    header{
+      padding:22px 20px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(7,16,24,.72);
+      backdrop-filter:blur(12px);
+      position:sticky;
+      top:0;
+      z-index:5;
+    }
+    .wrap{max-width:980px;margin:0 auto}
+    .top{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    h1{font-size:22px;margin:0}
+    .back{
+      color:var(--accent);
+      text-decoration:none;
+      border:1px solid rgba(110,231,255,.35);
+      padding:9px 12px;
+      border-radius:999px;
+      background:rgba(110,231,255,.08);
+      font-weight:650;
+    }
+    main{padding:28px 20px 70px}
+    .card{
+      background:linear-gradient(180deg,rgba(17,31,46,.94),rgba(10,18,28,.94));
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:22px;
+      box-shadow:0 24px 80px rgba(0,0,0,.35);
+      padding:24px;
+    }
+    .folio{font-size:13px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+    .title{font-size:30px;line-height:1.1;margin:8px 0 16px}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 22px}
+    .badge{
+      padding:7px 10px;
+      border-radius:999px;
+      background:#172638;
+      border:1px solid rgba(255,255,255,.1);
+      color:#dce7f5;
+      font-size:13px;
+      font-weight:700;
+    }
+    .alta{color:var(--bad)}
+    .media{color:var(--warn)}
+    .baja{color:var(--ok)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
+    .box{
+      background:rgba(255,255,255,.045);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:15px;
+    }
+    .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+    .value{font-size:15px;word-break:break-word}
+    .desc{font-size:16px;line-height:1.6;color:#dce7f5;white-space:pre-wrap}
+    .notice{
+      margin-top:18px;
+      padding:13px 15px;
+      border:1px solid rgba(110,231,255,.22);
+      background:rgba(110,231,255,.07);
+      border-radius:16px;
+      color:#cfefff;
+      font-size:14px;
+    }
+    .demo{
+      position:fixed;
+      left:8px;
+      bottom:8px;
+      z-index:9999;
+      font:12px/1 system-ui;
+      background:#0a1018cc;
+      color:#fff;
+      padding:6px 10px;
+      border-radius:8px;
+      opacity:.84;
+      box-shadow:0 4px 18px rgba(0,0,0,.25);
+    }
+    .missing{color:var(--warn)}
+    @media(max-width:720px){
+      .grid{grid-template-columns:1fr}
+      .title{font-size:24px}
+      .card{padding:18px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <h1>Ticket Core · Detalle demo</h1>
+      <a class="back" href="tickets.html">← Volver a Tickets</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section class="card" id="ticketCard">
+        <div class="folio">Cargando ticket…</div>
+        <h2 class="title">Un momento</h2>
+      </section>
+    </div>
+  </main>
+
+  <div class="demo">Demo pública · datos ficticios</div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const id = params.get("id") || "demo-001";
+
+    const safe = (v, fallback = "—") => {
+      if (v === null || v === undefined || v === "") return fallback;
+      return String(v);
+    };
+
+    const prettyEstado = estado => ({
+      abierto: "Abierto",
+      en_proceso: "En proceso",
+      esperando_cliente: "Esperando cliente",
+      resuelto: "Resuelto",
+      cerrado: "Cerrado"
+    })[estado] || safe(estado, "Demo");
+
+    const fallbackTicket = id => ({
+      id,
+      folio: String(id).toUpperCase(),
+      titulo: "Ticket demo " + String(id).replace(/^demo-?/i, "#"),
+      descripcion: "Este es un detalle demo generado para GitHub Pages. No usa Supabase, no consulta backend y no contiene datos reales.",
+      cliente_nombre: "Cliente Demo",
+      cliente_email: "cliente.demo@example.test",
+      estado: "abierto",
+      prioridad: "media",
+      categoria: "Demo",
+      asignado_a: "Soporte Demo",
+      asignado_en: null,
+      fecha_creacion: "2026-06-30T10:00:00.000Z",
+      fecha_actualizacion: "2026-06-30T10:30:00.000Z",
+      is_test: true,
+      missing_from_json: true
+    });
+
+    const render = ticket => {
+      const card = document.getElementById("ticketCard");
+      const prioridad = safe(ticket.prioridad, "media").toLowerCase();
+      const estado = safe(ticket.estado, "abierto");
+
+      card.innerHTML = `
+        <div class="folio">${safe(ticket.folio, ticket.id)}</div>
+        <h2 class="title">${safe(ticket.titulo, "Ticket demo")}</h2>
+
+        <div class="badges">
+          <span class="badge">${prettyEstado(estado)}</span>
+          <span class="badge ${prioridad}">Prioridad: ${safe(ticket.prioridad, "media")}</span>
+          <span class="badge">${safe(ticket.categoria, "Demo")}</span>
+        </div>
+
+        <div class="box">
+          <div class="label">Descripción</div>
+          <div class="desc">${safe(ticket.descripcion, "Sin descripción demo.")}</div>
+        </div>
+
+        <div class="grid">
+          <div class="box">
+            <div class="label">Cliente</div>
+            <div class="value">${safe(ticket.cliente_nombre, "Cliente Demo")}</div>
+          </div>
+          <div class="box">
+            <div class="label">Correo</div>
+            <div class="value">${safe(ticket.cliente_email, "cliente.demo@example.test")}</div>
+          </div>
+          <div class="box">
+            <div class="label">Asignado a</div>
+            <div class="value">${safe(ticket.asignado_a, "Sin asignar")}</div>
+          </div>
+          <div class="box">
+            <div class="label">Última actualización</div>
+            <div class="value">${safe(ticket.fecha_actualizacion)}</div>
+          </div>
+          <div class="box">
+            <div class="label">ID</div>
+            <div class="value">${safe(ticket.id)}</div>
+          </div>
+          <div class="box">
+            <div class="label">Fuente</div>
+            <div class="value">GitHub Pages demo</div>
+          </div>
+        </div>
+
+        ${ticket.missing_from_json ? `
+          <div class="notice missing">
+            Este ID no estaba en <code>demo-tickets.json</code>, así que se generó una vista demo segura para evitar 404.
+          </div>
+        ` : `
+          <div class="notice">
+            Vista demo: datos ficticios, sin conexión a Supabase ni backend real.
+          </div>
+        `}
+      `;
+    };
+
+    fetch("demo-tickets.json?v=" + Date.now(), { cache: "no-store" })
+      .then(r => r.ok ? r.json() : [])
+      .then(rows => {
+        const ticket = Array.isArray(rows)
+          ? rows.find(t => String(t.id) === String(id) || String(t.folio) === String(id))
+          : null;
+        render(ticket || fallbackTicket(id));
+      })
+      .catch(() => render(fallbackTicket(id)));
+  </script>
+</body>
+</html>
