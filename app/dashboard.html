@@ -1,90 +1,126 @@
-<!doctype html>
-<html lang="es">
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Ticket Core Demo · Dashboard</title>
-  <link rel="icon" href="../favicon.ico">
-  <style>
-    :root{color-scheme:dark;--bg:#071018;--panel:#101b29;--panel2:#132236;--text:#f5f7fb;--muted:#aab7c7;--line:#24364a;--accent:#6ee7ff;--ok:#7cf29a;--warn:#ffd166;--bad:#ff7a90}
-    *{box-sizing:border-box}
-    body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at top left,#172f4d 0,#071018 44%,#05080d 100%);color:var(--text)}
-    header{padding:20px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(7,16,24,.75);position:sticky;top:0;backdrop-filter:blur(12px)}
-    .wrap{max-width:1100px;margin:0 auto}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-    h1{margin:0;font-size:26px}
-    nav a{color:var(--accent);text-decoration:none;margin-left:12px;font-weight:750}
-    main{padding:28px 20px 72px}
-    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-    .card{background:rgba(16,27,41,.9);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.24)}
-    .num{font-size:32px;font-weight:850;margin:8px 0}
-    .label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.07em}
-    .wide{grid-column:span 2}
-    ul{margin:10px 0 0;padding-left:18px;color:#dce7f5;line-height:1.7}
-    .demo{position:fixed;left:8px;bottom:8px;z-index:9999;font:12px/1 system-ui;background:#0a1018cc;color:#fff;padding:6px 10px;border-radius:8px;opacity:.84}
-    @media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wide{grid-column:span 2}}
-    @media(max-width:600px){.grid{grid-template-columns:1fr}.wide{grid-column:span 1}nav a{display:inline-block;margin:8px 10px 0 0}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dashboard | Ticket Core</title>
+<script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
+<link rel="stylesheet" href="global.css">
+<link rel="stylesheet" href="tickets.css">
+<link rel="stylesheet" href="estado.css">
+<link rel="stylesheet" href="soporte.css">
+<link rel="stylesheet" href="janome/janome.css">
+<script type="module" src="theme.js"></script>
 </head>
-<body>
-  <header>
-    <div class="wrap top">
-      <h1>Dashboard demo</h1>
-      <nav>
-        <a href="index.html">Inicio</a>
-        <a href="tickets.html">Tickets</a>
-        <a href="soporte.html">Soporte</a>
-        <a href="estado.html">Estado</a>
-      </nav>
+<body data-surface="admin">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="brand-dot"></span><span>Ticket Core</span></a>
+    <div class="top-actions">
+      <a class="mini btn-ghost" href="index.html">Inicio</a>
+      <a class="mini btn-ghost" href="soporte.html">Nuevo ticket</a>
+      <a class="mini btn-ghost" href="tickets.html">Tickets</a>
+      <button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
     </div>
-  </header>
-  <main>
-    <div class="wrap">
-      <section class="grid">
-        <article class="card"><div class="label">Total tickets</div><div class="num" id="total">—</div><div>Datos ficticios</div></article>
-        <article class="card"><div class="label">Abiertos</div><div class="num" id="abiertos">—</div><div>Incluye en proceso</div></article>
-        <article class="card"><div class="label">Cerrados</div><div class="num" id="cerrados">—</div><div>Demo cerrados</div></article>
-        <article class="card"><div class="label">Alta prioridad</div><div class="num" id="alta">—</div><div>Prioridad alta</div></article>
-        <article class="card wide">
-          <div class="label">Resumen operativo</div>
-          <ul id="resumen"><li>Cargando métricas demo…</li></ul>
-        </article>
-        <article class="card wide">
-          <div class="label">Modo demo</div>
-          <ul>
-            <li>No consulta Supabase.</li>
-            <li>No usa sesión real.</li>
-            <li>No contiene datos reales de clientes.</li>
-            <li>Las métricas se calculan desde <code>demo-tickets.json</code>.</li>
-          </ul>
-        </article>
-      </section>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel hero-support">
+    <div>
+      <div class="section-kicker">Dashboard operativo</div>
+      <h1 id="dashTitle">Mesa de soporte Janome</h1>
+      <p class="mut" id="dashLead">Resumen del estado de tickets, prioridades, equipos afectados y seguimiento operativo.</p>
+      <div class="chips mt8">
+        <span class="tag ok" id="dashRoleBadge">Cargando…</span>
+        <span class="tag">Prioridades</span>
+        <span class="tag">Seguimiento</span>
+        <span class="tag">Máquinas / accesorios</span>
+      </div>
     </div>
-  </main>
-  <div class="demo">Demo pública · datos ficticios</div>
-  <script>
-    const count = (rows, fn) => rows.filter(fn).length;
-    fetch("demo-tickets.json?v=" + Date.now(), {cache:"no-store"})
-      .then(r => r.ok ? r.json() : [])
-      .then(rows => {
-        if (!Array.isArray(rows)) rows = [];
-        const abiertos = count(rows, t => !["cerrado","resuelto"].includes(String(t.estado||"").toLowerCase()));
-        const cerrados = count(rows, t => ["cerrado","resuelto"].includes(String(t.estado||"").toLowerCase()));
-        const alta = count(rows, t => String(t.prioridad||"").toLowerCase() === "alta");
-        document.getElementById("total").textContent = rows.length;
-        document.getElementById("abiertos").textContent = abiertos;
-        document.getElementById("cerrados").textContent = cerrados;
-        document.getElementById("alta").textContent = alta;
-        document.getElementById("resumen").innerHTML = `
-          <li>${abiertos} tickets activos para seguimiento demo.</li>
-          <li>${cerrados} tickets resueltos/cerrados en el set ficticio.</li>
-          <li>${alta} tickets marcados como prioridad alta.</li>
-          <li>Última carga local: ${new Date().toLocaleString()}.</li>
-        `;
-      })
-      .catch(() => {
-        document.getElementById("resumen").innerHTML = "<li>No se pudo cargar demo-tickets.json.</li>";
-      });
-  </script>
+  </section>
+
+  <section class="panel hidden" id="dashSoporte" style="margin-top:12px">
+    <div class="section-kicker">Tu mesa de trabajo</div>
+    <h2 id="dashSoporteHi">Hola</h2>
+    <p class="mut">Atiende tus casos desde la bandeja de tickets. Aquí ves el panorama; el detalle y la operación están en la consola.</p>
+    <div class="actions"><a class="btn btn-brand" href="tickets.html">Ir a mis tickets</a><a class="btn btn-ghost" href="soporte.html">Crear ticket</a></div>
+  </section>
+
+  <section class="estado-kpis">
+    <article class="estado-kpi">
+      <div class="k">Abiertos</div>
+      <div class="v">—</div>
+    </article>
+    <article class="estado-kpi">
+      <div class="k">En proceso</div>
+      <div class="v">—</div>
+    </article>
+    <article class="estado-kpi">
+      <div class="k">Esperando cliente</div>
+      <div class="v">—</div>
+    </article>
+    <article class="estado-kpi">
+      <div class="k">Resueltos</div>
+      <div class="v">—</div>
+    </article>
+  </section>
+
+  <section class="support-layout">
+    <article class="panel">
+      <div class="section-kicker">Operación</div>
+      <h2>Prioridad del día</h2>
+      <p class="mut">Aquí se mostrarán tickets urgentes, casos sin respuesta y tickets con más tiempo abiertos.</p>
+      <div class="empty-state">Pendiente de conectar a datos reales o demo.</div>
+    </article>
+
+    <article class="panel">
+      <div class="section-kicker">Productos</div>
+      <h2>Tickets por equipo Janome</h2>
+      <p class="mut">Resumen por máquina, accesorio o categoría seleccionada en el formulario.</p>
+      <div class="empty-state">Pendiente de integrar catálogo Janome.</div>
+    </article>
+
+    <article class="panel">
+      <div class="section-kicker">Acciones rápidas</div>
+      <h2>Flujo de soporte</h2>
+      <div class="actions">
+        <a class="btn btn-brand" href="soporte.html">Crear ticket</a>
+        <a class="btn btn-ghost" href="tickets.html">Ver bandeja</a>
+        <a class="btn btn-ghost" href="estado.html">Probar seguimiento</a>
+      </div>
+    </article>
+
+    <article class="panel dash-admin-only">
+      <div class="section-kicker">Producto</div>
+      <h2>Enfoque comercial</h2>
+      <p class="mut">Este dashboard se mantiene centrado en tickets: estado, prioridad, equipo afectado, tiempos de respuesta y seguimiento. No debe convertirse en CRM completo.</p>
+    </article>
+  </section>
+
+  <section class="panel dash-admin-only" style="margin-top:16px">
+    <div class="section-kicker">Administración</div>
+    <h2>Avisos del sitio</h2>
+    <p class="mut">Publica un aviso que verán los clientes en la página de soporte (por ejemplo: cierre por mantenimiento, promoción o demora en garantías). Solo administradores.</p>
+    <div id="avEditor" style="margin-top:12px"><div class="mut">Cargando…</div></div>
+  </section>
+
+  <section class="panel dash-admin-only" style="margin-top:16px">
+    <div class="section-kicker">Administración</div>
+    <h2>Personalización del sitio</h2>
+    <p class="mut">Edita los textos de las páginas de soporte y seguimiento (sin tocar código). Cada cambio queda registrado en la bitácora. Solo administradores.</p>
+    <div id="siteConfigEditor" style="margin-top:12px"><div class="mut">Cargando…</div></div>
+  </section>
+
+  <section class="panel dash-admin-only" style="margin-top:16px">
+    <div class="section-kicker">Administración</div>
+    <h2>Reglas de asignación</h2>
+    <p class="mut">Define a qué persona de soporte se dirige cada caso según criterios (tipo de máquina, tipo de caso, empresa, cliente nuevo o palabra clave). Las reglas se evalúan por prioridad, de menor a mayor. Solo administradores.</p>
+    <div id="reglasEditor" style="margin-top:12px"><div class="mut">Cargando…</div></div>
+  </section>
+</main>
+
+<script>window.TICKET_CORE_CONFIG = window.TICKET_CORE_CONFIG || { demo: true };</script>
+<script type="module" src="dashboard.js?v=6"></script>
 </body>
 </html>

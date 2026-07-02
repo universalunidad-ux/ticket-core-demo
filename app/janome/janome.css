@@ -1,0 +1,242 @@
+/* ============================================================================
+   JANOME — buscador de producto, ficha, checkbox WhatsApp y miniaturas.
+   Usa las variables de tema de global.css (claro/oscuro). Se carga solo en
+   las páginas con cosas de Janome (soporte.html, estado.html).
+   ============================================================================ */
+
+/* ---- Buscador de producto (combobox con filtrado en vivo) ---- */
+.jn-combo { position: relative; }
+.jn-combo-input { width: 100%; padding-right: 38px; }
+
+.jn-combo-clear {
+  position: absolute;
+  right: 10px; top: 22px; transform: translateY(-50%);
+  border: 0; background: transparent;
+  color: var(--muted);
+  font-size: 20px; line-height: 1;
+  padding: 4px; cursor: pointer;
+}
+
+/* panel en 2 columnas: listado (izq, scroll) + categorías (der, fijas).
+   En flujo (no flotante): al abrir, empuja los campos de abajo en vez de
+   taparlos — más claro y nunca "atrapa" al usuario. */
+.jn-combo-panel {
+  margin-top: 6px;
+  display: flex;
+  max-height: 320px;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.jn-combo-list {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  padding: 6px;
+}
+
+.jn-combo-cats {
+  flex: 0 0 200px;
+  overflow: auto;
+  padding: 6px;
+  border-left: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel-2) 70%, var(--panel));
+}
+
+.jn-combo-group {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 8px 10px 4px;
+}
+
+.jn-combo-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+.jn-combo-item:hover,
+.jn-combo-item.is-active {
+  background: color-mix(in srgb, var(--brand) 14%, var(--panel));
+}
+.jn-combo-otro { color: var(--muted); }
+.jn-combo-item .jn-cat {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.jn-cat-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  margin-bottom: 2px;
+}
+.jn-cat-btn:hover { background: color-mix(in srgb, var(--brand) 10%, var(--panel)); }
+.jn-cat-btn.is-active {
+  background: color-mix(in srgb, var(--brand) 16%, var(--panel));
+  color: var(--brand);
+}
+
+.jn-combo-empty { padding: 14px 12px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 640px) {
+  .jn-combo-panel { flex-direction: column-reverse; max-height: 60svh; }
+  .jn-combo-cats {
+    flex: 0 0 auto;
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .jn-cat-btn { width: auto; margin: 0; }
+}
+
+/* ---- Ficha compacta junto al producto (panel de ayuda) ---- */
+.jn-ficha-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  justify-content: space-between;
+}
+.jn-ficha-txt { font-size: 15px; }
+
+/* ---- Ficha del agente / cliente ---- */
+.jn-ficha .actions { margin-top: 8px; }
+.jn-ficha .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---- Teléfono: caja tipo input con el check de WhatsApp DENTRO ---- */
+.jn-phone {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.jn-phone:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--line));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+.jn-phone-input {
+  width: 100%;
+  border: 0; background: transparent; color: var(--text);
+  padding: 12px 13px; min-height: 44px; outline: none;
+}
+.jn-phone-input::placeholder { color: var(--muted); }
+.jn-wa {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 13px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--brand) 5%, var(--panel));
+  font-size: 13px; color: var(--text); font-weight: 700;
+  cursor: pointer;
+}
+.jn-wa input { width: 18px; height: 18px; flex: 0 0 auto; }
+.jn-wa img { display: inline-block; }
+
+/* Nombre siempre con mayúscula inicial (visual) */
+#spName { text-transform: capitalize; }
+
+/* ---- Tarjeta de ayuda dentro del hero (columna derecha) ---- */
+.hero-help {
+  background: color-mix(in srgb, var(--panel-2) 70%, var(--panel));
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+}
+.hero-help h3 { font-size: var(--fs-15); margin: 0 0 8px; }
+.hero-help .mini-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+
+/* ---- Footer legal sutil ---- */
+.jn-footer {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  margin-top: 22px; padding: 16px 4px 8px;
+  border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 13px;
+}
+.jn-footer nav { display: flex; align-items: center; gap: 8px; }
+.jn-footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.jn-footer a:hover { color: var(--text); }
+
+/* ---- Editor de avisos (dashboard, solo admin) ---- */
+.av-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; }
+.av-form { display: grid; gap: 12px; }
+.av-count { float: right; color: var(--muted); font-weight: 600; }
+.av-preview-wrap { display: grid; gap: 8px; align-content: start; }
+.av-lista { display: grid; gap: 12px; }
+.av-item {
+  display: grid; gap: 8px;
+  border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+  background: var(--panel-2);
+}
+.av-item-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 860px) { .av-grid { grid-template-columns: 1fr; } }
+
+/* ---- Miniaturas de adjuntos ---- */
+.jn-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.jn-thumb-card {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+  background: var(--panel-2);
+  position: relative;
+}
+.jn-thumb {
+  width: 52px; height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: var(--panel-3);
+}
+.jn-thumb-ic { display: grid; place-items: center; font-size: 24px; }
+.jn-thumb-info { min-width: 0; flex: 1 1 auto; }
+.jn-thumb-name { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jn-thumb-meta { font-size: 12px; color: var(--muted); }
+.jn-thumb-del {
+  flex: 0 0 auto;
+  border: 0; background: transparent; cursor: pointer;
+  padding: 6px; border-radius: 8px;
+}
+.jn-thumb-del:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.jn-thumb-del img { width: 20px; height: 20px; }
+
+/* ---- Chips de problemas comunes (ficha del visitante en soporte) ---- */
+.jn-ficha-probs { margin-top: 10px; }
+.jn-ficha-probs-lbl {
+  font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;
+}
+.jn-prob-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.jn-prob-chip {
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink, var(--text));
+  border-radius: 999px; padding: 6px 11px; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .05s ease;
+}
+.jn-prob-chip:hover { background: color-mix(in srgb, var(--brand, #2563eb) 10%, transparent); border-color: var(--brand, #2563eb); }
+.jn-prob-chip:active { transform: scale(.97); }

@@ -1,55 +1,221 @@
-<!doctype html>
-<html lang="es">
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Ticket Core Demo · Estado</title>
-  <link rel="icon" href="../favicon.ico">
-  <style>
-    :root{color-scheme:dark;--bg:#071018;--panel:#101b29;--text:#f5f7fb;--muted:#aab7c7;--line:#24364a;--accent:#6ee7ff;--ok:#7cf29a;--warn:#ffd166}
-    *{box-sizing:border-box}
-    body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(135deg,#071018,#0b1a2a);color:var(--text)}
-    header{padding:20px;border-bottom:1px solid rgba(255,255,255,.08);background:#0d1724}
-    .wrap{max-width:960px;margin:0 auto}
-    .top{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}
-    h1{margin:0;font-size:26px}
-    nav a{color:var(--accent);text-decoration:none;margin-left:12px;font-weight:750}
-    main{padding:28px 20px 72px}
-    .banner{padding:20px;border-radius:22px;background:rgba(124,242,154,.09);border:1px solid rgba(124,242,154,.28);margin-bottom:18px}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-    .card{background:#101b29;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:18px}
-    .status{font-weight:850;color:var(--ok)}
-    .muted{color:var(--muted)}
-    .demo{position:fixed;left:8px;bottom:8px;z-index:9999;font:12px/1 system-ui;background:#0a1018cc;color:#fff;padding:6px 10px;border-radius:8px;opacity:.84}
-    @media(max-width:720px){.grid{grid-template-columns:1fr}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Seguimiento de ticket | Ticket Core</title>
+<script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
+<link rel="stylesheet" href="global.css">
+<link rel="stylesheet" href="estado.css?v=4"><link rel="stylesheet" href="janome/janome.css">
+<link rel="icon" href="../favicon.ico" type="image/x-icon">
+  <script type="module" src="theme.js"></script>
 </head>
-<body>
-  <header>
-    <div class="wrap top">
-      <h1>Estado demo</h1>
-      <nav>
-        <a href="index.html">Inicio</a>
-        <a href="tickets.html">Tickets</a>
-        <a href="dashboard.html">Dashboard</a>
-        <a href="soporte.html">Soporte</a>
-      </nav>
+<body data-surface="client">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="brand-dot"></span><span>Ticket Core</span></a>
+    <div class="top-actions">
+      <a class="mini btn-ghost" href="index.html">Inicio</a><a class="mini btn-ghost" href="dashboard.html">Dashboard</a>
+      <button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
     </div>
-  </header>
-  <main>
-    <div class="wrap">
-      <section class="banner">
-        <strong>Todos los sistemas demo operan normalmente.</strong>
-        <div class="muted">Estado simulado para GitHub Pages. No consulta backend real.</div>
-      </section>
-      <section class="grid">
-        <article class="card"><h2>Portal de tickets</h2><p class="status">Operativo</p><p class="muted">Carga desde archivos estáticos.</p></article>
-        <article class="card"><h2>Dashboard</h2><p class="status">Operativo</p><p class="muted">Métricas demo.</p></article>
-        <article class="card"><h2>Formulario soporte</h2><p class="status">Modo demo</p><p class="muted">No envía datos reales.</p></article>
-        <article class="card"><h2>Backend Supabase</h2><p style="color:var(--warn);font-weight:850">Desconectado en demo</p><p class="muted">Intencional para no exponer credenciales ni tocar datos reales.</p></article>
-      </section>
+  </div>
+</header>
+
+<main class="wrap estado-page">
+  <section class="estado-hero">
+    <div class="estado-hero-copy">
+      <div class="section-kicker">Seguimiento de soporte</div>
+      <h1 id="stHeroTitle">Estamos consultando tu ticket…</h1>
+      <p class="mut" id="stHeroLead">Aquí podrás revisar el avance del caso y responder si necesitamos algo más de tu parte.</p>
+      <div class="estado-chips" id="stHeroChips"><span class="tag">Cargando…</span></div>
+
+  <div class="estado-next hidden" id="stNextStepBox">
+  <div class="estado-next-k">Qué sigue</div>
+  <div class="estado-next-v" id="stNextStep">Estamos revisando tu caso.</div>
+  <div class="estado-next-actions hidden" id="stResolvedActions">
+    <button class="btn btn-brand" id="stStillPendingBtn" type="button">Sigue pendiente</button>
+    <button class="btn btn-ghost" id="stOpenChatBtn3" type="button">Abrir conversación</button>
+  </div>
+</div>
+
     </div>
-  </main>
-  <div class="demo">Demo pública · datos ficticios</div>
+    <div class="estado-hero-side">
+      <div class="estado-hero-card">
+        <div class="k">Folio</div>
+        <div class="v" id="stFolioHero" title="Clic para copiar">—</div>
+        <div class="estado-hero-note">Guarda este folio para referencia rápida.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="estado-grid">
+    <section class="estado-main">
+      <article class="estado-card">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Resumen</div>
+            <h2 id="stStateLabel">—</h2>
+          </div>
+        </div>
+        <div class="estado-kpis">
+          <div class="estado-kpi"><div class="k">Folio</div><div class="v" id="stFolio" title="Clic para copiar">—</div></div>
+          <div class="estado-kpi"><div class="k">Prioridad</div><div class="v" id="stPriority">—</div></div>
+          <div class="estado-kpi"><div class="k">Tipo</div><div class="v" id="stType">—</div></div>
+          <div class="estado-kpi"><div class="k">Actualizado</div><div class="v" id="stUpdated">—</div></div>
+        </div>
+        <div class="preview-card">
+          <div class="k">Título</div>
+          <div class="v" id="stTitle">—</div>
+        </div>
+        <div class="preview-card jn-ficha hidden" id="stJanome"></div>
+      </article>
+
+      <article class="estado-card">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Progreso del caso</div>
+            <h3>Así va tu solicitud</h3>
+          </div>
+          <button class="help-dot" id="stHelpBtn" type="button" aria-label="Ver interpretación rápida">?</button>
+        </div>
+        <div class="estado-timeline" id="stTimeline"><div class="empty-state">Sin movimientos aún.</div></div>
+      </article>
+
+      <article class="estado-card estado-reply hidden" id="stReplyBox">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Responder</div>
+            <h3 data-cfg="estado.reply.titulo">Envía lo que te pedimos para avanzar</h3>
+          </div>
+        </div>
+        <div class="mut">Puedes compartir aquí más detalles, fotos o un video corto de la máquina y el problema. No necesitas iniciar sesión.</div>
+        <div class="field">
+          <label class="lbl" for="stReplyText">Mensaje</label>
+          <textarea class="area" id="stReplyText" placeholder="Escribe aquí la información solicitada o cualquier detalle útil para continuar el caso."></textarea>
+        </div>
+        <div class="field estado-drop">
+          <label class="lbl" for="stReplyFiles">Adjuntos</label>
+          <input class="input" id="stReplyFiles" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.m4v">
+          <div class="estado-note" id="stReplyFilesMeta" data-cfg="estado.reply.hint">Puedes subir hasta 3 fotos y un video corto de la máquina y el problema.</div>
+        </div>
+        <div class="estado-actions">
+          <button class="btn btn-brand" id="stReplySend" type="button">Enviar respuesta</button>
+          <button class="btn btn-ghost" id="stReplyClear" type="button">Limpiar</button>
+        </div>
+        <div class="mut" id="stReplyStatus">Este bloque solo aparece cuando el ticket está esperando tu información.</div>
+      </article>
+    </section>
+
+    <aside class="estado-side">
+      <article class="estado-card">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Enlace seguro</div>
+            <h3>Acceso al seguimiento</h3>
+          </div>
+        </div>
+        <div class="estado-lock">Este enlace privado sirve solo para consultar tu ticket y responder cuando haga falta. No necesitas usuario ni contraseña.</div>
+      </article>
+
+      <article class="estado-card estado-last hidden" id="stLastSupportCard">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Último mensaje del equipo</div>
+            <h3>Lo más reciente</h3>
+          </div>
+        </div>
+        <div class="estado-last-copy" id="stLastSupportText">—</div>
+        <div class="estado-last-meta" id="stLastSupportMeta">—</div>
+        <div class="estado-last-actions">
+          <button class="btn btn-brand" id="stOpenChatBtn2" type="button">Abrir conversación</button>
+        </div>
+      </article>
+    </aside>
+  </section>
+
+  <footer class="jn-footer">
+    <span>© Janome — Soporte</span>
+    <nav><a href="aviso-privacidad.html">Aviso de privacidad</a><span aria-hidden="true">·</span><a href="terminos.html">Términos y condiciones</a></nav>
+  </footer>
+</main>
+
+<button class="chat-fab hidden" id="stChatFab" type="button" aria-label="Abrir conversación">
+  <span class="chat-fab-ic">💬</span>
+  <span class="chat-fab-tx">Conversación</span>
+  <span class="chat-fab-badge hidden" id="stChatBadge">Nuevo</span>
+</button>
+
+<div class="chat-backdrop hidden" id="stChatBackdrop"></div>
+
+<section class="chat-pop hidden" id="stChatPop" aria-hidden="true">
+  <div class="chat-pop-head">
+    <div class="chat-pop-copy">
+      <div class="chat-pop-kicker">Seguimiento del ticket</div>
+      <div class="chat-pop-title">Conversación del caso</div>
+      <div class="chat-pop-sub" id="stChatSub">Cargando conversación…</div>
+    </div>
+    <div class="chat-pop-actions">
+      <button class="chat-icon-btn hidden" id="stChatNotifyBtn" type="button" aria-label="Activar notificaciones">🔔</button>
+      <button class="chat-icon-btn" id="stChatClose" type="button" aria-label="Cerrar conversación">×</button>
+    </div>
+  </div>
+
+  <div class="chat-tabs">
+    <button class="chat-tab is-active" id="stTabHistory" type="button" data-tab="history">Historial</button>
+    <button class="chat-tab hidden" id="stTabFiles" type="button" data-tab="files">Archivos</button>
+  </div>
+
+  <div class="chat-panel" id="stPanelHistory">
+    <div class="chat-scroll" id="stChatList">
+      <div class="empty-state">Sin conversación todavía.</div>
+    </div>
+  </div>
+
+  <div class="chat-panel hidden" id="stPanelFiles">
+    <div class="files-scroll" id="stFilesList">
+      <div class="empty-state">Sin archivos adjuntos.</div>
+    </div>
+  </div>
+
+  <div class="chat-compose hidden" id="stChatCompose">
+    <div class="chat-compose-head">
+      <div class="chat-compose-title">Responder al equipo</div>
+      <div class="chat-compose-note" id="stComposeHint">Adjunta aquí lo que te solicitaron.</div>
+    </div>
+    <div class="field">
+      <textarea class="area" id="stReplyTextPop" placeholder="Escribe tu respuesta aquí..."></textarea>
+    </div>
+    <div class="field chat-files-box">
+      <input class="input" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.m4v">
+      <div class="estado-note" id="stReplyFilesMetaPop">Puedes subir hasta 3 fotos y un video corto de la máquina y el problema.</div>
+    </div>
+    <div class="estado-actions">
+      <button class="btn btn-brand" id="stReplySendPop" type="button">Enviar respuesta</button>
+      <button class="btn btn-ghost" id="stReplyClearPop" type="button">Limpiar</button>
+    </div>
+    <div class="mut" id="stReplyStatusPop">Este bloque se activa solo cuando el ticket está esperando tu respuesta.</div>
+  </div>
+</section>
+
+<div class="help-pop hidden" id="stHelpPop" aria-hidden="true">
+  <div class="help-pop-head">
+    <div class="help-pop-title">Interpretación rápida</div>
+    <button class="chat-icon-btn" id="stHelpClose" type="button" aria-label="Cerrar ayuda">×</button>
+  </div>
+  <ul class="mini-list">
+    <li><b>Recibido:</b> ya llegó a nuestra mesa.</li>
+    <li><b>En revisión:</b> estamos analizando el caso.</li>
+    <li><b>Esperando tu respuesta:</b> falta un dato o archivo para continuar.</li>
+    <li><b>Resuelto:</b> ya aplicamos una solución.</li>
+    <li><b>Cerrado:</b> el caso terminó.</li>
+  </ul>
+</div>
+
+<audio id="stSoftPing" preload="auto"></audio>
+<audio id="stStrongPing" preload="auto"></audio>
+
+<script>window.TICKET_CORE_CONFIG = window.TICKET_CORE_CONFIG || { demo: true };</script>
+<script type="module" src="config-loader.js?v=1"></script>
+<script type="module" src="estado.js?v=10"></script>
 </body>
 </html>

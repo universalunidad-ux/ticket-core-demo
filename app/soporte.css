@@ -1,0 +1,300 @@
+.soporte-page{display:grid;gap:14px}
+.hero-support{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(240px,.8fr);gap:16px;align-items:center}
+.hero-support h1{margin:8px 0 0;font-size:clamp(28px,4vw,44px);line-height:1.02;letter-spacing:-.04em;font-weight:950;max-width:11ch}
+.hero-support .mut{max-width:60ch;line-height:1.6;color:color-mix(in srgb,var(--muted) 92%,transparent)}
+.hero-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-content:flex-start;opacity:.92}
+.support-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(290px,.88fr);gap:16px;align-items:start}
+.support-form{display:grid;gap:18px;position:relative}
+.support-form::after{content:"";display:block;height:1px;background:transparent}
+.support-side{display:grid;gap:12px;position:sticky;top:86px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.field{display:grid;gap:7px;min-width:0}
+.field.span-2{grid-column:1/-1}
+.lbl{font-size:11.5px;font-weight:800;letter-spacing:.06em;color:color-mix(in srgb,var(--muted) 92%,transparent);text-transform:uppercase}
+.upload-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.row-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.row-head h3{margin:0;font-size:16px;font-weight:900;letter-spacing:-.02em}
+.section-head.compact{margin-top:4px}
+.mini-list{display:grid;gap:8px;padding-left:18px;margin:0}
+.mini-list li{color:color-mix(in srgb,var(--muted) 92%,transparent);line-height:1.55}
+.preview-card{display:grid;gap:10px}
+.preview-card .k{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.preview-card .v{font-size:14px;font-weight:820;line-height:1.45;word-break:break-word}
+.support-form .actions{display:flex;gap:10px;flex-wrap:wrap}
+.support-form .actions .btn{min-width:190px}
+#spStatus{min-height:20px}
+#spFiles.input{padding:10px 12px}
+#spDesc,#spExtra{min-height:120px}
+.support-side .panel.inset{padding:14px;box-shadow:var(--shadow-xs);background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 97%,transparent),color-mix(in srgb,var(--panel-2) 99%,transparent))}
+.support-side .chips{display:flex;gap:8px;flex-wrap:wrap}
+.support-side .mini{white-space:nowrap}
+.support-form .input,.support-form .select,.support-form .area{min-width:0}
+.support-form .input,.support-form .select,.support-form .area{min-height:44px}
+.support-form .area{min-height:120px}
+.support-form .input:focus,.support-form .select:focus,.support-form .area:focus{box-shadow:0 0 0 1px color-mix(in srgb,var(--brand) 18%,transparent),0 0 0 4px color-mix(in srgb,var(--brand) 8%,transparent)}
+
+#spFilesMeta{display:grid;gap:10px}
+#spFilesMeta .item{padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 96%,transparent),color-mix(in srgb,var(--panel-2) 98%,transparent))}
+#spFilesMeta .item-meta{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.hero-support .chips .tag{font-weight:800}
+.support-form .section-head h2,.support-form .section-head h3{margin:0}
+@media(max-width:1100px){.support-layout,.hero-support{grid-template-columns:1fr}.support-side{position:static}.hero-badges{justify-content:flex-start}}
+
+@media(max-width:760px){.form-grid,.upload-grid{grid-template-columns:1fr}.support-form .actions{display:grid;grid-template-columns:1fr}.support-form .actions .btn{width:100%;min-width:0}.hero-support h1{max-width:none}}
+
+
+.support-global-notice{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;margin:12px 0 0;padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--panel) 96%,transparent);box-shadow:0 10px 28px rgba(3,10,24,.08)}
+.support-global-notice .notice-ic{font-size:20px;line-height:1}
+.support-global-notice .notice-copy{display:grid;gap:4px}
+.support-global-notice .notice-title{font-size:14px;font-weight:900;color:var(--text)}
+.support-global-notice .notice-text{font-size:13px;line-height:1.45;color:var(--muted)}
+.support-global-notice.warn{border-color:color-mix(in srgb,var(--warn) 28%,var(--line));background:color-mix(in srgb,var(--warn) 8%,var(--panel))}
+.support-global-notice.danger{border-color:color-mix(in srgb,var(--danger) 32%,var(--line));background:color-mix(in srgb,var(--danger) 8%,var(--panel))}
+.support-global-notice.info{border-color:color-mix(in srgb,var(--info) 28%,var(--line));background:color-mix(in srgb,var(--info) 8%,var(--panel))}
+.support-global-notice.ok{border-color:color-mix(in srgb,var(--ok) 30%,var(--line));background:color-mix(in srgb,var(--ok) 8%,var(--panel))}
+
+
+.support-ticket-preview{overflow:hidden}
+.ticket-preview-card{display:grid;gap:14px;padding:14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 97%,transparent),color-mix(in srgb,var(--panel-2) 98%,transparent));box-shadow:var(--shadow-xs)}
+.ticket-preview-head{display:grid;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.ticket-preview-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ticket-preview-title{font-size:18px;font-weight:950;line-height:1.15;letter-spacing:-.02em;color:var(--text)}
+.ticket-preview-chips{display:flex;gap:8px;flex-wrap:wrap}
+.ticket-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pv-item,.pv-block{display:grid;gap:6px}
+.pv-item .k,.pv-block .k{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pv-item .v,.pv-block .v{font-size:14px;line-height:1.5;font-weight:720;color:var(--text);word-break:break-word}
+.pv-block{padding-top:10px;border-top:1px dashed color-mix(in srgb,var(--line) 88%,transparent)}
+.support-side .support-ticket-preview .panel.inset{padding:0;background:transparent;box-shadow:none}
+@media(max-width:760px){.ticket-preview-grid{grid-template-columns:1fr}.support-side{gap:10px}.support-ticket-preview{order:-1}}
+
+
+
+
+/* ====== Responsive 3 cortes — soporte (Janome) ====== */
+/* Tablet 600–1023: una columna, vista previa/ayuda arriba */
+@media (max-width:1023px){
+  body[data-surface="client"] .support-layout{grid-template-columns:1fr!important}
+  body[data-surface="client"] .hero-support{grid-template-columns:1fr!important;gap:12px!important}
+  body[data-surface="client"] .support-side{position:static!important;order:-1!important}
+}
+/* Móvil ≤599: todo en una columna, toques cómodos */
+@media (max-width:599px){
+  body[data-surface="client"] .form-grid,
+  body[data-surface="client"] .upload-grid{grid-template-columns:1fr!important}
+  body[data-surface="client"] .hero-support h1{font-size:clamp(24px,7vw,32px)!important}
+  body[data-surface="client"] .support-form{padding:14px!important}
+  body[data-surface="client"] .actions .btn,
+  body[data-surface="client"] .support-form .actions .btn{width:100%!important;min-width:0!important}
+  body[data-surface="client"] .jn-combo-panel{max-height:62svh!important}
+}
+
+
+/* TC MOBILE TRIM JANOME — esconder bloques de ayuda/vista previa en tablet y móvil */
+@media (max-width: 1023px){
+  body[data-surface="client"] .tcMobileOptionalBlock,
+  .tcMobileOptionalBlock{
+    display:none !important;
+  }
+
+  body[data-surface="client"] main,
+  body[data-surface="client"] .shell,
+  body[data-surface="client"] .wrap{
+    gap:16px !important;
+  }
+}
+
+@media (max-width: 599px){
+  body[data-surface="client"] .card,
+  body[data-surface="client"] .panel,
+  body[data-surface="client"] section{
+    scroll-margin-top:12px;
+  }
+}
+
+
+/* TC CONTACT GRID MOBILE JANOME — compacta datos básicos en 2x2 */
+.tcContactGrid{
+  display:grid;
+  gap:14px;
+}
+
+@media (max-width:1023px){
+  body[data-surface="client"] .tcContactGrid,
+  .tcContactGrid{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:12px !important;
+    align-items:start;
+  }
+
+  body[data-surface="client"] .tcContactGridItem,
+  .tcContactGridItem{
+    min-width:0 !important;
+    margin:0 !important;
+  }
+
+  body[data-surface="client"] .tcContactGridItem input,
+  .tcContactGridItem input{
+    width:100% !important;
+    min-width:0 !important;
+  }
+
+  body[data-surface="client"] .tcContactGridItem label,
+  .tcContactGridItem label{
+    font-size:11px !important;
+    letter-spacing:.16em !important;
+    white-space:nowrap;
+  }
+
+  body[data-surface="client"] .tcContactGridItem input::placeholder,
+  .tcContactGridItem input::placeholder{
+    font-size:14px;
+  }
+}
+
+@media (max-width:380px){
+  body[data-surface="client"] .tcContactGrid,
+  .tcContactGrid{
+    gap:10px !important;
+  }
+
+  body[data-surface="client"] .tcContactGridItem input,
+  .tcContactGridItem input{
+    padding-left:12px !important;
+    padding-right:10px !important;
+  }
+}
+
+
+/* TC EDGE MOBILE PRODUCT JANOME — menos margen lateral y dropdown producto usable */
+@media (max-width:1023px){
+  html,
+  body{
+    overflow-x:hidden !important;
+  }
+
+  body[data-surface="client"] main,
+  body[data-surface="client"] .shell,
+  body[data-surface="client"] .wrap,
+  body[data-surface="client"] .container,
+  body[data-surface="client"] .page,
+  body[data-surface="client"] .client-shell{
+    width:100% !important;
+    max-width:none !important;
+    padding-left:6px !important;
+    padding-right:6px !important;
+    margin-left:0 !important;
+    margin-right:0 !important;
+  }
+
+  body[data-surface="client"] .card,
+  body[data-surface="client"] .panel,
+  body[data-surface="client"] section{
+    max-width:none !important;
+  }
+
+  body[data-surface="client"] .tcContactGrid{
+    width:100% !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:10px !important;
+  }
+
+  body[data-surface="client"] .tcContactGrid input{
+    min-height:52px !important;
+    padding:12px 13px !important;
+  }
+
+  body[data-surface="client"] input,
+  body[data-surface="client"] textarea,
+  body[data-surface="client"] select{
+    max-width:100% !important;
+  }
+
+  /* Dropdown/lista de productos: evitar que se salga o ocupe media página lateral */
+  body[data-surface="client"] [role="listbox"],
+  body[data-surface="client"] .autocomplete,
+  body[data-surface="client"] .suggestions,
+  body[data-surface="client"] .search-results,
+  body[data-surface="client"] .product-results,
+  body[data-surface="client"] .product-list,
+  body[data-surface="client"] .product-picker,
+  body[data-surface="client"] .janome-results,
+  body[data-surface="client"] .janome-product-results,
+  body[data-surface="client"] .model-results,
+  body[data-surface="client"] .model-list{
+    max-width:calc(100vw - 12px) !important;
+    width:calc(100vw - 12px) !important;
+    left:6px !important;
+    right:6px !important;
+    margin-left:0 !important;
+    margin-right:0 !important;
+    max-height:52vh !important;
+    overflow:auto !important;
+    box-sizing:border-box !important;
+  }
+
+  body[data-surface="client"] [role="listbox"] *,
+  body[data-surface="client"] .product-results *,
+  body[data-surface="client"] .product-list *,
+  body[data-surface="client"] .product-picker *,
+  body[data-surface="client"] .janome-results *,
+  body[data-surface="client"] .janome-product-results *,
+  body[data-surface="client"] .model-results *,
+  body[data-surface="client"] .model-list *{
+    max-width:100% !important;
+    box-sizing:border-box !important;
+  }
+}
+
+@media (max-width:599px){
+  body[data-surface="client"] main,
+  body[data-surface="client"] .shell,
+  body[data-surface="client"] .wrap,
+  body[data-surface="client"] .container,
+  body[data-surface="client"] .page,
+  body[data-surface="client"] .client-shell{
+    padding-left:4px !important;
+    padding-right:4px !important;
+  }
+
+  body[data-surface="client"] .card,
+  body[data-surface="client"] .panel,
+  body[data-surface="client"] section{
+    border-radius:20px !important;
+  }
+
+  body[data-surface="client"] .tcContactGrid{
+    gap:8px !important;
+  }
+
+  body[data-surface="client"] .tcContactGrid label{
+    font-size:10px !important;
+    letter-spacing:.13em !important;
+  }
+
+  body[data-surface="client"] .tcContactGrid input{
+    min-height:50px !important;
+    padding-left:10px !important;
+    padding-right:8px !important;
+    font-size:15px !important;
+  }
+
+  body[data-surface="client"] [role="listbox"],
+  body[data-surface="client"] .autocomplete,
+  body[data-surface="client"] .suggestions,
+  body[data-surface="client"] .search-results,
+  body[data-surface="client"] .product-results,
+  body[data-surface="client"] .product-list,
+  body[data-surface="client"] .product-picker,
+  body[data-surface="client"] .janome-results,
+  body[data-surface="client"] .janome-product-results,
+  body[data-surface="client"] .model-results,
+  body[data-surface="client"] .model-list{
+    width:calc(100vw - 8px) !important;
+    max-width:calc(100vw - 8px) !important;
+    left:4px !important;
+    right:4px !important;
+    max-height:48vh !important;
+  }
+}
