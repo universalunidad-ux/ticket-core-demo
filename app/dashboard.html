@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ticket Core Demo · Dashboard</title>
+  <link rel="icon" href="../favicon.ico">
+  <style>
+    :root{color-scheme:dark;--bg:#071018;--panel:#101b29;--panel2:#132236;--text:#f5f7fb;--muted:#aab7c7;--line:#24364a;--accent:#6ee7ff;--ok:#7cf29a;--warn:#ffd166;--bad:#ff7a90}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at top left,#172f4d 0,#071018 44%,#05080d 100%);color:var(--text)}
+    header{padding:20px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(7,16,24,.75);position:sticky;top:0;backdrop-filter:blur(12px)}
+    .wrap{max-width:1100px;margin:0 auto}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+    h1{margin:0;font-size:26px}
+    nav a{color:var(--accent);text-decoration:none;margin-left:12px;font-weight:750}
+    main{padding:28px 20px 72px}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .card{background:rgba(16,27,41,.9);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.24)}
+    .num{font-size:32px;font-weight:850;margin:8px 0}
+    .label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.07em}
+    .wide{grid-column:span 2}
+    ul{margin:10px 0 0;padding-left:18px;color:#dce7f5;line-height:1.7}
+    .demo{position:fixed;left:8px;bottom:8px;z-index:9999;font:12px/1 system-ui;background:#0a1018cc;color:#fff;padding:6px 10px;border-radius:8px;opacity:.84}
+    @media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wide{grid-column:span 2}}
+    @media(max-width:600px){.grid{grid-template-columns:1fr}.wide{grid-column:span 1}nav a{display:inline-block;margin:8px 10px 0 0}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <h1>Dashboard demo</h1>
+      <nav>
+        <a href="index.html">Inicio</a>
+        <a href="tickets.html">Tickets</a>
+        <a href="soporte.html">Soporte</a>
+        <a href="estado.html">Estado</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <div class="wrap">
+      <section class="grid">
+        <article class="card"><div class="label">Total tickets</div><div class="num" id="total">—</div><div>Datos ficticios</div></article>
+        <article class="card"><div class="label">Abiertos</div><div class="num" id="abiertos">—</div><div>Incluye en proceso</div></article>
+        <article class="card"><div class="label">Cerrados</div><div class="num" id="cerrados">—</div><div>Demo cerrados</div></article>
+        <article class="card"><div class="label">Alta prioridad</div><div class="num" id="alta">—</div><div>Prioridad alta</div></article>
+        <article class="card wide">
+          <div class="label">Resumen operativo</div>
+          <ul id="resumen"><li>Cargando métricas demo…</li></ul>
+        </article>
+        <article class="card wide">
+          <div class="label">Modo demo</div>
+          <ul>
+            <li>No consulta Supabase.</li>
+            <li>No usa sesión real.</li>
+            <li>No contiene datos reales de clientes.</li>
+            <li>Las métricas se calculan desde <code>demo-tickets.json</code>.</li>
+          </ul>
+        </article>
+      </section>
+    </div>
+  </main>
+  <div class="demo">Demo pública · datos ficticios</div>
+  <script>
+    const count = (rows, fn) => rows.filter(fn).length;
+    fetch("demo-tickets.json?v=" + Date.now(), {cache:"no-store"})
+      .then(r => r.ok ? r.json() : [])
+      .then(rows => {
+        if (!Array.isArray(rows)) rows = [];
+        const abiertos = count(rows, t => !["cerrado","resuelto"].includes(String(t.estado||"").toLowerCase()));
+        const cerrados = count(rows, t => ["cerrado","resuelto"].includes(String(t.estado||"").toLowerCase()));
+        const alta = count(rows, t => String(t.prioridad||"").toLowerCase() === "alta");
+        document.getElementById("total").textContent = rows.length;
+        document.getElementById("abiertos").textContent = abiertos;
+        document.getElementById("cerrados").textContent = cerrados;
+        document.getElementById("alta").textContent = alta;
+        document.getElementById("resumen").innerHTML = `
+          <li>${abiertos} tickets activos para seguimiento demo.</li>
+          <li>${cerrados} tickets resueltos/cerrados en el set ficticio.</li>
+          <li>${alta} tickets marcados como prioridad alta.</li>
+          <li>Última carga local: ${new Date().toLocaleString()}.</li>
+        `;
+      })
+      .catch(() => {
+        document.getElementById("resumen").innerHTML = "<li>No se pudo cargar demo-tickets.json.</li>";
+      });
+  </script>
+</body>
+</html>
