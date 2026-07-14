@@ -30,7 +30,7 @@
       </div>
     </div>
     <div class="dash-hero-actions">
-      <a class="btn btn-brand" href="soporte.html">Nuevo ticket</a>
+      <a class="btn btn-brand" href="soporte.html?from=dashboard&amp;returnTo=dashboard.html">Nuevo ticket</a>
       <a class="btn btn-ghost" href="tickets.html" id="dashHeroBandeja">Ir a la bandeja</a>
     </div>
   </section>
@@ -53,6 +53,11 @@
       <div class="dash-mini-kpis" id="dashMiKpis"></div>
       <div class="actions" style="margin-top:12px"><a class="btn btn-brand" href="tickets.html">Ir a mi bandeja</a></div>
     </article>
+  </section>
+
+  <section class="panel dash-supervision" id="dashSupervision" style="margin-top:12px">
+    <div class="section-head"><div><div class="section-kicker">Administración</div><h2>Requieren supervisión</h2></div></div>
+    <div class="dash-supervision-list" id="dashSupervisionList"><div class="dash-skel"></div></div>
   </section>
 
   <section class="panel dash-admin-only hidden" id="dashAgents" style="margin-top:12px">

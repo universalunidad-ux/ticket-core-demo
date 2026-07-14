@@ -21,7 +21,8 @@ export async function mountNav(active){
       <button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
       <button class="mini" id="navLogout" type="button">Salir</button>
     </div></div>`;
-    document.getElementById("navLogout")?.addEventListener("click",()=>logout());
+    const logoutBtn=document.getElementById("navLogout");
+    if(logoutBtn)logoutBtn.onclick=async()=>{if(logoutBtn.dataset.busy==="1")return;logoutBtn.dataset.busy="1";logoutBtn.disabled=true;try{await logout("index.html")}catch(err){delete logoutBtn.dataset.busy;logoutBtn.disabled=false;console.error("NAV_LOGOUT_ERROR",err?.message||"logout_failed")}};
   }
   return{auth,perfil,rol,user:auth.user,sb:s};
 }

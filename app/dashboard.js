@@ -57,7 +57,7 @@ async function loadAgentSummary(){
     if(error)throw error;
     AGENT_ROWS=(data||[]).filter(r=>String(r.agente_rol||"").toLowerCase()==="soporte");
     box.innerHTML=AGENT_ROWS.length?AGENT_ROWS.map((r,i)=>`<button class="dash-agent-card" type="button" data-agent-row="${i}"><span class="dash-agent-head"><b>${esc(r.agente_nombre||"Agente")}</b><span class="tag">${esc(r.agente_rol||"—")}</span></span><span class="dash-agent-metrics">${AGENT_METRICS.map(d=>agentMetricHtml(r,d)).join("")}</span></button>`).join(""):'<div class="empty-state">Sin agentes en el resumen.</div>';
-  }catch(e){box.innerHTML='<div class="empty-state">No se pudo cargar el resumen de agentes.</div>';console.error("AGENT_SUMMARY_LOAD_ERROR")}
+  }catch(e){box.innerHTML='<div class="empty-state">No se pudo cargar el resumen de agentes.</div>';console.error("AGENT_SUMMARY_LOAD_ERROR",e)}
 }
 
 /* ---------- cache breve de métricas (volver al dashboard sin repetir counts) ---------- */
@@ -208,6 +208,23 @@ async function loadActividad() {
     box.innerHTML = '<div class="empty-state">No se pudo cargar la actividad. <button class="mini btn-ghost" id="dashActRetry" type="button">Reintentar</button></div>';
     $("#dashActRetry")?.addEventListener("click", loadActividad);
   }
+}
+
+/* ---------- Supervisión pendiente (misma recarga central, sin polling adicional) ---------- */
+async function loadSupervision(){
+  const box=$("#dashSupervisionList");
+  if(!box)return;
+  try{
+    perfCountRequest();
+    let q=supabase.from("tickets").select("id,folio,titulo,tipo,requiere_supervision_en,asignado_a,prioridad").eq("requiere_supervision",true).order("requiere_supervision_en",{ascending:false}).limit(8);
+    if(!CTX.isAdmin&&CTX.me)q=q.eq("asignado_a",CTX.me);
+    const{data,error}=await q;
+    if(error)throw error;
+    const rows=data||[],ids=[...new Set(rows.map(x=>x.asignado_a).filter(Boolean))];
+    let agentes={};
+    if(ids.length){perfCountRequest();const r=await supabase.from("perfiles").select("id,nombre").in("id",ids);if(!r.error)agentes=Object.fromEntries((r.data||[]).map(p=>[p.id,p.nombre||"Agente"]));}
+    box.innerHTML=rows.length?rows.map(x=>`<a class="dash-supervision-row" href="ticket.html?id=${encodeURIComponent(x.id)}"><span class="dash-supervision-main"><b>${esc(x.folio||"—")}</b><span>${esc(x.titulo||"Sin título")}</span></span><span class="dash-supervision-meta"><span>${esc(x.tipo||"soporte")}</span><span>${esc(agentes[x.asignado_a]||"Sin asignar")}</span>${x.prioridad?`<span class="tag">${esc(x.prioridad)}</span>`:""}<span>${esc(ago(x.requiere_supervision_en))}</span></span></a>`).join(""):'<div class="empty-state">No hay tickets que requieran supervisión.</div>';
+  }catch(err){box.innerHTML='<div class="empty-state">No se pudo cargar la cola de supervisión.</div>';console.error("SUPERVISION_DASHBOARD_LOAD_ERROR",err?.message||"query_failed")}
 }
 
 /* ---------- Adaptador de vistas B19B (sin asumir despliegue) ---------- */
@@ -780,7 +797,7 @@ async function init() {
   /* Progresivo: KPIs primero; actividad y adaptador de vistas después. */
   await loadMetrics();
   perfPageReady();
-  Promise.allSettled([loadActividad(), loadAgentSummary()]).then(perfSecondaryDone);
+  Promise.allSettled([loadActividad(), loadAgentSummary(), loadSupervision()]).then(perfSecondaryDone);
 }
 
 document.addEventListener("DOMContentLoaded", init);

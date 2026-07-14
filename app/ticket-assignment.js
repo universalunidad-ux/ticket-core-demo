@@ -18,6 +18,7 @@ const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 let AGENTS = [];
 let CURRENT_USER_ID = "";
 let CURRENT_TICKET = null;
+let ASSIGN_BUSY = false;
 
 function agentLabel(a){
   return a?.nombre || a?.correo || a?.auth_email || (a?.id ? String(a.id).slice(0,8) : "Agente");
@@ -94,7 +95,7 @@ async function loadAgents(){
     .order("nombre", { ascending:true });
 
   if(error){
-    console.warn("ASSIGN_LOAD_AGENTS_ERROR");
+    console.warn("ASSIGN_LOAD_AGENTS_ERROR", error);
     AGENTS = [];
     return;
   }
@@ -111,7 +112,7 @@ async function loadTicket(){
     .maybeSingle();
 
   if(error){
-    console.warn("ASSIGN_LOAD_TICKET_ERROR");
+    console.warn("ASSIGN_LOAD_TICKET_ERROR", error);
     return null;
   }
 
@@ -169,6 +170,7 @@ function renderAssignBox(){
 }
 
 async function onAssignChange(e){
+  if(ASSIGN_BUSY){renderAssignBox();return}
   const next = e.target.value || null;
   const now = new Date().toISOString();
   const asignado_en = next ? now : null;
@@ -180,23 +182,18 @@ async function onAssignChange(e){
     return;
   }
 
+  ASSIGN_BUSY=true;
   e.target.disabled = true;
-
-  const { data, error } = await s
-    .from("tickets")
-    .update({
-      asignado_a: next,
-      asignado_en,
-      fecha_actualizacion: now
-    })
-    .eq("id", ID)
-    .select("id,folio,titulo,asignado_a,asignado_en,estado,prioridad")
-    .maybeSingle();
-
-  e.target.disabled = false;
+  let data=null,error=null;
+  try{
+    const result=await s.from("tickets").update({asignado_a:next,asignado_en,fecha_actualizacion:now}).eq("id",ID).select("id,folio,titulo,asignado_a,asignado_en,estado,prioridad").maybeSingle();
+    data=result.data;error=result.error;
+  }catch(err){error=err}
+  finally{ASSIGN_BUSY=false;e.target.disabled=false}
 
   if(error){
-    console.error("ASSIGN_TICKET_ERROR");
+    console.error("ASSIGN_TICKET_ERROR",{code:String(error?.code||error?.name||"UNKNOWN"),status:Number(error?.status||0)||null,operation:"tickets.update_assignment"});
+    renderAssignBox();
     alert(error.message || "No se pudo asignar.");
     return;
   }

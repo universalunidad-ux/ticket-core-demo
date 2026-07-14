@@ -43,20 +43,35 @@ export const msg = x => x?.message || x?.error_description || x?.details || "Err
 
 export const markLoginNow = () => localStorage.setItem(L, String(Date.now()));
 
-export async function guardSession(r = "index.html") {
+const loginRedirect = () => {
+  const current = `${location.pathname.split("/").pop() || "tickets.html"}${location.search}${location.hash}`;
+  return `index.html?next=${encodeURIComponent(current)}`;
+};
+
+export async function guardSession(r = loginRedirect()) {
   const { data: { session }, error: a } = await s.auth.getSession();
-  if (a || !session) return location.href = r, null;
+  if (a || !session) {
+    location.replace(r);
+    return null;
+  }
 
   const t = +localStorage.getItem(L) || 0;
   if (t && Date.now() - t > S) {
     await s.auth.signOut();
     localStorage.removeItem(L);
-    location.href = r;
+    location.replace(r);
     return null;
   }
 
   const { data: { user }, error: u } = await s.auth.getUser();
-  return u || !user ? (location.href = r, null) : { session, user };
+  if (u || !user) {
+    await s.auth.signOut({ scope: "local" });
+    localStorage.removeItem(L);
+    location.replace(r);
+    return null;
+  }
+
+  return { session, user };
 }
 
 export async function logout(r = "index.html") {

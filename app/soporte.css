@@ -297,6 +297,11 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
   }
 }
 
+.jn-back-pill{display:inline-flex;align-items:center;min-height:38px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--text);font-size:12px;font-weight:850;text-decoration:none;white-space:nowrap}
+.jn-back-pill:hover{border-color:color-mix(in srgb,var(--brand) 38%,var(--line))}
+.jn-back-pill[hidden]{display:none!important}
+@media(max-width:599px){.jn-back-pill{min-height:34px;padding:0 9px}.jn-brand-sub{display:none}}
+
 
 /* TC MOBILE TRIM JANOME — esconder bloques de ayuda/vista previa en tablet y móvil */
 @media (max-width: 1023px){
