@@ -345,19 +345,17 @@ function normalizeEnterCopy(){
       bindAttachmentCards();
       addEvidenceToolbar();
     }catch(err){
-      console.warn("D2E2_POLISH_WARN");
+      console.warn("D2E2_POLISH_WARN", err);
     }
   }
 
   function boot(){
     polish();
 
-    const mo = new MutationObserver(() => {
+    document.addEventListener("tc:ticket-rendered",() => {
       clearTimeout(window.__D2E2_POLISH_TIMER__);
       window.__D2E2_POLISH_TIMER__ = setTimeout(polish, 80);
     });
-
-    mo.observe(document.body, { childList:true, subtree:true });
 
     const ev = $("#evModal");
     if(ev){
@@ -938,6 +936,7 @@ function normalizeEnterCopy(){
       text: tcJanomeChatUxText(meta ? `adjunto · ${meta}` : "adjunto del hilo", 120),
       sizeText,
       typeLabel: tcJanomeFileTypeLabel(card),
+      ref_archivo_id: card.dataset.fileId || null,
       thumbUrl: card.querySelector("img,video")?.currentSrc || card.querySelector("img,video")?.src || "",
       url: card.querySelector("img,video")?.currentSrc || card.querySelector("img,video")?.src || ""
     };
@@ -960,13 +959,16 @@ function normalizeEnterCopy(){
     const ticketId = new URL(location.href).searchParams.get("id");
     if(!ticketId) throw new Error("No hay ticket_id en la URL.");
 
-    const kind = String(payload?.kind || "chat");
+    const kind = String(payload?.kind || "chat").toLowerCase();
     const refEventoId = payload?.ref_evento_id || payload?.preview?.ref_evento_id || payload?.preview?.event_id || null;
     const refArchivoId = payload?.ref_archivo_id || payload?.file?.ref_archivo_id || payload?.file?.archivo_id || null;
 
-    /* B17C9_SUPERVISOR_ERROR_VISIBLE: mantener accion canonica aceptada por Edge;
-       refs de mensaje/archivo viajan como contexto para evitar non-2xx por accion no soportada. */
-    const accion = "chat_forwarded_to_admin";
+    const uuid=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v||""));
+    const accion=(kind==="file"||kind==="image")&&uuid(refArchivoId)
+      ? "file_forwarded_to_admin"
+      : ["message","mensaje","note","nota"].includes(kind)&&uuid(refEventoId)
+        ? "message_forwarded_to_admin"
+        : "chat_forwarded_to_admin";
 
     const cleanComment = tcJanomeChatUxText(comment || "", 900);
     let comentario = cleanComment;
@@ -1165,7 +1167,7 @@ function normalizeEnterCopy(){
         }
       }));
     }catch(err){
-      console.error("TC_ADMIN_ESCALATE_ERROR");
+      console.error("TC_ADMIN_ESCALATE_ERROR", err);
       const errMsg=err?.message || "No se pudo enviar a supervisión.";
       const errBox=overlay.querySelector("#tcSupervisorError");
       if(errBox){errBox.textContent=errMsg;errBox.hidden=false;}
@@ -1265,7 +1267,7 @@ function normalizeEnterCopy(){
   }
 
   function tcJanomeMsgInfo(msg){
-    if(!msg) return {meta:"mensaje", preview:"", title:"mensaje", text:"sin texto visible"};
+    if(!msg) return {meta:"mensaje", preview:"", title:"mensaje", text:"sin texto visible",ref_evento_id:null};
 
     const {sender, time} = tcJanomeMsgSenderTime(msg);
     const fileCard = msg.querySelector(".thread-file-card");
@@ -1273,7 +1275,7 @@ function normalizeEnterCopy(){
     if(fileCard){
       const file = tcJanomeFileInfo(fileCard);
       const meta = [sender, time, file.typeLabel, file.sizeText].filter(Boolean).join(" · ");
-      return {meta, preview:"", title:file.title, text:file.text, sizeText:file.sizeText, thumbUrl:file.thumbUrl, url:file.url};
+      return {meta, preview:"", title:file.title, text:file.text, sizeText:file.sizeText, thumbUrl:file.thumbUrl, url:file.url,ref_evento_id:msg.dataset.eventId||null};
     }
 
     const bodyEl = msg.querySelector(".tc-msg-body") || msg.querySelector(".log-text");
@@ -1281,7 +1283,7 @@ function normalizeEnterCopy(){
     const preview = tcJanomeChatUxText(String(rawText || "").replace(/↩|⇧|⌄/g, " ").trim(), 120);
     const meta = [sender, time].filter(Boolean).join(" · ");
 
-    return {meta, preview, title:sender, text:preview};
+    return {meta, preview, title:sender, text:preview,ref_evento_id:msg.dataset.eventId||null};
   }
 
   function tcJanomeDecorateMessages(){
@@ -1699,7 +1701,7 @@ function normalizeEnterCopy(){
 
 
 
-  function tcJanomeEnsureQuoteDecoratorObserver(){
+  function tcJanomeEnsureQuoteDecoratorBinding(){
     if(document.documentElement.dataset.tcB17c25QuoteObserver === "1") return;
     document.documentElement.dataset.tcB17c25QuoteObserver = "1";
 
@@ -1711,26 +1713,15 @@ function normalizeEnterCopy(){
       });
     };
 
-    const attach = () => {
-      const area = document.getElementById("logArea") || document.body;
-      if(!area) return false;
-      try{
-        new MutationObserver(run).observe(area, {childList:true, subtree:true, characterData:true});
-      }catch(e){}
-      run();
-      return true;
-    };
-
-    if(!attach()){
-      document.addEventListener("DOMContentLoaded", attach, {once:true});
-    }
+    document.addEventListener("tc:ticket-rendered",run);
+    run();
 
     setTimeout(run, 80);
     setTimeout(run, 450);
     setTimeout(run, 1200);
   }
 
-  try{ tcJanomeEnsureQuoteDecoratorObserver(); }catch(e){}
+  try{ tcJanomeEnsureQuoteDecoratorBinding(); }catch(e){}
 
   function tcJanomeSupervisorCommentFromText(raw){
     /* B17C27_SYSTEM_IMAGE_REPLY_COMPOSER_CLEANUP:
@@ -1808,18 +1799,15 @@ function normalizeEnterCopy(){
      resolucion, se deja el contexto TAL CUAL (visible) -- ese es el default
      seguro, nunca se limpia a ciegas por el simple paso del tiempo. */
   function tcJanomeWatchReplySubmitOutcome(){
-    const logArea = document.getElementById("logArea") || document.querySelector(".log-area");
     const status = document.getElementById("logStatus");
 
     let done = false;
     let sawGuardando = false;
-    let mo = null;
 
     const finish = success => {
       if(done) return;
       done = true;
       clearInterval(timer);
-      if(mo) mo.disconnect();
       if(success) tcJanomeClearReplyContext();
     };
 
@@ -1849,11 +1837,6 @@ function normalizeEnterCopy(){
       }
     }, 120);
 
-    if(logArea){
-      mo = new MutationObserver(() => finish(true));
-      mo.observe(logArea, {childList:true});
-      setTimeout(() => { if(mo) mo.disconnect(); }, 15200);
-    }
   }
 
   function tcJanomeSubmitWithReplyContext(){
@@ -1989,7 +1972,7 @@ function normalizeEnterCopy(){
       if(typeof tcJanomeDecorateQuotedMessages === "function") tcJanomeDecorateQuotedMessages();
     }catch(e){}
     try{
-      if(typeof tcJanomeEnsureQuoteDecoratorObserver === "function") tcJanomeEnsureQuoteDecoratorObserver();
+      if(typeof tcJanomeEnsureQuoteDecoratorBinding === "function") tcJanomeEnsureQuoteDecoratorBinding();
     }catch(e){}
   }
 
@@ -2058,17 +2041,7 @@ function normalizeEnterCopy(){
       }
     }, true);
 
-    const area = document.getElementById("logArea") || document.querySelector(".log-area");
-    if(area){
-      new MutationObserver(() => {
-        if(!armed) return;
-        clearTimeout(window.__tcB17c27FileCleanupTimer);
-        window.__tcB17c27FileCleanupTimer = setTimeout(() => {
-          clearComposerFilesUi();
-          armed = false;
-        }, 250);
-      }).observe(area, {childList:true, subtree:true});
-    }
+    document.addEventListener("tc:ticket-rendered",()=>{if(!armed)return;clearTimeout(window.__tcB17c27FileCleanupTimer);window.__tcB17c27FileCleanupTimer=setTimeout(()=>{clearComposerFilesUi();armed=false},250)});
   }
 
 
@@ -2224,8 +2197,7 @@ function normalizeEnterCopy(){
 
     if(!window.__TC_B16A_FILE_OBSERVER__){
       window.__TC_B16A_FILE_OBSERVER__ = true;
-      const host = document.getElementById("log") || document.querySelector(".log-area") || document.body;
-      const mo = new MutationObserver(() => {
+      document.addEventListener("tc:ticket-rendered",() => {
         clearTimeout(window.__TC_B16A_DECORATE_TIMER__);
         /* B17C8_REPLY_PERSIST_SYSTEM_FIX: tcJanomeCompactLegacyAdminNotes()
            y tcJanomeHumanizeSupervisorNotes() ya no corren aqui -- quedaron
@@ -2233,7 +2205,6 @@ function normalizeEnterCopy(){
            unica transformacion por mensaje. */
         window.__TC_B16A_DECORATE_TIMER__ = setTimeout(() => { tcJanomeDecorateFileCards(); tcJanomeDecorateMessages(); tcJanomeDecorateSystemMessages(); tcJanomeDecorateQuotedMessages(); tcJanomeLinkQuoteAttachments(); tcJanomeDecorateMessageQuickActions(); tcJanomeStabilizeMessageLayout(); tcJanomeSyncThreadStampFolio(); }, 80);
       });
-      mo.observe(host, {childList:true, subtree:true});
     }
   }
 
@@ -2337,6 +2308,7 @@ function normalizeEnterCopy(){
           help:"Puedes agregar un comentario para admin antes de enviar este mensaje.",
           placeholder:"Ej. Se requiere apoyo para validar garantía, revisar adjuntos o dar seguimiento al caso.",
           defaultText:"Reenvío este mensaje a supervisión para comentarios.",
+          ref_evento_id:info.ref_evento_id||null,
           file:msgFileInfo,
           preview:msgFileInfo ? null : {title:info.title || "mensaje", sizeText:info.text || "", icon:"💬"}
         });
