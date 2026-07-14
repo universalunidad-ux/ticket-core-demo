@@ -3,124 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Dashboard | Ticket Core</title>
+<title>Dashboard | Ticket Core Janome</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="tickets.css">
-<link rel="stylesheet" href="estado.css">
-<link rel="stylesheet" href="soporte.css">
-<link rel="stylesheet" href="janome/janome.css">
-<script type="module" src="theme.js"></script>
+<link rel="stylesheet" href="dashboard.css?v=b19d-1">
+<link rel="icon" href="../favicon.ico" type="image/x-icon">
+<!-- B19D: se retiraron tickets.css/estado.css/soporte.css/janome.css. soporte.css
+     aplicaba html,body{overflow:hidden} en desktop (patrón de la página pública
+     B17C43D) y era la CAUSA de que el dashboard no permitiera scroll. theme.js
+     también se retiró: global.js (importado por dashboard.js) ya gestiona el tema;
+     tener ambos duplicaba el listener del toggle. -->
 </head>
-<body data-surface="admin">
-<header class="topbar">
-  <div class="topbar-inner">
-    <a class="brand" href="index.html"><span class="brand-dot"></span><span>Ticket Core</span></a>
-    <div class="top-actions">
-      <a class="mini btn-ghost" href="index.html">Inicio</a>
-      <a class="mini btn-ghost" href="soporte.html">Nuevo ticket</a>
-      <a class="mini btn-ghost" href="tickets.html">Tickets</a>
-      <button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
-    </div>
-  </div>
-</header>
+<body data-surface="admin" data-page="dashboard">
+<header class="topbar" id="navInterna"></header>
 
 <main class="wrap">
-  <section class="panel hero-support">
+  <!-- Hero compacto: rol + contexto + máximo 2 acciones. Sin KPIs ni navegación. -->
+  <section class="panel dash-hero">
     <div>
-      <div class="section-kicker">Dashboard operativo</div>
+      <div class="section-kicker">Operación de soporte</div>
       <h1 id="dashTitle">Mesa de soporte Janome</h1>
-      <p class="mut" id="dashLead">Resumen del estado de tickets, prioridades, equipos afectados y seguimiento operativo.</p>
-      <div class="chips mt8">
+      <p class="mut" id="dashLead">Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.</p>
+      <div class="dash-hero-meta">
         <span class="tag ok" id="dashRoleBadge">Cargando…</span>
-        <span class="tag">Prioridades</span>
-        <span class="tag">Seguimiento</span>
-        <span class="tag">Máquinas / accesorios</span>
+        <span class="tag" id="dashScope">Toda la operación</span>
       </div>
+    </div>
+    <div class="dash-hero-actions">
+      <a class="btn btn-brand" href="soporte.html">Nuevo ticket</a>
+      <a class="btn btn-ghost" href="tickets.html" id="dashHeroBandeja">Ir a la bandeja</a>
     </div>
   </section>
 
-  <section class="panel hidden" id="dashSoporte" style="margin-top:12px">
-    <div class="section-kicker">Tu mesa de trabajo</div>
-    <h2 id="dashSoporteHi">Hola</h2>
-    <p class="mut">Atiende tus casos desde la bandeja de tickets. Aquí ves el panorama; el detalle y la operación están en la consola.</p>
-    <div class="actions"><a class="btn btn-brand" href="tickets.html">Ir a mis tickets</a><a class="btn btn-ghost" href="soporte.html">Crear ticket</a></div>
-  </section>
+  <!-- KPI rail compacto (render por rol desde dashboard.js; sin números inventados) -->
+  <section class="kpi-rail" id="kpiRail" aria-label="Indicadores de operación"></section>
 
-  <section class="estado-kpis">
-    <article class="estado-kpi">
-      <div class="k">Abiertos</div>
-      <div class="v">—</div>
-    </article>
-    <article class="estado-kpi">
-      <div class="k">En proceso</div>
-      <div class="v">—</div>
-    </article>
-    <article class="estado-kpi">
-      <div class="k">Esperando cliente</div>
-      <div class="v">—</div>
-    </article>
-    <article class="estado-kpi">
-      <div class="k">Resueltos</div>
-      <div class="v">—</div>
-    </article>
-  </section>
-
-  <section class="support-layout">
+  <section class="dash-cols">
     <article class="panel">
-      <div class="section-kicker">Operación</div>
-      <h2>Prioridad del día</h2>
-      <p class="mut">Aquí se mostrarán tickets urgentes, casos sin respuesta y tickets con más tiempo abiertos.</p>
-      <div class="empty-state">Pendiente de conectar a datos reales o demo.</div>
-    </article>
-
-    <article class="panel">
-      <div class="section-kicker">Productos</div>
-      <h2>Tickets por equipo Janome</h2>
-      <p class="mut">Resumen por máquina, accesorio o categoría seleccionada en el formulario.</p>
-      <div class="empty-state">Pendiente de integrar catálogo Janome.</div>
-    </article>
-
-    <article class="panel">
-      <div class="section-kicker">Acciones rápidas</div>
-      <h2>Flujo de soporte</h2>
-      <div class="actions">
-        <a class="btn btn-brand" href="soporte.html">Crear ticket</a>
-        <a class="btn btn-ghost" href="tickets.html">Ver bandeja</a>
-        <a class="btn btn-ghost" href="estado.html">Probar seguimiento</a>
+      <div class="section-head">
+        <div><div class="section-kicker">Operación</div><h2 id="dashActTitle">Actividad reciente</h2></div>
       </div>
+      <div id="dashActividad" class="dash-act"><div class="dash-skel"></div><div class="dash-skel"></div><div class="dash-skel"></div></div>
     </article>
 
-    <article class="panel dash-admin-only">
-      <div class="section-kicker">Producto</div>
-      <h2>Enfoque comercial</h2>
-      <p class="mut">Este dashboard se mantiene centrado en tickets: estado, prioridad, equipo afectado, tiempos de respuesta y seguimiento. No debe convertirse en CRM completo.</p>
+    <article class="panel" id="dashMiCarga">
+      <div class="section-head">
+        <div><div class="section-kicker">Mi trabajo</div><h2>Mi carga</h2></div>
+      </div>
+      <div class="dash-mini-kpis" id="dashMiKpis"></div>
+      <div class="actions" style="margin-top:12px"><a class="btn btn-brand" href="tickets.html">Ir a mi bandeja</a></div>
     </article>
   </section>
 
-  <section class="panel dash-admin-only" style="margin-top:16px">
-    <div class="section-kicker">Administración</div>
-    <h2>Avisos del sitio</h2>
-    <p class="mut">Publica un aviso que verán los clientes en la página de soporte (por ejemplo: cierre por mantenimiento, promoción o demora en garantías). Solo administradores.</p>
-    <div id="avEditor" style="margin-top:12px"><div class="mut">Cargando…</div></div>
+  <section class="panel dash-admin-only hidden" id="dashAgents" style="margin-top:12px">
+    <div class="section-head"><div><div class="section-kicker">Equipo</div><h2>Agentes de soporte</h2></div></div>
+    <div class="dash-agent-grid" id="dashAgentGrid"><div class="dash-skel"></div></div>
   </section>
 
-  <section class="panel dash-admin-only" style="margin-top:16px">
-    <div class="section-kicker">Administración</div>
-    <h2>Personalización del sitio</h2>
-    <p class="mut">Edita los textos de las páginas de soporte y seguimiento (sin tocar código). Cada cambio queda registrado en la bitácora. Solo administradores.</p>
-    <div id="siteConfigEditor" style="margin-top:12px"><div class="mut">Cargando…</div></div>
-  </section>
+  <div class="overlay" id="dashAgentModal" hidden>
+    <div class="modal dash-agent-modal" role="dialog" aria-modal="true" aria-labelledby="dashAgentTitle">
+      <div class="section-head"><div><div class="section-kicker">Carga operativa</div><h3 id="dashAgentTitle">Agente</h3></div><button class="icon-btn" id="dashAgentClose" type="button" aria-label="Cerrar">✕</button></div>
+      <div class="dash-agent-detail" id="dashAgentDetail"></div>
+      <div class="actions"><a class="btn btn-brand" id="dashAgentTickets" href="tickets.html">Abrir Tickets filtrado</a></div>
+    </div>
+  </div>
 
-  <section class="panel dash-admin-only" style="margin-top:16px">
-    <div class="section-kicker">Administración</div>
-    <h2>Reglas de asignación</h2>
-    <p class="mut">Define a qué persona de soporte se dirige cada caso según criterios (tipo de máquina, tipo de caso, empresa, cliente nuevo o palabra clave). Las reglas se evalúan por prioridad, de menor a mayor. Solo administradores.</p>
-    <div id="reglasEditor" style="margin-top:12px"><div class="mut">Cargando…</div></div>
+  <!-- Administración: solo admin; tabs con estado en hash y contenido lazy. -->
+  <section class="panel dash-admin-only hidden" id="dashAdmin" style="margin-top:12px">
+    <div class="section-head">
+      <div><div class="section-kicker">Administración</div><h2>Configuración de la mesa</h2></div>
+    </div>
+    <nav class="adm-tabs" id="admTabs" aria-label="Secciones de administración">
+      <button class="adm-tab" data-adm="avisos" type="button">Avisos del sitio</button>
+      <button class="adm-tab" data-adm="personalizacion" type="button">Personalización</button>
+      <button class="adm-tab" data-adm="reglas" type="button">Reglas de asignación</button>
+      <button class="adm-tab" data-adm="bitacora" type="button">Bitácora</button>
+    </nav>
+    <div class="adm-panel" id="admPanel"><div class="mut">Elige una sección. Cada sección carga sus datos solo al abrirla.</div></div>
   </section>
 </main>
 
 <script src="supabase.config.public.js"></script>
-<script type="module" src="dashboard.js?v=6"></script>
+<script type="module" src="dashboard.js?v=b19d-1"></script>
 </body>
 </html>

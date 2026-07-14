@@ -1,1 +1,22 @@
-{"name":"Ticket Core","short_name":"Ticket Core","icons":[{"src":"/android-chrome-192x192.png","sizes":"192x192","type":"image/png"},{"src":"/android-chrome-512x512.png","sizes":"512x512","type":"image/png"}],"theme_color":"#ffffff","background_color":"#ffffff","display":"standalone","description":"Sistema de soporte técnico y gestión de tickets","start_url":"./app/index.html"}
+{
+  "name": "Ticket Core",
+  "short_name": "Ticket Core",
+  "icons": [
+    {
+      "src": "./android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "description": "Sistema de soporte técnico y gestión de tickets",
+  "start_url": "./app/index.html",
+  "scope": "./"
+}

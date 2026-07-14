@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clientes | Ticket Core Janome</title>
+<script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
+<link rel="stylesheet" href="global.css"><link rel="stylesheet" href="clientes.css?v=b19d-1">
+<link rel="icon" href="../favicon.ico" type="image/x-icon">
+<!-- B19D: cabecera con resumen (counts head baratos), pill bar de clasificación
+     por rol, vista tabla/cards con estado en URL. Los filtros de página se
+     aplican sobre lo cargado; los globales llegarán con la vista B19B. -->
+</head>
+<body data-surface="admin" data-page="clientes">
+<header class="topbar" id="navInterna"></header>
+<main class="wrap">
+  <section class="panel">
+    <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Clientes</h1></div>
+      <div class="actions cl-admin-only"><a class="btn btn-brand" href="alta-cliente.html">Alta interna de cliente</a></div>
+    </div>
+    <div class="cl-summary" id="clSummary"></div>
+    <div class="cl-pills" id="clPills" role="toolbar" aria-label="Clasificación"></div>
+    <div class="cl-toolbar">
+      <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off"></div>
+      <select class="select" id="clOrder" aria-label="Orden">
+        <option value="actividad">Actividad reciente</option>
+        <option value="nombre">Nombre</option>
+        <option value="abiertos">Tickets abiertos</option>
+      </select>
+      <div class="cl-viewtoggle" role="group" aria-label="Vista">
+        <button class="mini btn-ghost" id="clVistaTabla" type="button">Tabla</button>
+        <button class="mini btn-ghost" id="clVistaCards" type="button">Tarjetas</button>
+      </div>
+    </div>
+    <div class="mut" id="clScopeNote">Vista temporal de clientes vinculados a Ticket Core. El directorio compartido de Panel permanece intacto.</div>
+  </section>
+  <section class="panel" id="clPanel">
+    <div id="clList"><div class="cl-skel"></div><div class="cl-skel"></div><div class="cl-skel"></div></div>
+    <div class="cl-pager"><button class="btn btn-ghost" id="clMore" type="button" hidden>Cargar más</button><span class="mut" id="clCount"></span></div>
+  </section>
+</main>
+<script src="supabase.config.public.js"></script>
+<script type="module" src="clientes.js?v=b19d-1"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+/* B19D-cont — alta interna de cliente (formulario profesional, validación por
+   campo, duplicados, estados de envío). Claro/oscuro vía variables globales. */
+.ac-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ac-section{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.ac-section:first-of-type{margin-top:8px;padding-top:0;border-top:0}
+.ac-section h2{font-size:15px;letter-spacing:-.01em}
+.ac-section .mut{font-size:12.5px;margin-top:2px}
+
+/* Validación por campo */
+.field.has-error .input,.field.has-error .select,.field.has-error .area{border-color:color-mix(in srgb,var(--danger) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 12%,transparent)}
+.ac-field-err{display:none;font-size:12px;color:var(--danger);font-weight:700;margin-top:4px}
+.field.has-error .ac-field-err{display:block}
+
+/* Duplicados */
+#acDupBox{margin-top:12px}
+.ac-dup{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 10px;border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));border-radius:12px;margin-top:6px;background:color-mix(in srgb,var(--warn) 6%,transparent)}
+.ac-dup span{overflow-wrap:anywhere}
+
+/* Capability gate / estado del envío */
+.ac-gate{display:grid;gap:6px;padding:12px 14px;border:1px dashed color-mix(in srgb,var(--warn) 45%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--warn) 6%,transparent);margin-top:12px}
+.ac-gate b{font-size:13.5px}
+.ac-gate span{font-size:12.5px;color:var(--muted);line-height:1.45}
+.ac-status{margin-top:10px}
+.ac-status.ok{color:var(--ok);font-weight:700}
+.ac-status.bad{color:var(--danger);font-weight:700}
+.btn.is-busy{opacity:.7;pointer-events:none}
+
+@media (max-width:720px){
+  .ac-grid{grid-template-columns:1fr}
+  .actions .btn{flex:1;justify-content:center}
+}

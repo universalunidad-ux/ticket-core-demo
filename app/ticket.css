@@ -67,9 +67,9 @@ body[data-page="ticket"]{overflow:hidden}
 .tk-system-logo{width:28px;height:28px;border-radius:8px;object-fit:contain}
 #tkSystemsList{display:grid;gap:10px}
 #tkAddSystemBtn{width:100%;min-height:44px;border-radius:16px;font-weight:650}
-.ticket-main{min-height:0;overflow:hidden}.ticket-thread{height:100%;min-height:0;display:grid;grid-template-rows:40px minmax(160px,1fr) auto;overflow:hidden}.thread-topbar{position:relative;z-index:60;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:40px;padding:0 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--panel) 98%,transparent);backdrop-filter:saturate(1.08) blur(10px);-webkit-backdrop-filter:saturate(1.08) blur(10px)}.thread-left-actions,.thread-actions,.thread-gear-wrap{height:40px;display:flex;align-items:center}.thread-left-actions{gap:6px}.thread-actions{gap:8px;justify-content:flex-end}.tk-back-arrow{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;font-size:19px;font-weight:900;padding:0;display:grid;place-items:center;line-height:1}#tkThreadStamp{text-align:center;font-size:14px;font-weight:720;color:color-mix(in srgb,var(--text) 86%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.thread-gear-wrap{position:relative;justify-self:end}.tk-resolve-head{height:32px;min-height:32px;border-radius:12px;padding:0 13px;font-weight:800;font-size:13px;display:inline-flex;align-items:center;justify-content:center;line-height:1;color:color-mix(in srgb,var(--ok) 78%,var(--text));border-color:color-mix(in srgb,var(--ok) 28%,var(--line));background:color-mix(in srgb,var(--ok) 6%,var(--panel))}
+.ticket-main{min-height:0;min-width:0;overflow:hidden}.ticket-thread{height:100%;min-height:0;min-width:0;display:grid;grid-template-rows:40px minmax(160px,1fr) auto;overflow:hidden}.thread-topbar{position:relative;z-index:60;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:40px;padding:0 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--panel) 98%,transparent);backdrop-filter:saturate(1.08) blur(10px);-webkit-backdrop-filter:saturate(1.08) blur(10px)}.thread-left-actions,.thread-actions,.thread-gear-wrap{height:40px;display:flex;align-items:center}.thread-left-actions{gap:6px}.thread-actions{gap:8px;justify-content:flex-end}.tk-back-arrow{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;font-size:19px;font-weight:900;padding:0;display:grid;place-items:center;line-height:1}#tkThreadStamp{text-align:center;font-size:14px;font-weight:720;color:color-mix(in srgb,var(--text) 86%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.thread-gear-wrap{position:relative;justify-self:end}.tk-resolve-head{height:32px;min-height:32px;border-radius:12px;padding:0 13px;font-weight:800;font-size:13px;display:inline-flex;align-items:center;justify-content:center;line-height:1;color:color-mix(in srgb,var(--ok) 78%,var(--text));border-color:color-mix(in srgb,var(--ok) 28%,var(--line));background:color-mix(in srgb,var(--ok) 6%,var(--panel))}
 
-.log-area{min-height:0;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px}.log-msg{width:max-content;max-width:min(760px,82%);padding:12px 14px;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 10px 26px rgba(15,23,42,.04)}.log-msg.me{align-self:flex-end;border-radius:20px 20px 8px 20px;background:color-mix(in srgb,var(--brand) 8%,var(--panel));border-color:color-mix(in srgb,var(--brand) 24%,var(--line))}.log-msg.other{align-self:flex-start;border-radius:20px 20px 20px 8px;background:color-mix(in srgb,var(--panel) 98%,transparent)}.log-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px;color:color-mix(in srgb,var(--muted) 86%,transparent)}.log-meta b{font-weight:800;color:color-mix(in srgb,var(--text) 88%,transparent)}.log-text{font-size:15px;line-height:1.42;color:var(--text);white-space:pre-wrap}.log-notice{align-self:center;width:min(760px,88%);padding:8px;border:1px solid color-mix(in srgb,var(--line) 72%,transparent);border-radius:18px;background:color-mix(in srgb,var(--panel) 86%,transparent);box-shadow:none}.log-notice>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:color-mix(in srgb,var(--muted) 88%,transparent)}.log-notice b{font-size:12px;color:color-mix(in srgb,var(--text) 84%,transparent)}.log-notice p{margin:4px 0 0;font-size:13px;line-height:1.35}.log-files{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0}.log-file{border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:7px 11px;font-size:12px;font-weight:750;cursor:pointer;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-area{min-height:0;min-width:0;max-width:100%;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px}.log-msg{width:max-content;max-width:min(760px,82%);padding:12px 14px;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 10px 26px rgba(15,23,42,.04)}.log-msg.me{align-self:flex-end;border-radius:20px 20px 8px 20px;background:color-mix(in srgb,var(--brand) 8%,var(--panel));border-color:color-mix(in srgb,var(--brand) 24%,var(--line))}.log-msg.other{align-self:flex-start;border-radius:20px 20px 20px 8px;background:color-mix(in srgb,var(--panel) 98%,transparent)}.log-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px;color:color-mix(in srgb,var(--muted) 86%,transparent)}.log-meta b{font-weight:800;color:color-mix(in srgb,var(--text) 88%,transparent)}.log-text{font-size:15px;line-height:1.42;color:var(--text);white-space:pre-wrap}.log-notice{align-self:center;width:min(760px,88%);padding:8px;border:1px solid color-mix(in srgb,var(--line) 72%,transparent);border-radius:18px;background:color-mix(in srgb,var(--panel) 86%,transparent);box-shadow:none}.log-notice>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:color-mix(in srgb,var(--muted) 88%,transparent)}.log-notice b{font-size:12px;color:color-mix(in srgb,var(--text) 84%,transparent)}.log-notice p{margin:4px 0 0;font-size:13px;line-height:1.35}.log-files{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0}.log-file{border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:7px 11px;font-size:12px;font-weight:750;cursor:pointer;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tk-quickboot-hint{display:none!important}
 
 .composer{position:relative;z-index:5;min-height:0;max-height:28dvh;overflow:auto;padding:4px 8px calc(6px + env(safe-area-inset-bottom));gap:4px;background:color-mix(in srgb,var(--panel) 97%,transparent);border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
@@ -90,7 +90,8 @@ body[data-page="ticket"]{overflow:hidden}
 .composer-input-wrap #logText{height:46px;min-height:46px;max-height:72px;padding:11px 54px 9px 52px;border:0;box-shadow:none;background:transparent;resize:none;overflow-y:auto;font-size:14px;line-height:1.32}
 .composer-bottom{display:block;margin:0}
 .composer-right{display:contents}
-.composer-left #logFilesMeta,#logStatus,#tkComposerModeText{display:none!important}
+.composer-left #logFilesMeta{display:block!important}
+#logStatus,#tkComposerModeText{display:none!important}
 .quick-replies-wrap{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:6px;overflow:hidden;margin-top:0}
 .quick-replies{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;max-width:100%;padding-bottom:4px;scrollbar-width:thin;mask-image:linear-gradient(90deg,#000 0,#000 86%,transparent 100%)}
 .quick-replies .mini{flex:0 0 auto;width:auto;min-width:max-content;max-width:170px;min-height:34px;padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
@@ -100,7 +101,7 @@ body[data-page="ticket"]{overflow:hidden}
 .thread-gear-wrap .icon-only{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;display:grid;place-items:center;line-height:1;padding:0}.thread-gear-menu{position:absolute;top:calc(100% + 8px);right:0;width:min(360px,92vw);padding:14px;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 22px 60px rgba(2,6,23,.18);z-index:80}
 .tk-side-close{display:none!important}#tkSideToggle{display:none!important}
 @media(max-width:1180px){#tkSideToggle{display:inline-flex!important}}
-@media(max-width:1180px){body[data-page="ticket"]{overflow:hidden}.ticket-page{display:block;width:100vw;height:100dvh;margin:0}.ticket-main,.ticket-thread{width:100vw;height:100dvh;margin:0;border-radius:0}.ticket-thread{grid-template-rows:40px minmax(120px,1fr) auto}.thread-topbar{grid-template-columns:auto minmax(0,1fr) auto;height:40px;min-height:40px;padding:0 8px}.thread-left-actions{gap:6px}.tk-back-arrow,#tkSideToggle,.thread-gear-wrap .icon-only{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;display:grid;place-items:center;line-height:1;padding:0}#tkThreadStamp{font-size:12px;font-weight:760}.ticket-side{position:fixed;inset:0 auto 0 0;width:min(430px,92vw);max-width:92vw;height:100dvh;max-height:100dvh;z-index:60;transform:translateX(-105%);transition:transform .22s ease;border-right:1px solid var(--line);box-shadow:24px 0 60px rgba(2,6,23,.18);background:var(--panel);padding-top:10px}body.tk-side-open .ticket-side{transform:translateX(0)}body.tk-side-open:before{content:"";position:fixed;inset:0;background:rgba(15,23,42,.32);z-index:55}.side-head,.tk-side-close,.side-head #tkTopChips{display:none!important}.log-area{padding:8px 10px}.log-msg{max-width:90%}.log-msg.me{max-width:88%}.log-msg.close,.log-msg.note{max-width:96%}.composer{max-height:32dvh;padding:4px 6px calc(6px + env(safe-area-inset-bottom))}.composer-chatbox{min-height:104px}.composer-input-wrap{height:50px}.composer-input-wrap #logText{height:46px;min-height:46px;max-height:70px}}
+@media(max-width:1180px){body[data-page="ticket"]{overflow:hidden}.ticket-page{display:block;width:100vw;height:100dvh;margin:0}.ticket-main,.ticket-thread{width:100vw;height:100dvh;margin:0;border-radius:0}.ticket-thread{grid-template-rows:40px minmax(120px,1fr) auto}.thread-topbar{grid-template-columns:auto minmax(0,1fr) auto;height:40px;min-height:40px;padding:0 8px}.thread-left-actions{gap:6px}.tk-back-arrow,#tkSideToggle,.thread-gear-wrap .icon-only{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;display:grid;place-items:center;line-height:1;padding:0}#tkThreadStamp{font-size:12px;font-weight:760}.ticket-side{position:fixed;inset:0 auto 0 0;width:min(430px,92vw);max-width:92vw;height:100dvh;max-height:100dvh;z-index:80;transform:translateX(-105%);transition:transform .22s ease;border-right:1px solid var(--line);box-shadow:24px 0 60px rgba(2,6,23,.18);background:var(--panel);padding-top:10px}body.tk-side-open .ticket-side{transform:translateX(0)}body.tk-side-open:before{content:"";position:fixed;inset:0;background:rgba(15,23,42,.32);z-index:70}.side-head,.tk-side-close,.side-head #tkTopChips{display:none!important}.log-area{padding:8px 10px}.log-msg{max-width:90%}.log-msg.me{max-width:88%}.log-msg.close,.log-msg.note{max-width:96%}.composer{max-height:32dvh;padding:4px 6px calc(6px + env(safe-area-inset-bottom))}.composer-chatbox{min-height:104px}.composer-input-wrap{height:50px}.composer-input-wrap #logText{height:46px;min-height:46px;max-height:70px}}
 
 @media(max-width:520px){.contact-mini-list{grid-template-columns:repeat(2,minmax(0,1fr))}.contact-mini-row{min-height:112px;padding:14px!important}.contact-actions a{font-size:13px}.contact-ops-row{grid-template-columns:repeat(2,minmax(0,1fr))}.contact-ops-row>#tkConsolidationHint,.contact-ops-row>#tkRemoteAccessPill{font-size:12px;padding-inline:8px}.composer{padding-left:4px;padding-right:4px}.pill-switch{font-size:13px;padding:8px 6px}}
 @media(max-height:520px) and (orientation:landscape){.quick-replies-wrap,.composer-statusline{display:none!important}.composer-input-wrap #logText{min-height:46px;max-height:82px}.composer{padding:6px}.thread-topbar{padding:6px 10px}}
@@ -113,7 +114,7 @@ body[data-page="ticket"]{overflow:hidden}
 .tk-info-pop{position:fixed;z-index:9999;max-width:250px;padding:10px 12px;border-radius:14px;background:#111827;color:#fff;font-size:13px;line-height:1.35;box-shadow:0 16px 40px rgba(2,6,23,.22)}
 
 #tkQrModal{position:fixed!important;inset:0!important;z-index:9999!important;display:grid!important;place-items:center!important;padding:18px!important;background:rgba(15,23,42,.24)!important;backdrop-filter:blur(10px)!important}#tkQrModal[hidden]{display:none!important}#tkQrModal .tk-qr-modal{width:min(760px,calc(100vw - 28px))!important;max-height:min(760px,calc(100dvh - 28px))!important;overflow:auto!important;border-radius:28px!important;padding:22px!important;background:var(--panel)!important;box-shadow:0 30px 90px rgba(15,23,42,.24)!important}.tk-qr-top{display:grid;gap:12px;margin:10px 0 16px}.tk-qr-tabs,.tk-qr-scope{display:grid;gap:0;padding:5px;border:1px solid var(--line);border-radius:22px;background:color-mix(in srgb,var(--panel) 94%,transparent)}.tk-qr-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
-.tk-qr-scope{grid-template-columns:repeat(3,minmax(0,1fr))}.tk-qr-tabs .mini,.tk-qr-scope .mini{min-height:44px;border:0;border-radius:16px;background:transparent;font-weight:850}.tk-qr-tabs .is-on,.tk-qr-scope .is-on{background:color-mix(in srgb,var(--brand) 11%,var(--panel));color:var(--text)}#tkQrRows{display:grid;gap:8px;margin-top:10px}.tk-qr-row{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:8px}.tk-qr-row input{height:40px;border:0!important;background:transparent!important;font-weight:750;color:var(--text);outline:0}.tk-qr-row textarea{grid-column:1/-1;min-height:58px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 86%,var(--panel));padding:10px 12px;resize:vertical;color:var(--text)}.tk-qr-help,.tk-qr-chip,.tk-qr-actions [data-qr-act="up"],.tk-qr-actions [data-qr-act="down"],.tk-qr-actions [data-qr-act="use"]{display:none!important}.tk-qr-actions{display:flex;justify-content:flex-end}.tk-qr-actions .danger{width:36px;height:36px;min-width:36px;min-height:36px;padding:0;border-radius:999px;font-size:0;color:#dc2626}.tk-qr-actions .danger:before{content:"−";font-size:24px;font-weight:900;line-height:1}#tkQrAddRow,#tkQrSaveAll{width:54px;height:54px;min-width:54px;min-height:54px;padding:0!important;border-radius:18px!important;font-size:0!important;background-position:center!important;background-repeat:no-repeat!important;background-size:24px 24px!important}#tkQrAddRow{background-image:url("../IMG/mas.png")!important}
+.tk-qr-scope{grid-template-columns:repeat(2,minmax(0,1fr))}/* B17C40: 2 scopes */.tk-qr-tabs .mini,.tk-qr-scope .mini{min-height:44px;border:0;border-radius:16px;background:transparent;font-weight:850}.tk-qr-tabs .is-on,.tk-qr-scope .is-on{background:color-mix(in srgb,var(--brand) 11%,var(--panel));color:var(--text)}#tkQrRows{display:grid;gap:8px;margin-top:10px}.tk-qr-row{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:8px}.tk-qr-row input{height:40px;border:0!important;background:transparent!important;font-weight:750;color:var(--text);outline:0}.tk-qr-row textarea{grid-column:1/-1;min-height:58px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 86%,var(--panel));padding:10px 12px;resize:vertical;color:var(--text)}.tk-qr-help,.tk-qr-chip,.tk-qr-actions [data-qr-act="up"],.tk-qr-actions [data-qr-act="down"],.tk-qr-actions [data-qr-act="use"]{display:none!important}.tk-qr-actions{display:flex;justify-content:flex-end}.tk-qr-actions .danger{width:36px;height:36px;min-width:36px;min-height:36px;padding:0;border-radius:999px;font-size:0;color:#dc2626}.tk-qr-actions .danger:before{content:"−";font-size:24px;font-weight:900;line-height:1}#tkQrAddRow,#tkQrSaveAll{width:54px;height:54px;min-width:54px;min-height:54px;padding:0!important;border-radius:18px!important;font-size:0!important;background-position:center!important;background-repeat:no-repeat!important;background-size:24px 24px!important}#tkQrAddRow{background-image:url("../IMG/mas.png")!important}
 #tkQrSaveAll{background-image:url("../IMG/guardar.png")!important}
 .tk-qr-pick-pop{position:fixed;z-index:10000;display:grid;gap:6px;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 18px 48px rgba(2,6,23,.18)}.tk-qr-pick-pop button{border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 96%,transparent);padding:9px 12px;font-weight:850;color:var(--text);cursor:pointer}#tkQrModal .tk-qr-modal{width:min(760px,calc(100vw - 28px))!important;max-height:min(720px,calc(100dvh - 22px))!important;padding:18px!important}#tkQrRows{gap:6px!important}.tk-qr-row{grid-template-columns:minmax(160px,.72fr) minmax(0,1.4fr) 36px!important;gap:7px!important;padding:7px!important;align-items:center!important;border-radius:13px!important}.tk-qr-row input{height:34px!important;padding:0 6px!important}.tk-qr-row textarea{grid-column:auto!important;min-height:46px!important;height:46px!important;padding:8px 10px!important;resize:none!important}.tk-qr-row .danger{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;align-self:center}.tk-qr-top{gap:8px!important;margin:6px 0 10px!important}.tk-qr-tabs .mini,.tk-qr-scope .mini{min-height:38px!important}#tkQrAddRow,#tkQrSaveAll{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;border-radius:15px!important}.qr-pill b{display:none!important}
 
@@ -129,6 +130,35 @@ body[data-page="ticket"]{overflow:hidden}
 .ev-menu-wrap{position:relative;display:inline-flex}.ev-menu{position:absolute;left:0;bottom:calc(100% + 8px);z-index:90;width:190px;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 18px 50px rgba(2,6,23,.18);display:none}.ev-menu.open{display:grid;gap:4px}.ev-menu button{display:flex;align-items:center;gap:9px;width:100%;min-height:38px;border:0;border-radius:12px;background:transparent;padding:8px 10px;font-size:13px;font-weight:750;color:var(--text);cursor:pointer;text-align:left}.ev-menu button:hover{background:color-mix(in srgb,var(--brand) 8%,transparent)}.ev-menu img{width:18px;height:18px;object-fit:contain}
 
 #tkSystemOverlay .sys-picker{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}#tkSystemOverlay .sys-pick{min-height:78px;padding:10px 8px}#tkSystemOverlay .sys-pick img{width:34px;height:34px;object-fit:contain}#tkSystemOverlay .sys-pick span{font-size:12px;line-height:1.15;text-align:center}
+#tkSystemOverlay .fj-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
+#tkSystemOverlay .fj-head-main{display:flex;align-items:center;gap:14px;flex-wrap:nowrap;min-width:0;max-width:calc(100% - 58px)}
+#tkSystemOverlay .fj-title{display:flex;align-items:center;flex:0 0 auto;min-width:0}
+#tkSystemOverlay .fj-title .section-kicker{margin:0}
+#tkSystemOverlay .fj-head .sys-kind-tabs{flex:0 0 auto}
+#tkSystemOverlay .fj-modelpick{position:relative;margin:10px 0 6px}
+#tkSystemOverlay .fj-pick-trigger{width:100%;min-height:52px;border:1px solid var(--line);border-radius:22px;background:color-mix(in srgb,var(--panel) 98%,transparent);color:var(--text);padding:0 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px;font-weight:560;text-align:left;cursor:pointer}
+#tkSystemOverlay .fj-pick-trigger:hover{border-color:color-mix(in srgb,var(--brand) 26%,var(--line));background:color-mix(in srgb,var(--brand) 4%,var(--panel))}
+#tkSystemOverlay .fj-pick-caret{font-size:16px;color:var(--muted)}
+#tkSystemOverlay .fj-pick-pop{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:10020;border:1px solid var(--line);border-radius:22px;background:var(--panel);box-shadow:0 22px 70px rgba(2,6,23,.22);padding:10px;display:grid;gap:8px}
+#tkSystemOverlay .fj-pick-pop[hidden]{display:none!important}
+#tkSystemOverlay .fj-pick-search{width:100%;min-height:42px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--panel) 96%,transparent);color:var(--text);padding:0 13px;font:inherit;font-size:14px}
+#tkSystemOverlay .fj-pick-list{max-height:min(46dvh,420px);overflow:auto;display:grid;gap:4px;padding:2px}
+#tkSystemOverlay .fj-pick-group{padding:10px 10px 4px;font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 88%,transparent)}
+#tkSystemOverlay .fj-pick-option{min-height:38px;border:0;border-radius:14px;background:transparent;color:var(--text);padding:8px 11px;text-align:left;font-size:14px;font-weight:650;cursor:pointer}
+#tkSystemOverlay .fj-pick-option:hover,#tkSystemOverlay .fj-pick-option.is-active{background:color-mix(in srgb,var(--brand) 11%,var(--panel));color:var(--text)}
+#tkSystemOverlay .fj-pick-empty{padding:14px 12px;color:var(--muted);font-size:13px}
+#tkSystemOverlay .fj-chips{display:inline-flex;align-items:center;flex-wrap:nowrap;gap:6px;margin:0;min-width:0;max-width:min(760px,60vw);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+#tkSystemOverlay .fj-chips:empty{display:none}
+#tkSystemOverlay .fj-chips .tag{font-size:11px;padding:2px 8px;white-space:nowrap;flex:0 0 auto;max-width:none}
+#tkSystemOverlay .fj-head-chips{flex:1 1 auto}
+#tkSystemOverlay .fj-hint{font-size:11px;color:var(--muted);margin:0 0 4px}
+#tkSystemOverlay .fj-sec{border:1px solid var(--line);border-radius:14px;margin-bottom:10px;padding:0 14px;background:var(--panel)}
+#tkSystemOverlay .fj-sum{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:12px 2px;font-weight:700;font-size:14px}
+#tkSystemOverlay .fj-sum::-webkit-details-marker{display:none}
+#tkSystemOverlay .fj-chev{color:var(--muted);transition:transform .15s ease}
+#tkSystemOverlay .fj-sec[open] .fj-chev{transform:rotate(180deg)}
+#tkSystemOverlay .fj-grid{padding:2px 0 14px;grid-template-columns:repeat(2,minmax(0,1fr))}
+#tkSystemOverlay .fj-notes{margin-top:4px}
 @media(min-width:1181px){.ticket-side{display:grid;grid-template-columns:1fr;grid-template-rows:auto repeat(5,minmax(92px,1fr));gap:14px;padding:14px 12px 18px}.case-grid{gap:14px;margin-bottom:0}.ticket-side>.fold-card:not([open]){min-height:clamp(92px,12dvh,128px);display:flex}.ticket-side>.fold-card:not([open])>.fold-head{width:100%;min-height:100%;padding:18px}.ticket-side>.fold-card{border-radius:24px}.fold-head .tag,.fold-head .fold-kicker{box-shadow:0 8px 20px rgba(15,23,42,.035)}.ticket-side .box{border-radius:20px}.case-grid>.box{min-height:96px}.case-grid>.span-2{min-height:104px}#tkHeatFold .heat-periods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:hidden}#tkHeatFold .heat-period{flex:auto;min-width:0;width:100%}#tkHeatFold[open]{overflow:hidden}#tkHeatFold[open] .fold-body{overflow:hidden}}
 #tkComposerStateTag{display:none!important}
 
@@ -145,7 +175,6 @@ body[data-page="ticket"]{overflow:hidden}
 .tk-attach-del:hover{color:var(--danger)}
 
 /* Reproductor de video en el visor de evidencia */
-.ev-video{max-width:100%;max-height:72vh;width:auto;border-radius:14px;background:#000;display:block;margin:0 auto}
 
 /* img4: panel lateral angosto — evitar que las fold-cards abiertas se encimen */
 @media(max-width:1180px){
@@ -160,135 +189,10 @@ body[data-page="ticket"]{overflow:hidden}
 /* Pills Respuesta/Nota interna fijos arriba del input del composer */
 .composer-modebar{position:sticky!important;top:0!important;z-index:4!important;background:color-mix(in srgb,var(--panel) 97%,transparent)!important;padding-bottom:6px!important}
 
-/* Engrane del ticket: estilo más limpio (acorde al de tickets) */
-.thread-gear-menu .thread-gear-section{display:grid;gap:10px;padding:2px}
-.thread-gear-menu .thread-gear-section+.thread-gear-section{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
-.thread-gear-menu .thread-gear-title{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
-.thread-gear-menu .thread-opt{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:650;min-height:34px;cursor:pointer}
-.thread-gear-menu .thread-opt input[type=checkbox]{width:18px;height:18px;flex:0 0 auto}
-.thread-gear-menu .range-opt{justify-content:space-between}
-.thread-gear-menu #tkMuteTicketBtn{width:100%;justify-content:center}
-
 /* Botón "Cerrar caso" en el composer */
 .tk-close-case{margin-left:auto;color:color-mix(in srgb,var(--ok) 78%,var(--text));border-color:color-mix(in srgb,var(--ok) 30%,var(--line));background:color-mix(in srgb,var(--ok) 7%,var(--panel));font-weight:800}
 .tk-close-case:hover{background:color-mix(in srgb,var(--ok) 14%,var(--panel))}
 .composer-bottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-
-
-/* TC COMPOSER COMPACT JANOME — evita scroll interno y reduce aire vertical */
-.composer,
-.reply-composer,
-#composer,
-#replyComposer,
-#tkComposer{
-  overflow:visible !important;
-  max-height:none !important;
-}
-
-.composer textarea,
-.reply-composer textarea,
-#composer textarea,
-#replyComposer textarea,
-#tkComposer textarea,
-#replyText,
-#tkReplyText,
-#messageText{
-  min-height:42px !important;
-  max-height:82px !important;
-  height:42px;
-  resize:vertical;
-  line-height:1.35;
-}
-
-.composer input[type="text"],
-.reply-composer input[type="text"],
-#composer input[type="text"],
-#tkComposer input[type="text"]{
-  min-height:42px !important;
-}
-
-.pill-switch,
-.mode-switch,
-.reply-mode-switch,
-.composer-tabs,
-#replyModeTabs,
-#tkReplyModeTabs{
-  position:relative !important;
-  z-index:5;
-  margin-bottom:6px !important;
-  flex-shrink:0 !important;
-}
-
-.composer .quick-replies,
-.reply-composer .quick-replies,
-#composer .quick-replies,
-#tkComposer .quick-replies,
-.qr-row,
-.quick-row{
-  max-height:none !important;
-  overflow:visible !important;
-  gap:8px !important;
-}
-
-.composer button,
-.reply-composer button,
-#composer button,
-#tkComposer button{
-  min-height:38px;
-}
-
-#tkCloseComposerBtn,
-#closeComposerBtn,
-[data-action="close-case"],
-button.close-case{
-  align-self:flex-end;
-  white-space:nowrap;
-  min-height:38px !important;
-  padding:8px 14px !important;
-}
-
-/* El input real de archivo no debe meter aire visual si ya existe botón/icono de adjuntar */
-.composer input[type="file"],
-.reply-composer input[type="file"],
-#composer input[type="file"],
-#tkComposer input[type="file"]{
-  max-width:100%;
-  font-size:12px;
-}
-
-@media (max-width:599px){
-  .composer,
-  .reply-composer,
-  #composer,
-  #replyComposer,
-  #tkComposer{
-    padding:8px !important;
-    gap:8px !important;
-  }
-
-  .pill-switch,
-  .mode-switch,
-  .reply-mode-switch,
-  .composer-tabs,
-  #replyModeTabs,
-  #tkReplyModeTabs{
-    margin-bottom:4px !important;
-  }
-
-  .composer textarea,
-  .reply-composer textarea,
-  #composer textarea,
-  #replyComposer textarea,
-  #tkComposer textarea,
-  #replyText,
-  #tkReplyText,
-  #messageText{
-    min-height:40px !important;
-    height:40px;
-    max-height:72px !important;
-  }
-}
-
 
 /* TC THREAD CHRONO ATTACHMENTS JANOME */
 .log-msg.file-event{
@@ -747,84 +651,2259 @@ body[data-page="ticket"] .contact-hours-grid > .span-2{
   }
 }
 
-/* Composer compacto: una zona baja, menos aire */
-body[data-page="ticket"] .composer{
-  max-height:clamp(118px,22dvh,210px)!important;
-  padding:6px 10px calc(7px + env(safe-area-inset-bottom))!important;
-  overflow:auto!important;
+/* /D2C_TICKET_STABLE_SIDEBAR_COMPOSER */
+
+/* D2E_TICKET_COMPOSER_FILES_POPUP_POLISH */
+
+/* Limpieza texto Enter */
+body[data-page="ticket"] .tc-enter-clean{
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
 }
 
-body[data-page="ticket"] .composer-chatbox{
-  min-height:86px!important;
-  padding:7px!important;
-  gap:6px!important;
-  border-radius:20px!important;
+body[data-page="ticket"] .tc-enter-clean .tc-enter-copy{
+  font-size:13px!important;
+  font-weight:800!important;
+  color:color-mix(in srgb,var(--text) 84%,transparent)!important;
+  white-space:normal!important;
 }
 
-body[data-page="ticket"] .composer-input-wrap{
-  min-height:52px!important;
-  height:auto!important;
-  border-radius:20px!important;
-}
-
-body[data-page="ticket"] .composer-input-wrap #logText{
-  min-height:46px!important;
-  height:auto!important;
-  max-height:112px!important;
-  overflow-y:auto!important;
-  line-height:1.34!important;
-  padding-top:12px!important;
-  padding-bottom:10px!important;
-}
-
-/* Quitamos redundancias inferiores. Queda el cierre superior. */
-body[data-page="ticket"] #tkCloseCaseBtn,
-body[data-page="ticket"] #tkComposerModeText,
-body[data-page="ticket"] #logStatus{
+/* Oculta pill superior duplicado de Probar sonido; conserva el botón principal */
+body[data-page="ticket"] .tc-hide-top-sound-test{
   display:none!important;
 }
 
-body[data-page="ticket"] .composer-bottom{
+/* Configuración de ticket: estilo popup claro tipo tickets, no bloque pesado */
+body[data-page="ticket"] .thread-gear-menu{
+  width:min(360px,calc(100vw - 24px))!important;
+  border-radius:24px!important;
+  padding:18px!important;
+  background:color-mix(in srgb,var(--panel) 98%,white 2%)!important;
+  border:1px solid color-mix(in srgb,var(--line) 76%,transparent)!important;
+  box-shadow:0 28px 90px rgba(15,23,42,.18)!important;
+  backdrop-filter:blur(18px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.08)!important;
+}
+
+body[data-page="ticket"] .thread-gear-menu .thread-gear-title{
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.14em!important;
+  text-transform:uppercase!important;
+  color:color-mix(in srgb,var(--muted) 88%,transparent)!important;
+}
+
+body[data-page="ticket"] .thread-gear-menu .thread-opt{
+  min-height:40px!important;
+  font-weight:780!important;
+}
+
+body[data-page="ticket"] .thread-gear-menu .thread-gear-section{
+  display:grid!important;
+  gap:10px!important;
+  padding:2px!important;
+}
+
+body[data-page="ticket"] .thread-gear-menu .thread-opt input[type=checkbox]{
+  width:18px!important;
+  height:18px!important;
+  flex:0 0 auto!important;
+}
+
+body[data-page="ticket"] .thread-gear-menu #tkMuteTicketBtn{
+  width:100%!important;
+  justify-content:center!important;
+}
+
+/* Adjuntos en el hilo: miniatura limpia, sin "Imagen/Video/Adjunto" */
+body[data-page="ticket"] .thread-files-grid{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  margin-top:8px!important;
+}
+
+body[data-page="ticket"] .thread-file-card{
+  width:84px!important;
+  height:84px!important;
+  min-width:84px!important;
+  min-height:84px!important;
+  padding:4px!important;
+  border-radius:18px!important;
+  display:grid!important;
+  place-items:center!important;
+  overflow:hidden!important;
+  cursor:pointer!important;
+  background:color-mix(in srgb,var(--panel) 96%,transparent)!important;
+  border:1px solid color-mix(in srgb,var(--line) 78%,transparent)!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.045)!important;
+}
+
+body[data-page="ticket"] .thread-file-card:hover{
+  transform:translateY(-1px)!important;
+  border-color:color-mix(in srgb,var(--brand) 38%,var(--line))!important;
+  box-shadow:0 14px 34px rgba(15,23,42,.08)!important;
+}
+
+body[data-page="ticket"] .thread-file-thumb{
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  border-radius:14px!important;
+  overflow:hidden!important;
+  background:color-mix(in srgb,var(--bg) 88%,var(--panel))!important;
+  display:grid!important;
+  place-items:center!important;
+}
+
+body[data-page="ticket"] .thread-file-thumb-img,
+body[data-page="ticket"] .thread-file-thumb img,
+body[data-page="ticket"] .thread-file-thumb video{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  border-radius:14px!important;
+  display:block!important;
+}
+
+body[data-page="ticket"] .thread-file-main,
+body[data-page="ticket"] .thread-file-actions,
+body[data-page="ticket"] .thread-file-thumb-icon{
+  display:none!important;
+}
+
+/* Si solo hay icono/emoji legacy, que no se vea como card con texto */
+body[data-page="ticket"] .thread-file-thumb:empty::before{
+  content:"";
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  background:color-mix(in srgb,var(--brand) 10%,var(--panel));
+}
+
+/* Popup / visor de adjuntos: claro con blur, no negro */
+body[data-page="ticket"] #evModal:not([hidden]){
+  position:fixed!important;
+  inset:0!important;
+  z-index:10030!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:24px!important;
+  background:rgba(237,243,247,.62)!important;
+  backdrop-filter:blur(18px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.08)!important;
+}
+
+body[data-page="ticket"] #evModal > *{
+  max-width:min(980px,calc(100vw - 36px))!important;
+  max-height:min(860px,calc(100dvh - 36px))!important;
+  border-radius:28px!important;
+  background:color-mix(in srgb,var(--panel) 98%,white 2%)!important;
+  border:1px solid color-mix(in srgb,var(--line) 72%,transparent)!important;
+  box-shadow:0 30px 90px rgba(15,23,42,.18)!important;
+  color:var(--text)!important;
+}
+
+
+/* Botones del visor con lenguaje de popup claro */
+body[data-page="ticket"] #evModal button,
+body[data-page="ticket"] #evModal a[role="button"]{
+  border-radius:16px!important;
+}
+
+/* /D2E_TICKET_COMPOSER_FILES_POPUP_POLISH */
+
+
+/* D2E2_TICKET_COMPOSER_VIEWER_TIGHT */
+
+/* Visor adjuntos: toolbar tipo chat, blur claro */
+body[data-page="ticket"] #evModal:not([hidden]){
+  background:rgba(238,244,248,.66)!important;
+  backdrop-filter:blur(20px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(20px) saturate(1.08)!important;
+}
+
+body[data-page="ticket"] #evModal .tc-ev-shell{
+  position:relative!important;
+  padding-top:76px!important;
+}
+
+body[data-page="ticket"] #evModal .tc-ev-toolbar{
+  position:absolute!important;
+  top:18px!important;
+  right:18px!important;
   display:flex!important;
   align-items:center!important;
-  gap:8px!important;
-  flex-wrap:nowrap!important;
-  min-height:38px!important;
-  margin-top:0!important;
+  gap:10px!important;
+  z-index:20!important;
+}
+
+body[data-page="ticket"] #evModal .tc-ev-btn{
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  border-radius:16px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid color-mix(in srgb,var(--line) 78%,transparent)!important;
+  background:color-mix(in srgb,var(--panel) 96%,white 4%)!important;
+  color:var(--text)!important;
+  font-size:19px!important;
+  font-weight:900!important;
+  box-shadow:0 10px 24px rgba(15,23,42,.055)!important;
+  cursor:pointer!important;
+}
+
+body[data-page="ticket"] #evModal .tc-ev-btn:hover{
+  transform:translateY(-1px)!important;
+  border-color:color-mix(in srgb,var(--brand) 34%,var(--line))!important;
+}
+
+body[data-page="ticket"] #evModal .tc-ev-close{
+  font-size:28px!important;
+  line-height:1!important;
+}
+
+body[data-page="ticket"] #evModal .tc-ev-sender{
+  letter-spacing:.12em!important;
+  text-transform:uppercase!important;
+  font-size:12px!important;
+  color:color-mix(in srgb,var(--muted) 88%,transparent)!important;
+}
+
+body[data-page="ticket"] #evModal .tc-ev-time{
+  margin-top:3px!important;
+  font-size:13px!important;
+  font-weight:700!important;
+  color:color-mix(in srgb,var(--muted) 86%,transparent)!important;
+}
+
+
+/* /D2E2_TICKET_COMPOSER_VIEWER_TIGHT */
+
+
+/* D2E3_TICKET_COMPOSER_TIGHT_GAP */
+
+/* Composer general: sin aire vertical sobrante */
+body[data-page="ticket"] .composer{
+  min-width:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  padding:2px 10px calc(4px + env(safe-area-inset-bottom))!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+
+body[data-page="ticket"] .composer:before{
+  height:4px!important;
+  margin:0 auto 3px!important;
+}
+
+/* Caja azul: solo input + fila rápida, sin área muerta */
+body[data-page="ticket"] .composer-chatbox{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+  align-items:stretch!important;
+  gap:4px!important;
+  min-height:0!important;
+  height:auto!important;
+  padding:6px!important;
+  border-radius:18px!important;
+}
+
+/* Input de una línea: compacto; crece por JS hasta 4 renglones */
+body[data-page="ticket"] .composer-input-wrap{
+  min-height:42px!important;
+  height:auto!important;
+  margin:0!important;
+  border-radius:18px!important;
+  align-items:flex-start!important;
+}
+
+body[data-page="ticket"] .composer-input-wrap #logText{
+  min-height:34px!important;
+  height:auto!important;
+  max-height:104px!important;
+  padding:7px 46px 6px 44px!important;
+  border:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  resize:none!important;
+  overflow-y:auto!important;
+  font-size:14px!important;
+  line-height:1.32!important;
+}
+
+/* Botones dentro del input */
+body[data-page="ticket"] .composer-input-wrap .attach-btn,
+body[data-page="ticket"] .composer-input-wrap .send-float-btn{
+  top:50%!important;
+  transform:translateY(-50%)!important;
+}
+
+/* Este bloque era el que dejaba aire grande entre input y respuestas rápidas */
+body[data-page="ticket"] #logFilesMeta{
+  display:block!important;
+  min-height:0!important;
+  height:auto!important;
+  margin:4px 0 0!important;
+  padding:0!important;
+}
+
+/* Si algún estado/meta queda dentro del composer, no debe reservar espacio */
+body[data-page="ticket"] .composer-statusline,
+body[data-page="ticket"] #logStatus,
+body[data-page="ticket"] #tkComposerModeText,
+body[data-page="ticket"] #tkComposerModeTag,
+body[data-page="ticket"] #tkComposerStateTag{
+  display:none!important;
+  min-height:0!important;
+  height:0!important;
+  margin:0!important;
+  padding:0!important;
+}
+
+/* Respuestas rápidas pegadas al input */
+body[data-page="ticket"] .composer-bottom{
+  display:none!important;
+  min-height:0!important;
+  height:0!important;
+  margin:0!important;
+  padding:0!important;
+  gap:0!important;
 }
 
 body[data-page="ticket"] .quick-replies-wrap{
-  flex:1 1 auto!important;
+  height:32px!important;
+  min-height:32px!important;
   min-width:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
   display:flex!important;
   align-items:center!important;
-  gap:7px!important;
-  overflow:hidden!important;
+  gap:6px!important;
 }
 
 body[data-page="ticket"] .quick-replies{
-  flex:1 1 auto!important;
+  height:32px!important;
+  min-height:32px!important;
   min-width:0!important;
+  max-width:100%!important;
+  flex:1 1 auto!important;
+  margin:0!important;
+  padding:0!important;
   display:flex!important;
-  flex-wrap:nowrap!important;
-  gap:8px!important;
+  align-items:center!important;
+  gap:7px!important;
   overflow-x:auto!important;
   overflow-y:hidden!important;
-  padding-bottom:2px!important;
 }
 
 body[data-page="ticket"] .quick-replies .mini{
-  min-height:34px!important;
-  max-height:34px!important;
-  white-space:nowrap!important;
+  height:30px!important;
+  min-height:30px!important;
+  max-height:30px!important;
+  padding:5px 10px!important;
+  border-radius:12px!important;
+  font-size:13px!important;
+  line-height:1!important;
 }
 
+body[data-page="ticket"] #tkQrEditBtn,
 body[data-page="ticket"] .quick-edit-btn{
-  flex:0 0 38px!important;
-  width:38px!important;
-  height:38px!important;
-  min-width:38px!important;
-  min-height:38px!important;
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  min-height:32px!important;
+  border-radius:12px!important;
 }
 
-/* /D2C_TICKET_STABLE_SIDEBAR_COMPOSER */
+/* Cuando el textarea crece a varias líneas, solo crece lo necesario */
+body[data-page="ticket"] .composer.tc-has-multiline .composer-input-wrap{
+  min-height:auto!important;
+}
+
+
+/* B16A_JANOME_CHAT_UX */
+
+/* Adjuntos seleccionados antes de enviar */
+body[data-page="ticket"] #logFilesMeta{
+  width:100%!important;
+  color:var(--text)!important;
+}
+
+body[data-page="ticket"] #logFilesMeta:empty{
+  display:none!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-row{
+  display:flex!important;
+  gap:7px!important;
+  flex-wrap:wrap!important;
+  margin:4px 0 0!important;
+  padding:0 2px!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-chip{
+  max-width:210px!important;
+  min-height:40px!important;
+  border-radius:14px!important;
+  background:color-mix(in srgb,var(--panel) 96%,transparent)!important;
+  border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line))!important;
+  box-shadow:0 8px 18px rgba(15,23,42,.045)!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-thumb{
+  width:34px!important;
+  height:34px!important;
+  border-radius:10px!important;
+  object-fit:cover!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-name{
+  max-width:132px!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-del{
+  width:24px!important;
+  height:24px!important;
+  border-radius:999px!important;
+  display:grid!important;
+  place-items:center!important;
+  background:color-mix(in srgb,#ef4444 8%,transparent)!important;
+  color:#b91c1c!important;
+}
+
+/* Banner responder */
+body[data-page="ticket"] .tc-reply-context{
+  display:grid!important;
+  grid-template-columns:4px minmax(0,1fr) 30px!important;
+  gap:10px!important;
+  align-items:center!important;
+  margin:0 0 6px!important;
+  padding:8px 9px!important;
+  border-radius:16px!important;
+  border:1px solid color-mix(in srgb,var(--brand) 22%,var(--line))!important;
+  background:color-mix(in srgb,var(--brand) 7%,var(--panel))!important;
+  box-shadow:0 10px 24px rgba(15,23,42,.045)!important;
+}
+
+body[data-page="ticket"] .tc-reply-context[hidden]{
+  display:none!important;
+}
+
+body[data-page="ticket"] .tc-reply-context:before{
+  content:"";
+  width:4px;
+  height:100%;
+  min-height:38px;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--brand) 74%,#10b981);
+}
+
+body[data-page="ticket"] .tc-reply-context-main{
+  min-width:0!important;
+  display:grid!important;
+  gap:2px!important;
+}
+
+body[data-page="ticket"] .tc-reply-context-k{
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase!important;
+  color:color-mix(in srgb,var(--brand) 70%,var(--text))!important;
+}
+
+body[data-page="ticket"] .tc-reply-context-v{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:13px!important;
+  font-weight:760!important;
+  color:var(--text)!important;
+}
+
+body[data-page="ticket"] .tc-reply-context-x{
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  min-height:30px!important;
+  border-radius:999px!important;
+  border:1px solid var(--line)!important;
+  background:var(--panel)!important;
+  color:var(--muted)!important;
+  cursor:pointer!important;
+}
+
+/* Menú de archivo recibido/enviado */
+body[data-page="ticket"] .thread-file-card{
+  position:relative!important;
+}
+
+body[data-page="ticket"] .tc-file-menu-btn{
+  position:absolute!important;
+  right:5px!important;
+  top:5px!important;
+  z-index:8!important;
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  border-radius:999px!important;
+  border:1px solid color-mix(in srgb,var(--line) 70%,transparent)!important;
+  background:color-mix(in srgb,var(--panel) 94%,white 6%)!important;
+  color:var(--text)!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.13)!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:15px!important;
+  font-weight:950!important;
+  cursor:pointer!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  transform:translateY(-2px) scale(.98)!important;
+  transition:opacity .14s ease, transform .14s ease!important;
+}
+
+body[data-page="ticket"] .thread-file-card:hover .tc-file-menu-btn,
+body[data-page="ticket"] .thread-file-card:focus-within .tc-file-menu-btn{
+  opacity:.96!important;
+  pointer-events:auto!important;
+  transform:none!important;
+}
+
+body[data-page="ticket"] .tc-file-action-pop{
+  position:fixed!important;
+  z-index:10080!important;
+  min-width:190px!important;
+  padding:8px!important;
+  border:1px solid color-mix(in srgb,var(--line) 76%,transparent)!important;
+  border-radius:16px!important;
+  background:color-mix(in srgb,var(--panel) 98%,white 2%)!important;
+  box-shadow:0 24px 70px rgba(2,6,23,.2)!important;
+  display:grid!important;
+  gap:4px!important;
+}
+
+body[data-page="ticket"] .tc-file-action-pop[hidden]{
+  display:none!important;
+}
+
+body[data-page="ticket"] .tc-file-action-pop button{
+  width:100%!important;
+  min-height:38px!important;
+  border:0!important;
+  border-radius:12px!important;
+  background:transparent!important;
+  color:var(--text)!important;
+  padding:8px 10px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+
+body[data-page="ticket"] .tc-file-action-pop button:hover{
+  background:color-mix(in srgb,var(--brand) 9%,transparent)!important;
+}
+
+/* Escalar chat completo a admin debajo de Janome */
+body[data-page="ticket"] .tc-admin-escalate-card{
+  width:100%!important;
+  min-height:92px!important;
+  border:1px solid var(--line)!important;
+  border-radius:24px!important;
+  background:color-mix(in srgb,var(--panel) 98%,transparent)!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:14px!important;
+  box-shadow:0 12px 28px rgba(15,23,42,.04)!important;
+}
+
+body[data-page="ticket"] .tc-admin-escalate-btn{
+  min-height:42px!important;
+  border-radius:999px!important;
+  padding:0 19px!important;
+  font-weight:950!important;
+  letter-spacing:.01em!important;
+  border:1px solid color-mix(in srgb,#f59e0b 58%,var(--line))!important;
+  background:color-mix(in srgb,#f59e0b 12%,var(--panel))!important;
+  color:#92400e!important;
+  cursor:pointer!important;
+  box-shadow:0 8px 20px rgba(245,158,11,.12)!important;
+}
+
+body[data-page="ticket"] .tc-admin-escalate-btn.is-armed{
+  background:color-mix(in srgb,#f59e0b 18%,var(--panel))!important;
+  border-color:#f59e0b!important;
+}
+
+
+/* B16B_SUPERVISION_UX */
+/* B17C8F_COMPACT_REPLY_SINGLE_SOURCE: unica fuente de verdad para
+   ".tc-msg-menu-btn" y para el popup "#tcMsgActionPop"/".tc-msg-action-pop"
+   (el JS pone ambos, id y clase, en el mismo nodo -- con la clase alcanza).
+   Antes habia una segunda definicion de ".tc-msg-menu-btn" mas abajo
+   (bloque B17C6_SINGLE_MESSAGE_MENU) que forzaba "opacity:.94!important"
+   SIN gate de hover, y ganaba la cascada por ir despues en el archivo --
+   por eso la flecha se veia permanentemente visible en vez de solo on
+   hover/focus. Esa capa vieja se elimino (no se tapo con otro override) y
+   se fusiono aqui todo lo que tenia de util (tamaño, popup con span/b,
+   max-width). Ver el otro extremo del archivo (donde vivian los duplicados)
+   para el registro de que fue removido. */
+
+/* Flecha de acciones en mensajes: solo aparece en hover/focus del mensaje */
+body[data-page="ticket"] .log-msg{
+  position:relative!important;
+}
+
+body[data-page="ticket"] .tc-msg-menu-btn{
+  position:absolute!important;
+  right:7px!important;
+  top:7px!important;
+  z-index:8!important;
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  min-height:30px!important;
+  border-radius:999px!important;
+  border:1px solid color-mix(in srgb,var(--line) 70%,transparent)!important;
+  background:color-mix(in srgb,var(--panel) 94%,white 6%)!important;
+  color:var(--text)!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.13)!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:15px!important;
+  font-weight:950!important;
+  cursor:pointer!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  transform:translateY(-2px) scale(.98)!important;
+  transition:opacity .14s ease, transform .14s ease!important;
+}
+
+body[data-page="ticket"] .log-msg:hover .tc-msg-menu-btn,
+body[data-page="ticket"] .log-msg:focus-within .tc-msg-menu-btn{
+  opacity:.96!important;
+  pointer-events:auto!important;
+  transform:none!important;
+}
+
+body[data-page="ticket"] .tc-msg-action-pop{
+  position:fixed!important;
+  z-index:10080!important;
+  min-width:190px!important;
+  max-width:min(240px, calc(100vw - 18px))!important;
+  padding:8px!important;
+  border:1px solid color-mix(in srgb,var(--line) 76%,transparent)!important;
+  border-radius:16px!important;
+  background:color-mix(in srgb,var(--panel) 98%,white 2%)!important;
+  box-shadow:0 24px 70px rgba(2,6,23,.2)!important;
+  display:grid!important;
+  gap:4px!important;
+}
+
+body[data-page="ticket"] .tc-msg-action-pop[hidden]{
+  display:none!important;
+}
+
+body[data-page="ticket"] .tc-msg-action-pop button{
+  width:100%!important;
+  min-height:38px!important;
+  border:0!important;
+  border-radius:12px!important;
+  background:transparent!important;
+  color:var(--text)!important;
+  padding:8px 10px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+
+body[data-page="ticket"] .tc-msg-action-pop button:hover{
+  background:color-mix(in srgb,var(--brand) 9%,transparent)!important;
+}
+
+body[data-page="ticket"] .tc-msg-action-pop button span{
+  width:22px!important;
+  height:22px!important;
+  border-radius:999px!important;
+  display:grid!important;
+  place-items:center!important;
+  background:color-mix(in srgb,var(--brand) 10%,transparent)!important;
+}
+
+body[data-page="ticket"] .tc-msg-action-pop button b{
+  font:inherit!important;
+}
+
+/* Modal supervisión */
+body[data-page="ticket"] .tc-supervisor-overlay{
+  position:fixed!important;
+  inset:0!important;
+  z-index:10120!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:18px!important;
+  background:rgba(15,23,42,.34)!important;
+  backdrop-filter:blur(9px) saturate(1.05)!important;
+  -webkit-backdrop-filter:blur(9px) saturate(1.05)!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-overlay[hidden]{
+  display:none!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-modal{
+  width:min(560px,calc(100vw - 28px))!important;
+  border-radius:24px!important;
+  border:1px solid color-mix(in srgb,var(--line) 78%,transparent)!important;
+  background:var(--panel)!important;
+  box-shadow:0 30px 90px rgba(2,6,23,.28)!important;
+  padding:18px!important;
+  display:grid!important;
+  gap:12px!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-title{
+  margin:0!important;
+  font-size:18px!important;
+  font-weight:950!important;
+  letter-spacing:-.02em!important;
+  color:var(--text)!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-help{
+  margin:4px 0 0!important;
+  color:var(--muted)!important;
+  font-size:13px!important;
+  line-height:1.35!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-x{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  border-radius:999px!important;
+  border:1px solid var(--line)!important;
+  background:var(--panel)!important;
+  color:var(--muted)!important;
+  cursor:pointer!important;
+  font-weight:900!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-file{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-height:58px!important;
+  border:1px solid color-mix(in srgb,var(--brand) 20%,var(--line))!important;
+  border-radius:18px!important;
+  background:color-mix(in srgb,var(--brand) 5%,var(--panel))!important;
+  padding:8px!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-file[hidden]{
+  display:none!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-thumb{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  border-radius:13px!important;
+  object-fit:cover!important;
+  display:grid!important;
+  place-items:center!important;
+  background:color-mix(in srgb,var(--bg) 75%,var(--panel))!important;
+  border:1px solid var(--line)!important;
+  overflow:hidden!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-thumb img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  display:block!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-file-main{
+  min-width:0!important;
+  display:grid!important;
+  gap:2px!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-file-name{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  color:var(--text)!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-file-size{
+  font-size:12px!important;
+  font-weight:850!important;
+  color:color-mix(in srgb,var(--muted) 88%,transparent)!important;
+  text-transform:lowercase!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-text{
+  width:100%!important;
+  min-height:116px!important;
+  resize:vertical!important;
+  border:1px solid color-mix(in srgb,var(--brand) 20%,var(--line))!important;
+  border-radius:18px!important;
+  background:color-mix(in srgb,var(--panel) 98%,transparent)!important;
+  color:var(--text)!important;
+  padding:12px 13px!important;
+  font:inherit!important;
+  font-size:14px!important;
+  line-height:1.42!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+}
+
+body[data-page="ticket"] .tc-supervisor-send{
+  min-height:42px!important;
+  border-radius:999px!important;
+  padding:0 18px!important;
+  font-weight:950!important;
+}
+
+
+/* B16C_SUPERVISION_REFINE */
+
+/* Quitar flecha sobre miniatura: la acción vive en el grid/mensaje completo */
+body[data-page="ticket"] .thread-file-card .tc-file-menu-btn{
+  display:none!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+/* Feedback real de archivos seleccionados */
+body[data-page="ticket"] #logFilesMeta .tk-attach-row{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  margin:6px 0 0!important;
+  padding:0!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-chip{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  max-width:250px!important;
+  border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line))!important;
+  border-radius:14px!important;
+  background:color-mix(in srgb,var(--brand) 5%,var(--panel))!important;
+  padding:5px 8px!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-thumb{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  border-radius:10px!important;
+  object-fit:cover!important;
+  overflow:hidden!important;
+  background:color-mix(in srgb,var(--bg) 70%,var(--panel))!important;
+  display:grid!important;
+  place-items:center!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-thumb img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  display:block!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-main{
+  min-width:0!important;
+  display:grid!important;
+  gap:1px!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-name{
+  min-width:0!important;
+  max-width:150px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-size{
+  font-size:11px!important;
+  font-weight:800!important;
+  color:var(--muted)!important;
+  text-transform:lowercase!important;
+}
+
+body[data-page="ticket"] #logFilesMeta .tk-attach-del{
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  border-radius:999px!important;
+  border:0!important;
+  display:grid!important;
+  place-items:center!important;
+  cursor:pointer!important;
+}
+
+
+/* B16D_CHAT_VISUAL_REFINE */
+
+/* Layout tipo WhatsApp: nombre arriba, texto, hora abajo derecha */
+body[data-page="ticket"] .log-msg{
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding-bottom:30px!important;
+}
+
+body[data-page="ticket"] .log-msg .log-meta{
+  display:block!important;
+  margin:0 0 6px!important;
+  padding-right:72px!important;
+  line-height:1.2!important;
+}
+
+body[data-page="ticket"] .log-msg .log-meta b{
+  display:inline!important;
+  font-weight:900!important;
+}
+
+body[data-page="ticket"] .log-msg .log-meta span,
+body[data-page="ticket"] .log-msg .log-meta time{
+  position:absolute!important;
+  right:14px!important;
+  bottom:8px!important;
+  margin:0!important;
+  font-size:12px!important;
+  font-weight:760!important;
+  color:color-mix(in srgb,var(--muted) 88%,transparent)!important;
+}
+
+/* Mensajes propios normales: no mostrar nombre, solo hora abajo */
+body[data-page="ticket"] .log-msg.me:not(.note):not(.sys) .log-meta{
+  min-height:0!important;
+  margin:0!important;
+}
+
+body[data-page="ticket"] .log-msg.me:not(.note):not(.sys) .log-meta b{
+  display:none!important;
+}
+
+/* Preview dedicado de archivos seleccionados */
+body[data-page="ticket"] #tcSelectedFilesPreview{
+  width:100%!important;
+  display:block!important;
+  margin:0 0 6px!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview:empty{
+  display:none!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-row{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  margin:0!important;
+  padding:0!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-chip{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  max-width:260px!important;
+  border:1px solid color-mix(in srgb,var(--brand) 26%,var(--line))!important;
+  border-radius:15px!important;
+  background:color-mix(in srgb,var(--brand) 6%,var(--panel))!important;
+  padding:6px 8px!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.045)!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-thumb{
+  width:36px!important;
+  height:36px!important;
+  min-width:36px!important;
+  border-radius:11px!important;
+  object-fit:cover!important;
+  overflow:hidden!important;
+  background:color-mix(in srgb,var(--bg) 70%,var(--panel))!important;
+  display:grid!important;
+  place-items:center!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-thumb img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  display:block!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-main{
+  min-width:0!important;
+  display:grid!important;
+  gap:1px!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-name{
+  min-width:0!important;
+  max-width:155px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  color:var(--text)!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-size{
+  font-size:11px!important;
+  font-weight:800!important;
+  color:var(--muted)!important;
+  text-transform:lowercase!important;
+}
+
+body[data-page="ticket"] #tcSelectedFilesPreview .tk-attach-del{
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  border-radius:999px!important;
+  border:0!important;
+  background:color-mix(in srgb,#ef4444 7%,transparent)!important;
+  color:#b91c1c!important;
+  display:grid!important;
+  place-items:center!important;
+  cursor:pointer!important;
+}
+
+/* Badge flotante de fecha al hacer scroll: versión visual inicial */
+body[data-page="ticket"] .tc-scroll-date-badge{
+  position:fixed!important;
+  left:50%!important;
+  top:64px!important;
+  transform:translateX(-50%) translateY(-8px)!important;
+  z-index:90!important;
+  min-height:28px!important;
+  padding:4px 12px!important;
+  border-radius:999px!important;
+  background:color-mix(in srgb,var(--text) 8%,var(--panel))!important;
+  border:1px solid color-mix(in srgb,var(--line) 65%,transparent)!important;
+  color:color-mix(in srgb,var(--text) 78%,transparent)!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  box-shadow:0 12px 32px rgba(15,23,42,.12)!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  transition:opacity .16s ease, transform .16s ease!important;
+}
+
+body[data-page="ticket"] .tc-scroll-date-badge.is-show{
+  opacity:1!important;
+  transform:translateX(-50%) translateY(0)!important;
+}
+
+
+/* B16E2_QUOTE_MESSAGES_COMPACT */
+
+/* Referencia tipo WhatsApp dentro de la burbuja enviada */
+/* B17C8F_COMPACT_REPLY_SINGLE_SOURCE: unica fuente de verdad para el quote.
+   Antes eran <b>/<span> (title/preview separados); ahora el JS solo emite
+   ".tc-msg-quote-meta" (una linea: sender · hora · tipo · tamaño/preview) y,
+   opcionalmente, ".tc-msg-quote-preview" (solo para replies de texto). Sin
+   tarjeta-dentro-de-tarjeta, poco padding, poco aire vertical. */
+body[data-page="ticket"] .tc-msg-quote{
+  display:grid!important;
+  gap:1px!important;
+  margin:0 0 6px!important;
+  padding:5px 9px!important;
+  border-radius:12px!important;
+  border-left:4px solid color-mix(in srgb,var(--brand) 78%,#10b981)!important;
+  background:color-mix(in srgb,var(--brand) 8%,var(--panel))!important;
+  color:var(--text)!important;
+  max-width:100%!important;
+}
+
+body[data-page="ticket"] .tc-msg-quote-meta{
+  display:block!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  color:color-mix(in srgb,var(--brand) 78%,var(--text))!important;
+  line-height:1.2!important;
+}
+
+body[data-page="ticket"] .tc-msg-quote-preview{
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:2!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  white-space:normal!important;
+  font-size:12px!important;
+  font-weight:760!important;
+  color:color-mix(in srgb,var(--muted) 92%,var(--text))!important;
+  line-height:1.22!important;
+}
+
+/* Burbuja "solo cita" (respuesta con imagen/archivo, sin texto propio):
+   pegarla visualmente a la burbuja de adjunto que le sigue. */
+body[data-page="ticket"] .log-msg.tc-msg-quote-only{
+  padding-bottom:26px!important;
+}
+
+body[data-page="ticket"] .log-msg.tc-msg-quote-attached{
+  margin-bottom:-6px!important;
+}
+
+body[data-page="ticket"] .log-msg.tc-msg-file-attached{
+  margin-top:-6px!important;
+}
+
+/* Nota interna (.note) que ademas es una respuesta citada: mismo tinte azul.
+   ".sys"/".me.sys" quedaron fuera -- JS solo agrega esas clases a mensajes
+   de supervision, que nunca llevan ".tc-msg-quote" (se reemplazan por
+   ".tc-supervision-card" completo), asi que esos selectores nunca aplicaban. */
+body[data-page="ticket"] .log-msg.note .tc-msg-quote{
+  border-left-color:#2563eb!important;
+  background:color-mix(in srgb,#2563eb 8%,var(--panel))!important;
+}
+
+body[data-page="ticket"] .log-msg.note .tc-msg-quote-meta{
+  color:#1d4ed8!important;
+}
+
+body[data-page="ticket"] .tc-msg-body{
+  white-space:pre-wrap!important;
+}
+
+/* Compactar notas de sistema: sin renglón vacío entre confirmación y comentario */
+body[data-page="ticket"] .log-msg.note .tc-msg-body{
+  line-height:1.32!important;
+}
+
+
+
+/* /B16E2_QUOTE_MESSAGES_COMPACT */
+
+
+/* /B16D_CHAT_VISUAL_REFINE */
+
+
+/* /B16C_SUPERVISION_REFINE */
+
+
+/* /B16B_SUPERVISION_UX */
+
+
+/* /B16A_JANOME_CHAT_UX */
+
+
+/* /D2E3_TICKET_COMPOSER_TIGHT_GAP */
+
+/* TC D2H UI CORRECTIONS START */
+
+/* Composer: no tocar altura; quitar la pill redundante Respuesta/Nota del encabezado. */
+body[data-page="ticket"] .composer-head,
+body[data-page="ticket"] .composer-modebar{
+  display:none!important;
+}
+
+/* Sidebar equipos: botones 2x1. */
+body[data-page="ticket"] #tkSystemsFold .actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+
+body[data-page="ticket"] #tkSystemsFold .actions .btn{
+  width:100%!important;
+  min-height:42px!important;
+  border-radius:16px!important;
+  font-weight:850!important;
+}
+
+/* Modal Nota interna cliente. */
+#tkClientNoteOverlay{
+  position:fixed!important;
+  inset:0!important;
+  z-index:10020!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:18px!important;
+  background:rgba(15,23,42,.34)!important;
+  backdrop-filter:blur(10px)!important;
+  -webkit-backdrop-filter:blur(10px)!important;
+}
+
+#tkClientNoteOverlay[hidden]{
+  display:none!important;
+}
+
+#tkClientNoteOverlay .tk-client-note-modal{
+  width:min(620px,calc(100vw - 32px))!important;
+  border-radius:28px!important;
+  padding:22px!important;
+  background:color-mix(in srgb,var(--panel) 98%,white)!important;
+  box-shadow:0 32px 90px rgba(15,23,42,.24)!important;
+  border:1px solid color-mix(in srgb,var(--line) 86%,transparent)!important;
+}
+
+#tkClientNoteOverlay textarea{
+  width:100%!important;
+  min-height:150px!important;
+  margin-top:12px!important;
+  border:1px solid var(--line)!important;
+  border-radius:18px!important;
+  padding:14px!important;
+  background:var(--panel)!important;
+  color:var(--text)!important;
+  resize:vertical!important;
+}
+
+/* Engrane: modal real. El menú se mueve a body en JS para escapar del stacking-context del topbar. */
+body.tc-gear-modal-open::after{
+  content:""!important;
+  position:fixed!important;
+  inset:0!important;
+  z-index:10000!important;
+  background:rgba(15,23,42,.34)!important;
+  backdrop-filter:blur(10px)!important;
+  -webkit-backdrop-filter:blur(10px)!important;
+}
+
+body[data-page="ticket"] #tkThreadGearMenu.tc-gear-modal{
+  position:fixed!important;
+  left:50%!important;
+  top:50%!important;
+  right:auto!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:10010!important;
+  width:min(700px,calc(100vw - 32px))!important;
+  max-height:min(680px,calc(100dvh - 32px))!important;
+  overflow:auto!important;
+  padding:24px!important;
+  border-radius:28px!important;
+  background:color-mix(in srgb,var(--panel) 98%,white)!important;
+  border:1px solid color-mix(in srgb,var(--line) 86%,transparent)!important;
+  box-shadow:0 32px 90px rgba(15,23,42,.24)!important;
+}
+
+body[data-page="ticket"] #tkThreadGearMenu .tc-gear-close{
+  position:absolute!important;
+  top:18px!important;
+  right:18px!important;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  border-radius:14px!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:20px!important;
+}
+
+body[data-page="ticket"] #tkThreadGearMenu .thread-gear-title{
+  margin:0 56px 20px 0!important;
+  font-size:0!important;
+  line-height:1.05!important;
+}
+
+body[data-page="ticket"] #tkThreadGearMenu .thread-gear-title::before{
+  content:"Configuración"!important;
+  font-size:22px!important;
+  font-weight:950!important;
+  letter-spacing:-.03em!important;
+  text-transform:none!important;
+  color:var(--text)!important;
+}
+
+body[data-page="ticket"] #tkThreadGearMenu .thread-gear-section{
+  display:grid!important;
+  gap:14px!important;
+}
+
+body[data-page="ticket"] #tkThreadGearMenu .thread-opt{
+  min-height:42px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  font-size:15px!important;
+  font-weight:850!important;
+}
+
+/* Respuestas rápidas: header y layout más estable; no inventar Producto/Falla persistente todavía. */
+body[data-page="ticket"] #tkQrModal .tk-qr-modal{
+  width:min(920px,calc(100vw - 36px))!important;
+  max-height:min(760px,calc(100dvh - 36px))!important;
+  border-radius:28px!important;
+  padding:24px!important;
+  background:color-mix(in srgb,var(--panel) 98%,white)!important;
+  box-shadow:0 32px 90px rgba(15,23,42,.24)!important;
+}
+
+body[data-page="ticket"] #tkQrModal .section-kicker{
+  font-size:0!important;
+}
+
+body[data-page="ticket"] #tkQrModal .section-kicker::before{
+  content:"Respuestas rápidas"!important;
+  font-size:18px!important;
+  font-weight:950!important;
+  letter-spacing:-.02em!important;
+  color:var(--text)!important;
+  text-transform:none!important;
+}
+
+body[data-page="ticket"] #tkQrModal .tk-qr-tabs{
+  display:none!important;
+}
+
+/* B17C40: 2 tabs reales (Globales/Producto) con su texto nativo.
+   Se eliminó la fuente vieja que forzaba 3 columnas y pintaba los labels
+   con ::before + font-size:0 (por eso "Producto" se veía como pill vacío
+   y quedaba hueco de tercer tab). */
+body[data-page="ticket"] #tkQrModal .tk-qr-scope{
+  width:min(420px,100%)!important;
+  margin:0 auto 20px!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:8px!important;
+  padding:4px!important;
+  border:1px solid var(--line)!important;
+  border-radius:18px!important;
+  background:color-mix(in srgb,var(--panel) 94%,transparent)!important;
+}
+
+body[data-page="ticket"] #tkQrModal .tk-qr-scope .mini{
+  font-size:14px!important;
+  min-height:40px!important;
+  border:0!important;
+  border-radius:14px!important;
+  background:transparent!important;
+  font-weight:900!important;
+  color:var(--text)!important;
+}
+
+body[data-page="ticket"] #tkQrModal .tk-qr-scope .mini.is-on{
+  background:color-mix(in srgb,var(--brand) 10%,var(--panel))!important;
+  color:var(--text)!important;
+}
+
+/* B17C40: popup {…} de variables canónicas en el modal QR del singular
+   (mismo patrón visual que el board; el board trae estos estilos en tickets.css). */
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-wrap{position:relative!important;margin-left:auto!important;margin-right:8px!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-btn{min-height:32px!important;padding:0 10px!important;font-size:.82rem!important;border-radius:10px!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-pop{position:absolute!important;top:calc(100% + 6px)!important;right:0!important;min-width:240px!important;max-width:min(300px,calc(100vw - 32px))!important;padding:12px 14px!important;border:1px solid var(--line)!important;border-radius:16px!important;background:var(--panel)!important;box-shadow:0 10px 32px rgba(15,23,42,.16)!important;z-index:10090!important;text-align:left!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-pop.hidden{display:none!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-title{display:block!important;font-size:.72rem!important;font-weight:900!important;letter-spacing:.1em!important;text-transform:uppercase!important;color:var(--muted)!important;margin-bottom:8px!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-row{display:grid!important;grid-template-columns:auto 1fr!important;align-items:center!important;gap:8px!important;padding:4px 0!important;border-bottom:1px solid rgba(148,163,184,.1)!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-row:last-child{border-bottom:0!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-row code{font-family:ui-monospace,monospace!important;font-size:.82rem!important;padding:2px 6px!important;border-radius:6px!important;background:rgba(148,163,184,.14)!important;white-space:nowrap!important;color:var(--text)!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-vars-row span{font-size:.84rem!important;color:var(--muted)!important}
+
+body[data-page="ticket"] .tk-qr-row{
+  display:grid!important;
+  grid-template-columns:minmax(190px,.58fr) minmax(0,1fr) 48px!important;
+  gap:18px!important;
+  align-items:start!important;
+  border:0!important;
+  background:transparent!important;
+  padding:0!important;
+}
+
+body[data-page="ticket"] .tk-qr-row input{
+  min-height:48px!important;
+  height:48px!important;
+  border:1px solid var(--line)!important;
+  border-radius:14px!important;
+  padding:0 14px!important;
+  background:var(--panel)!important;
+}
+
+body[data-page="ticket"] .tk-qr-row textarea{
+  min-height:74px!important;
+  height:74px!important;
+  border:1px solid var(--line)!important;
+  border-radius:14px!important;
+  padding:14px!important;
+  background:var(--panel)!important;
+  resize:vertical!important;
+}
+
+body[data-page="ticket"] .tk-qr-row .danger{
+  width:44px!important;
+  height:44px!important;
+  min-width:44px!important;
+  min-height:44px!important;
+  border-radius:14px!important;
+  font-size:0!important;
+}
+
+body[data-page="ticket"] .tk-qr-row .danger::before{
+  content:"×"!important;
+  font-size:22px!important;
+}
+
+/* Adjuntos: miniatura centrada y sin botón lateral. */
+body[data-page="ticket"] .thread-file-download{
+  display:none!important;
+}
+
+body[data-page="ticket"] .thread-file-card{
+  grid-template-columns:1fr!important;
+  place-items:center!important;
+  cursor:pointer!important;
+}
+
+body[data-page="ticket"] .thread-file-thumb{
+  margin:auto!important;
+}
+
+body[data-page="ticket"] .thread-file-thumb,
+body[data-page="ticket"] .thread-file-thumb-img,
+body[data-page="ticket"] .thread-file-thumb img,
+body[data-page="ticket"] .thread-file-thumb video{
+  pointer-events:none!important;
+}
+
+
+
+/* Visor evidencia centrado + tira inferior. */
+body[data-page="ticket"] #evModal .section-head #evClose{
+  display:none!important;
+}
+
+body[data-page="ticket"] #evOpenRaw{
+  display:none!important;
+}
+
+body[data-page="ticket"] #evModal .ticket-ev-modal{
+  width:min(720px,calc(100vw - 28px))!important;
+  max-height:calc(100dvh - 28px)!important;
+  overflow:auto!important;
+  position:relative!important;
+  border-radius:28px!important;
+  padding:22px 24px 24px!important;
+}
+
+body[data-page="ticket"] #evModal .section-head{
+  margin-bottom:10px!important;
+}
+
+body[data-page="ticket"] #evModal .section-kicker{
+  font-size:12px!important;
+  font-weight:500!important;
+  letter-spacing:-.01em!important;
+  text-transform:none!important;
+  color:var(--muted)!important;
+}
+
+body[data-page="ticket"] #evTitle{
+  font-size:16px!important;
+  font-weight:500!important;
+  color:color-mix(in srgb,var(--muted) 92%,var(--text))!important;
+}
+
+body[data-page="ticket"] #evBody{
+  position:relative!important;
+  display:grid!important;
+  place-items:center!important;
+  align-items:center!important;
+  justify-items:center!important;
+  width:100%!important;
+  height:min(58dvh,560px)!important;
+  min-height:260px!important;
+  max-height:calc(100dvh - 250px)!important;
+  overflow:hidden!important;
+  padding:16px!important;
+  background:transparent!important;
+  box-sizing:border-box!important;
+}
+
+body[data-page="ticket"] #evBody.is-loading::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  margin:auto!important;
+  width:34px!important;
+  height:34px!important;
+  border-radius:50%!important;
+  border:3px solid color-mix(in srgb,var(--muted) 38%,transparent)!important;
+  border-top-color:var(--brand)!important;
+  animation:tkspin .7s linear infinite!important;
+}
+
+body[data-page="ticket"] #evBody img,
+body[data-page="ticket"] #evBody video{
+  width:auto!important;
+  height:auto!important;
+  max-width:calc(100% - 32px)!important;
+  max-height:calc(100% - 32px)!important;
+  min-width:0!important;
+  min-height:0!important;
+  object-fit:contain!important;
+  border-radius:18px!important;
+  touch-action:none!important;
+  will-change:transform!important;
+  transition:transform .12s ease!important;
+  display:block!important;
+  margin:auto!important;
+  box-sizing:border-box!important;
+}
+
+
+body[data-page="ticket"] #evBody img:not([data-zoomed="1"]):not([data-rotated="1"]),
+body[data-page="ticket"] #evBody video:not([data-zoomed="1"]):not([data-rotated="1"]){
+  transform:none!important;
+}
+
+body[data-page="ticket"] #evBody img[data-zoomed="1"],
+body[data-page="ticket"] #evBody video[data-zoomed="1"]{
+  cursor:grab!important;
+}
+
+body[data-page="ticket"] #evBody img[data-panning="1"],
+body[data-page="ticket"] #evBody video[data-panning="1"]{
+  cursor:grabbing!important;
+  transition:none!important;
+}
+
+body[data-page="ticket"] .tc-ev-nav{
+  position:absolute!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:2147483646!important;
+  width:58px!important;
+  height:58px!important;
+  min-width:58px!important;
+  min-height:58px!important;
+  border-radius:999px!important;
+  border:1px solid color-mix(in srgb,var(--line) 76%,transparent)!important;
+  background:color-mix(in srgb,var(--panel) 98%,white 2%)!important;
+  color:var(--text)!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:34px!important;
+  font-weight:800!important;
+  line-height:1!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  touch-action:manipulation!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.28)!important;
+}
+
+body[data-page="ticket"] .tc-ev-nav.prev{
+  left:18px!important;
+}
+body[data-page="ticket"] .tc-ev-nav.next{
+  right:18px!important;
+}
+
+body[data-page="ticket"] .tc-ev-tray{
+  display:flex!important;
+  justify-content:safe center!important;
+  align-items:center!important;
+  gap:8px!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  padding:10px 4px 8px!important;
+  margin:12px 0 0!important;
+  border-top:1px solid color-mix(in srgb,var(--line) 78%,transparent)!important;
+}
+
+body[data-page="ticket"] .tc-ev-tray button{
+  width:58px!important;
+  height:50px!important;
+  min-width:58px!important;
+  border-radius:13px!important;
+  border:1px solid var(--line)!important;
+  background:var(--panel)!important;
+  overflow:hidden!important;
+  padding:0!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
+
+body[data-page="ticket"] .tc-ev-tray button.is-active{
+  outline:2px solid color-mix(in srgb,var(--brand) 48%,transparent)!important;
+  outline-offset:2px!important;
+}
+
+body[data-page="ticket"] .tc-ev-tray img,
+body[data-page="ticket"] .tc-ev-tray video{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+}
+
+@media(max-width:760px){
+  body[data-page="ticket"] .tk-qr-row{
+    grid-template-columns:1fr 44px!important;
+    gap:10px!important;
+  }
+
+  body[data-page="ticket"] .tk-qr-row textarea{
+    grid-column:1/-1!important;
+  }
+}
+
+/* TC D2H UI CORRECTIONS END */
+
+
+
+
+/* B17C6_SINGLE_MESSAGE_MENU (consolidado en B17C8F_COMPACT_REPLY_SINGLE_SOURCE,
+   ver bloque B16B_SUPERVISION_UX arriba). Se removieron de aqui, por tener
+   selectores duplicados/conflictivos con esa unica fuente de verdad:
+   - ".tc-msg-menu-btn" (forzaba opacity:.94 sin gate de hover, pisando el
+     comportamiento hover-only real);
+   - "#tcMsgActionPop"/".tc-msg-action-pop" (popup) con padding/gap/radius
+     distintos a los ya definidos arriba.
+   Se conserva solo lo que no era duplicado. */
+body[data-page="ticket"] .log-msg > .tc-msg-reply-btn,
+body[data-page="ticket"] .log-msg > .tc-msg-admin-btn{
+  display:none!important;
+}
+body[data-page="ticket"] .log-msg.tc-msg-single-menu{
+  position:relative;
+}
+body[data-page="ticket"] .log-msg.tc-msg-single-menu .log-text,
+body[data-page="ticket"] .log-msg.tc-msg-supervision .log-text{
+  padding-top:0!important;
+  padding-right:42px!important;
+}
+/* /B17C6_SINGLE_MESSAGE_MENU */
+
+/* B17C8E_SINGLE_SOURCE_LAYOUT */
+body[data-page="ticket"] .log-msg.tc-msg-layout-stable{
+  position:relative;
+}
+body[data-page="ticket"] .log-msg.tc-msg-supervision{
+  background:color-mix(in srgb,#2563eb 7%,var(--panel))!important;
+  border-color:color-mix(in srgb,#2563eb 34%,var(--line))!important;
+  box-shadow:0 10px 26px rgba(37,99,235,.075)!important;
+}
+body[data-page="ticket"] .log-msg.tc-msg-supervision .log-meta b{
+  display:inline!important;
+  color:#1d4ed8!important;
+  font-weight:950!important;
+}
+body[data-page="ticket"] .log-msg.tc-msg-supervision .log-text{
+  padding-top:0!important;
+  padding-right:42px!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+body[data-page="ticket"] .tc-supervision-card{
+  display:block!important;
+  height:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  overflow:visible!important;
+  padding:2px 0 3px!important;
+  margin:0!important;
+}
+/* B17C8F_COMPACT_REPLY_SINGLE_SOURCE: se quito ".tc-supervision-kicker"
+   (el JS ya no la emite -- rotulo "SUPERVISIÓN" redundante). El titulo
+   ahora es azul/negrita y es el unico elemento que comunica que es un
+   evento de supervision. */
+body[data-page="ticket"] .tc-supervision-title{
+  display:block!important;
+  font-weight:850!important;
+  line-height:1.16!important;
+  margin:0!important;
+  color:#1d4ed8!important;
+}
+body[data-page="ticket"] .tc-supervision-comment{
+  display:block!important;
+  line-height:1.24!important;
+  max-height:none!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  margin:3px 0 0!important;
+}
+/* /B17C8E_SINGLE_SOURCE_LAYOUT */
+
+/* B17C9_CLOSE_CONFIRM_MODAL START */
+body[data-page="ticket"] .tc-close-confirm-overlay{
+  position:fixed!important;
+  inset:0!important;
+  z-index:10140!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:18px!important;
+  background:rgba(15,23,42,.34)!important;
+  backdrop-filter:blur(9px) saturate(1.05)!important;
+  -webkit-backdrop-filter:blur(9px) saturate(1.05)!important;
+}
+body[data-page="ticket"] .tc-close-confirm-overlay[hidden]{display:none!important}
+body[data-page="ticket"] .tc-close-confirm-modal{
+  width:min(520px,calc(100vw - 28px))!important;
+  border-radius:24px!important;
+  border:1px solid color-mix(in srgb,var(--line) 78%,transparent)!important;
+  background:var(--panel)!important;
+  box-shadow:0 30px 90px rgba(2,6,23,.28)!important;
+  padding:18px!important;
+  display:grid!important;
+  gap:12px!important;
+}
+body[data-page="ticket"] .tc-close-confirm-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+body[data-page="ticket"] .tc-close-confirm-head h3{
+  margin:0!important;
+  font-size:18px!important;
+  line-height:1.14!important;
+  font-weight:950!important;
+  letter-spacing:-.02em!important;
+  color:var(--text)!important;
+}
+body[data-page="ticket"] .tc-close-confirm-head p{
+  margin:5px 0 0!important;
+  color:var(--muted)!important;
+  font-size:13px!important;
+  line-height:1.32!important;
+}
+body[data-page="ticket"] .tc-close-confirm-x{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  border-radius:999px!important;
+  border:1px solid var(--line)!important;
+  background:var(--panel)!important;
+  color:var(--muted)!important;
+  cursor:pointer!important;
+  font-weight:900!important;
+}
+body[data-page="ticket"] .tc-close-confirm-note{
+  width:100%!important;
+  min-height:92px!important;
+  border:1px solid var(--line)!important;
+  border-radius:18px!important;
+  background:color-mix(in srgb,var(--bg) 82%,var(--panel))!important;
+  color:var(--text)!important;
+  padding:11px 12px!important;
+  resize:vertical!important;
+  font:inherit!important;
+  font-size:14px!important;
+  line-height:1.35!important;
+}
+body[data-page="ticket"] .tc-close-confirm-error,
+body[data-page="ticket"] .tc-supervisor-error{
+  border:1px solid color-mix(in srgb,#ef4444 42%,var(--line))!important;
+  background:color-mix(in srgb,#ef4444 8%,var(--panel))!important;
+  color:#b91c1c!important;
+  border-radius:14px!important;
+  padding:9px 11px!important;
+  font-size:13px!important;
+  font-weight:800!important;
+  line-height:1.3!important;
+}
+body[data-page="ticket"] .tc-close-confirm-error[hidden],
+body[data-page="ticket"] .tc-supervisor-error[hidden]{display:none!important}
+body[data-page="ticket"] .tc-close-confirm-actions{
+  display:flex!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+}
+body[data-page="ticket"] #tkResolveBtn.is-armed,
+body[data-page="ticket"] #tkCloseCaseBtn.is-armed{
+  border-color:color-mix(in srgb,#f59e0b 62%,var(--line))!important;
+  background:color-mix(in srgb,#f59e0b 12%,var(--panel))!important;
+  color:#92400e!important;
+}
+
+/* ============================================================
+   B17C38_FABLE_SPECIAL_BUBBLES_SINGLE_SOURCE
+   Reemplaza (no apila) los DOS bloques B17C36 duplicados que
+   vivían aquí con reglas contradictorias entre sí:
+   overflow visible vs hidden, padding 15/38 vs 12/28,
+   quote max-height 72px vs none, y un clamp real de
+   .tc-supervision-comment{max-height:68px;overflow:hidden}.
+
+   CAUSA RAÍZ del "la burbuja no crece con texto multilínea":
+   #logArea (.log-area) es display:flex column; cada .log-msg es
+   flex item con flex-shrink:1 por defecto. B17C32–B17C36 forzaban
+   min-height:0!important en reply/sistema/supervisión/cierre.
+   Cuando el hilo excede el alto visible, flexbox COMPRIME esos
+   items hasta su min-height (0) antes de ceder al scroll, así que
+   la burbuja queda más chica que su contenido y el texto se corta
+   o se sale. Los mensajes normales no se comprimían porque
+   conservan min-height:auto (piso = su propio contenido).
+   Corrección: flex:0 0 auto en .log-msg y NO volver a declarar
+   min-height:0 en ninguna burbuja.
+   ============================================================ */
+
+/* Anti-compresión: ninguna burbuja del hilo se encoge por flexbox. */
+body[data-page="ticket"] #logArea .log-msg{
+  flex:0 0 auto!important;
+}
+
+/* Composer cerrado: se conserva. */
+body[data-page="ticket"] .composer-chatbox.is-closed{
+  opacity:.72!important;
+  filter:saturate(.92)!important;
+}
+body[data-page="ticket"] .composer-chatbox.is-closed #logText{cursor:not-allowed!important}
+body[data-page="ticket"] .composer-chatbox.is-closed #saveLogBtn,
+body[data-page="ticket"] .composer-chatbox.is-closed #pickPublicFilesBtn,
+body[data-page="ticket"] .composer-chatbox.is-closed #logFiles,
+body[data-page="ticket"] .composer-chatbox.is-closed [data-qr],
+body[data-page="ticket"] .composer-chatbox.is-closed [data-qr-text]{
+  pointer-events:none!important;
+}
+
+/* Ocultar dueño propio en mensajes del agente, sin tocar Sistema. */
+body[data-page="ticket"] #logArea .log-msg.me:not(.sys):not(.tc-msg-supervision) .log-meta b{
+  display:none!important;
+}
+
+/* Wrap quirúrgico sin scroll horizontal. */
+body[data-page="ticket"] #logArea .log-msg .log-text,
+body[data-page="ticket"] #logArea .log-msg .tc-msg-body,
+body[data-page="ticket"] #logArea .log-msg .tc-supervision-comment{
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+  max-width:100%!important;
+}
+
+/* Flecha de menú: solo mensajes normales, on hover/focus; no sistema. */
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event) .tc-msg-menu-btn,
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event) button[aria-label*="Acciones"],
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event) button[title*="Acciones"]{
+  position:absolute!important;
+  right:10px!important;
+  top:10px!important;
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  min-height:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:999px!important;
+  border:1px solid color-mix(in srgb,var(--line) 76%,transparent)!important;
+  background:color-mix(in srgb,var(--panel) 94%,white)!important;
+  color:var(--muted)!important;
+  box-shadow:0 8px 24px rgba(15,23,42,.10)!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  z-index:10!important;
+}
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event):hover .tc-msg-menu-btn,
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event):focus-within .tc-msg-menu-btn,
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event):hover button[aria-label*="Acciones"],
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event):focus-within button[aria-label*="Acciones"],
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event):hover button[title*="Acciones"],
+body[data-page="ticket"] #logArea .log-msg:not(.sys):not(.tc-msg-supervision):not(.tc-close-system-event):focus-within button[title*="Acciones"]{
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+
+/* ---------- Reply con quote (texto o imagen): todo dentro de la burbuja ---------- */
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote){
+  position:relative!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  padding:12px 88px 28px 14px!important;
+  max-width:min(820px,82%)!important;
+  white-space:normal!important;
+}
+
+/* Header sin alto: la hora vive absoluta abajo derecha. */
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) > .log-meta{
+  display:block!important;
+  height:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  line-height:0!important;
+}
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) > .log-meta b{
+  display:none!important;
+}
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) > .log-meta span{
+  position:absolute!important;
+  right:12px!important;
+  bottom:7px!important;
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:850!important;
+  color:color-mix(in srgb,var(--muted) 92%,transparent)!important;
+}
+
+/* Contenedor real: columna quote + body, en flujo normal. */
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) > .log-text{
+  position:static!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  margin:0!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+  white-space:normal!important;
+  color:var(--text)!important;
+  font-size:14.5px!important;
+  line-height:1.36!important;
+}
+
+/* Quote de texto: compacto (meta 1 línea + preview 1 línea), sin robar alto.
+   position:relative se conserva para que su ::before (barra verde) ancle
+   al quote y no a la burbuja madre. */
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) .tc-msg-quote{
+  position:relative!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  gap:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:7px 10px 7px 13px!important;
+  border-radius:12px!important;
+  line-height:1.12!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+  background:color-mix(in srgb,#0f766e 9%,var(--panel))!important;
+  border:1px solid color-mix(in srgb,#0f766e 18%,var(--line))!important;
+}
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) .tc-msg-quote::before{
+  content:""!important;
+  position:absolute!important;
+  left:0!important;
+  top:7px!important;
+  bottom:7px!important;
+  width:4px!important;
+  border-radius:99px!important;
+  background:#0f766e!important;
+}
+body[data-page="ticket"] #logArea .tc-msg-quote-copy{
+  min-width:0!important;
+  flex:1 1 auto!important;
+  display:block!important;
+}
+body[data-page="ticket"] #logArea .tc-msg-quote-meta{
+  display:block!important;
+  line-height:1.12!important;
+  font-size:12px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  color:#0f766e!important;
+  font-weight:950!important;
+}
+body[data-page="ticket"] #logArea .tc-msg-quote-preview{
+  display:block!important;
+  line-height:1.12!important;
+  font-size:11.5px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  color:var(--muted)!important;
+  font-weight:800!important;
+}
+
+/* Quote con miniatura real: solo imagen, dentro de la burbuja madre. */
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) .tc-msg-quote.has-thumb{
+  display:inline-flex!important;
+  width:auto!important;
+  max-width:62px!important;
+  min-width:0!important;
+  padding:6px!important;
+  border-radius:14px!important;
+}
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) .tc-msg-quote.has-thumb::before,
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) .tc-msg-quote.has-thumb .tc-msg-quote-copy{
+  display:none!important;
+}
+body[data-page="ticket"] #logArea .tc-msg-quote-thumb-img{
+  display:block!important;
+  width:48px!important;
+  height:48px!important;
+  flex:0 0 48px!important;
+  object-fit:cover!important;
+  border-radius:13px!important;
+  border:1px solid rgba(15,118,110,.18)!important;
+  background:rgba(255,255,255,.82)!important;
+}
+
+/* Body de la respuesta: crece con su contenido, siempre contado en el alto. */
+body[data-page="ticket"] #logArea .log-msg:has(.tc-msg-quote) .tc-msg-body{
+  position:static!important;
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  margin:0!important;
+  padding:0!important;
+  color:var(--text)!important;
+  font-size:14.5px!important;
+  line-height:1.36!important;
+  white-space:pre-wrap!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+}
+
+/* ---------- Sistema / cierre: "Sistema · texto" azul, sin flecha ---------- */
+body[data-page="ticket"] #logArea .log-msg.sys:not(.tc-msg-supervision),
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event{
+  position:relative!important;
+  align-self:flex-start!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  height:auto!important;
+  max-height:none!important;
+  min-width:min(260px,100%)!important;
+  width:auto!important;
+  max-width:min(640px,80%)!important;
+  overflow:visible!important;
+  padding:11px 88px 28px 14px!important;
+  border-radius:18px!important;
+}
+body[data-page="ticket"] #logArea .log-msg.sys:not(.tc-msg-supervision) .log-meta,
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event .log-meta{
+  display:inline!important;
+  margin:0!important;
+  padding:0!important;
+  line-height:1.22!important;
+  color:#1d4ed8!important;
+}
+body[data-page="ticket"] #logArea .log-msg.sys:not(.tc-msg-supervision) .log-meta b,
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event .log-meta b{
+  display:inline!important;
+  color:#1d4ed8!important;
+  font-weight:950!important;
+}
+body[data-page="ticket"] #logArea .log-msg.sys:not(.tc-msg-supervision) .log-meta b::after,
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event .log-meta b::after{
+  content:" · ";
+}
+body[data-page="ticket"] #logArea .log-msg.sys:not(.tc-msg-supervision) .log-meta span,
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event .log-meta span{
+  position:absolute!important;
+  right:12px!important;
+  bottom:6px!important;
+  margin:0!important;
+  font-size:12px!important;
+  line-height:1!important;
+  color:color-mix(in srgb,var(--muted) 92%,transparent)!important;
+  font-weight:800!important;
+}
+body[data-page="ticket"] #logArea .tc-system-inline-text,
+body[data-page="ticket"] #logArea .log-msg.sys:not(.tc-msg-supervision) .log-text,
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event .log-text{
+  position:static!important;
+  display:inline!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:13.5px!important;
+  line-height:1.34!important;
+  white-space:pre-wrap!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+  color:#1d4ed8!important;
+  font-weight:950!important;
+}
+
+/* ---------- Supervisión: "Sistema · Mensaje enviado a supervisión" + comentario ---------- */
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision,
+body[data-page="ticket"] #logArea .log-msg.sys.tc-msg-supervision{
+  position:relative!important;
+  align-self:flex-end!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  min-width:min(320px,100%)!important;
+  width:auto!important;
+  max-width:min(600px,80%)!important;
+  padding:10px 88px 28px 14px!important;
+  border-radius:18px!important;
+  background:color-mix(in srgb,#1d4ed8 8%,var(--panel))!important;
+  border-color:color-mix(in srgb,#1d4ed8 34%,var(--line))!important;
+}
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta{
+  display:block!important;
+  margin:0 0 7px!important;
+  padding:0!important;
+  line-height:1.22!important;
+  color:#1d4ed8!important;
+}
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta b{
+  display:inline!important;
+  color:#1d4ed8!important;
+  font-weight:950!important;
+}
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta b::after{
+  content:" · Mensaje enviado a supervisión";
+  color:#1d4ed8!important;
+  font-weight:950!important;
+}
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta span{
+  position:absolute!important;
+  right:12px!important;
+  bottom:6px!important;
+  margin:0!important;
+  font-size:12px!important;
+  line-height:1!important;
+  color:color-mix(in srgb,var(--muted) 92%,transparent)!important;
+  font-weight:800!important;
+}
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-text,
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .tc-supervision-card{
+  position:static!important;
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  padding:0!important;
+  margin:0!important;
+  line-height:1.32!important;
+  font-size:13.5px!important;
+  color:var(--text)!important;
+  font-weight:400!important;
+  white-space:normal!important;
+}
+/* El título lo pinta .log-meta b::after; el preview reenviado ya no se usa. */
+body[data-page="ticket"] #logArea .tc-supervision-title,
+body[data-page="ticket"] #logArea .tc-supervision-forward-preview,
+body[data-page="ticket"] #logArea .tc-supervision-forward-thumb,
+body[data-page="ticket"] #logArea .tc-supervision-forward-copy{
+  display:none!important;
+}
+/* Comentario: crece con su contenido. (Antes: max-height 68px + hidden.) */
+body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .tc-supervision-comment{
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  font-size:13.5px!important;
+  line-height:1.34!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+  color:var(--text)!important;
+  font-weight:400!important;
+}
+body[data-page="ticket"] #logArea .tc-supervision-comment:empty{
+  display:none!important;
+}
+
+/* Sistema no accionable: sin flecha, sin responder, sin reenviar. */
+body[data-page="ticket"] #logArea .log-msg.sys button,
+body[data-page="ticket"] #logArea .log-msg.sys [role="button"],
+body[data-page="ticket"] #logArea .log-msg.sys .tc-msg-menu,
+body[data-page="ticket"] #logArea .log-msg.sys .tc-msg-menu-btn,
+body[data-page="ticket"] #logArea .log-msg.sys .tc-msg-actions,
+body[data-page="ticket"] #logArea .log-msg.sys .tc-msg-action,
+body[data-page="ticket"] #logArea .log-msg.sys .tc-msg-caret,
+body[data-page="ticket"] #logArea .log-notice button,
+body[data-page="ticket"] #logArea .log-notice [role="button"],
+body[data-page="ticket"] #logArea .tc-close-system-event button,
+body[data-page="ticket"] #logArea .tc-close-system-event [role="button"]{
+  display:none!important;
+  pointer-events:none!important;
+}
+
+/* Composer reply context con miniatura real: se conserva. */
+body[data-page="ticket"] #tcReplyContext.has-thumb .tc-reply-context-main{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+}
+body[data-page="ticket"] #tcReplyContext.has-thumb .tc-reply-context-v{
+  display:none!important;
+}
+body[data-page="ticket"] #tcReplyContext.has-thumb .tc-reply-context-thumb{
+  width:54px!important;
+  height:54px!important;
+  flex:0 0 54px!important;
+  border-radius:14px!important;
+  overflow:hidden!important;
+  border:1px solid color-mix(in srgb,var(--brand) 28%,var(--line))!important;
+  background:color-mix(in srgb,var(--panel) 88%,white)!important;
+}
+body[data-page="ticket"] #tcReplyContext.has-thumb .tc-reply-context-thumb img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  display:block!important;
+}
+/* /B17C38_FABLE_SPECIAL_BUBBLES_SINGLE_SOURCE */
+
+/* B17C9_CLOSE_CONFIRM_MODAL END */

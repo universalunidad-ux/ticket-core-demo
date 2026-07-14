@@ -14,7 +14,7 @@
       osc.start();
       setTimeout(()=>{ osc.stop(); ctx.close(); }, 180);
     }catch(e){
-      console.warn("No se pudo reproducir sonido de prueba", e);
+      console.warn("No se pudo reproducir sonido de prueba");
     }
   }
 
