@@ -469,9 +469,12 @@ body[data-page="tickets"] .k-desc,body[data-page="tickets"] .k-submeta{display:n
 
 /* TICKET_CORE_STABILIZE_2K */
 
-/* Respuesta rápida: sólo una tira horizontal, sin duplicados */
-body[data-page="tickets"] .tk-quick-db,
-body[data-page="tickets"] #tkQuickDbBtns{
+/* Respuesta rápida: sólo una tira horizontal, sin duplicados.
+   B17C41A: se quitó #tkQuickDbBtns de este selector. Esta regla nació
+   cuando había una tira duplicada, pero hoy #tkQuickDbBtns ES el selector
+   oficial de pills (renderBoardQuickDb) y el ID ganaba por especificidad
+   a .tk-quick-db-pills{display:flex}, dejando las pills invisibles. */
+body[data-page="tickets"] .tk-quick-db{
   display:none!important;
 }
 
@@ -1535,3 +1538,9 @@ body[data-page="tickets"] .k-company-line.tcHasAssignBadge .tcAssignBadge--kanba
   }
 }
 /* /B2_6_CANONICAL_POPUPS_LOADING */
+body[data-access-role="soporte"] #tkGearBtn,
+body[data-access-role="soporte"] #tkGearMenu,
+body[data-access-role="soporte"] #tcAssignViewBtn,
+body[data-access-role="soporte"] .tcAssignBadge,
+body[data-access-role="soporte"] #tcAssignOverlay,
+body[data-access-role="soporte"] #tcViewOverlay{display:none!important}

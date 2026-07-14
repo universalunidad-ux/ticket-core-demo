@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cliente | Ticket Core Janome</title>
+<script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
+<link rel="stylesheet" href="global.css"><link rel="stylesheet" href="cliente.css?v=b19d-1">
+<link rel="icon" href="../favicon.ico" type="image/x-icon">
+<!-- B19A: sin ?id= esta página redirige a clientes.html.
+     B19D: carga progresiva (identidad → tab activa → lazy por pestaña). -->
+</head>
+<body data-surface="admin" data-page="cliente">
+<header class="topbar" id="navInterna"></header>
+<main class="wrap">
+  <section class="panel cf-head" id="cfHead">
+    <div class="cf-id"><div class="cf-avatar" id="cfAvatar">—</div>
+      <div><div class="section-kicker">Ficha de cliente</div><h1 id="cfNombre">Cargando…</h1><div class="cl-sub" id="cfContactoLinea">—</div></div>
+    </div>
+    <div class="cf-kpis">
+      <div class="metric"><div class="k">Tickets abiertos</div><div class="v" id="cfKpiAbiertos">—</div></div>
+      <div class="metric"><div class="k">Equipos</div><div class="v" id="cfKpiEquipos">—</div></div>
+      <div class="metric"><div class="k">Última actividad</div><div class="v" id="cfKpiActividad" style="font-size:15px">—</div></div>
+    </div>
+  </section>
+  <div class="panel inset hidden" id="cfConsolidaAviso">⚠ Este cliente tiene tickets pendientes de consolidación. <a href="consolidacion-clientes.html">Ver cola</a></div>
+  <nav class="cf-tabs" id="cfTabs" role="tablist" aria-label="Secciones del cliente">
+    <button class="chat-tab is-active" data-tab="resumen" type="button" role="tab">Resumen</button>
+    <button class="chat-tab" data-tab="contactos" type="button" role="tab">Contactos <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="equipos" type="button" role="tab">Máquinas y accesorios <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="tickets" type="button" role="tab">Tickets <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="adjuntos" type="button" role="tab">Adjuntos <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="bitacora" type="button" role="tab">Bitácora</button>
+    <button class="chat-tab" data-tab="consolidacion" type="button" role="tab">Consolidación <span class="cf-tab-n hidden"></span></button>
+  </nav>
+  <section class="panel" id="cfBody"><div class="cf-skel"></div><div class="cf-skel"></div><div class="cf-skel"></div></section>
+</main>
+<script src="supabase.config.public.js"></script>
+<script type="module" src="cliente.js?v=b19d-1"></script>
+</body>
+</html>

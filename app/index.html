@@ -6,85 +6,77 @@
 <title>Iniciar sesión | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="tickets.css">
+<link rel="stylesheet" href="index.css">
 <script src="supabase.config.public.js"></script>
 <script type="module" src="theme.js"></script>
 <script type="module" src="index.js"></script>
 </head>
-<body data-surface="admin">
-<header class="topbar">
-  <div class="topbar-inner">
-    <a class="brand" href="index.html"><span class="brand-dot"></span><span>Ticket Core</span></a>
-    <div class="top-actions">
-      <a class="mini btn-ghost" href="soporte.html">Nuevo ticket</a>
-      <a class="mini btn-ghost" href="tickets.html?readonly=1">Demo</a>
-      <button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
-    </div>
+<body data-surface="login">
+<header class="login-topbar">
+  <div class="login-topbar-inner">
+    <a class="login-brand" href="index.html" aria-label="Ticket Core, inicio">
+      <span class="login-brand-mark" aria-hidden="true">T</span>
+      <span>Ticket Core</span>
+    </a>
+    <nav class="login-nav" aria-label="Accesos públicos">
+      <a href="soporte.html">Solicitar soporte</a>
+      <a href="estado.html">Seguimiento de solicitud</a>
+      <a href="tickets.html?readonly=1">Demo segura</a>
+      <button class="login-theme" type="button" data-theme-toggle aria-label="Cambiar tema">
+        <span aria-hidden="true">◐</span>
+        <span data-theme-label>Claro</span>
+      </button>
+    </nav>
   </div>
 </header>
 
-<main class="wrap">
-  <section class="panel hero-support">
-    <div>
-      <div class="section-kicker">Acceso operativo</div>
-      <h1>Iniciar sesión</h1>
-      <p class="mut">Acceso local a la mesa de tickets. Usa un usuario real creado en Supabase Auth.</p>
-      <div class="chips mt8">
-        <span class="tag ok">Ticket Core</span>
-        <span class="tag">Supabase Auth</span>
-        <span class="tag">Local</span>
+<main class="login-page">
+  <div class="login-shell">
+    <section class="login-hero" aria-labelledby="loginHeroTitle">
+      <div class="login-hero-copy">
+        <p class="login-kicker">Mesa de atención</p>
+        <h1 id="loginHeroTitle">Organiza cada solicitud y da seguimiento sin perder contexto.</h1>
+        <p class="login-lead">Ticket Core reúne conversaciones, responsables y avances para que el equipo atienda cada caso con claridad.</p>
       </div>
-    </div>
-  </section>
+      <div class="login-hero-detail" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+    </section>
 
-  <section class="support-layout">
-    <form class="panel support-form" id="loginForm">
-      <div class="section-head">
-        <div>
-          <div class="section-kicker">Login</div>
-          <h2>Entrar al panel</h2>
+    <section class="login-panel" aria-labelledby="loginTitle">
+      <div class="login-panel-head">
+        <p class="login-kicker">Acceso al equipo</p>
+        <h2 id="loginTitle">Inicia sesión</h2>
+        <p>Usa el correo y la contraseña asignados para tu trabajo.</p>
+      </div>
+
+      <form class="login-form" id="loginForm" novalidate aria-busy="false">
+        <label class="login-field" for="loginEmail">
+          <span>Correo</span>
+          <input class="input" id="loginEmail" name="email" type="email" autocomplete="username" inputmode="email" placeholder="correo@empresa.com" required>
+        </label>
+
+        <label class="login-field" for="loginPassword">
+          <span>Contraseña</span>
+          <input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Tu contraseña" required>
+        </label>
+
+        <button class="btn btn-brand login-submit" id="loginBtn" type="submit">Continuar</button>
+
+        <p class="login-status" id="loginStatus" aria-live="polite">Ingresa tus datos para continuar.</p>
+
+        <div class="login-session hidden" id="loginSessionBox">
+          <div>
+            <strong>Tu sesión sigue activa.</strong>
+            <p>Puedes continuar al espacio de trabajo.</p>
+          </div>
+          <a class="btn btn-ghost" id="loginNextLink" href="tickets.html">Continuar</a>
         </div>
-      </div>
+      </form>
 
-      <div class="form-grid">
-        <div class="field span-2">
-          <label class="lbl" for="loginEmail">Correo</label>
-          <input class="input" id="loginEmail" type="email" autocomplete="username" placeholder="correo@empresa.com">
-        </div>
-
-        <div class="field span-2">
-          <label class="lbl" for="loginPassword">Contraseña</label>
-          <input class="input" id="loginPassword" type="password" autocomplete="current-password" placeholder="Contraseña">
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-brand" id="loginBtn" type="submit">Entrar</button>
-        <a class="btn btn-ghost" href="tickets.html?readonly=1">Ver demo sin sesión</a>
-      </div>
-
-      <p class="mut" id="loginStatus">Si falta configuración local, crea app/supabase.config.public.js.</p>
-
-      <div class="panel inset hidden" id="loginSessionBox">
-        <div class="row-head"><h3>Sesión detectada</h3></div>
-        <p class="mut">Ya hay una sesión activa en este navegador.</p>
-        <div class="actions">
-          <a class="btn btn-brand" id="loginNextLink" href="tickets.html">Continuar</a>
-        </div>
-      </div>
-    </form>
-
-    <aside class="panel">
-      <div class="section-kicker">Ayuda</div>
-      <h2>Cómo entrar localmente</h2>
-      <p class="mut">No se usa usuario de terminal. El usuario debe existir en Supabase Authentication.</p>
-      <div class="chips mt8">
-        <span class="tag">Auth Users</span>
-        <span class="tag">Email</span>
-        <span class="tag">Password</span>
-      </div>
-    </aside>
-  </section>
+      <p class="login-notice">Usa únicamente una cuenta autorizada y cierra sesión al terminar.</p>
+    </section>
+  </div>
 </main>
 </body>
 </html>

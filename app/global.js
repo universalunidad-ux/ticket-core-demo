@@ -24,34 +24,39 @@ export const initRayito=()=>{if($("#rayito"))return;const b=document.createEleme
 export const setRayitoItems=items=>{const p=$("#rayito-panel");if(!p)return;const arr=(items||[]).filter(Boolean);p.innerHTML=`<div class="list">${arr.length?arr.map((x,i)=>`<button class="mini" type="button" data-rayito="${i}">${esc(x.label||`Acción ${i+1}`)}</button>`).join(""):`<div class="mut">Sin acciones</div>`}</div>`;p.querySelectorAll("[data-rayito]").forEach(b=>b.addEventListener("click",()=>{const fn=arr[+b.dataset.rayito]?.onClick;try{fn&&fn()}catch(err){console.error(err)}}))}
 
 document.addEventListener("DOMContentLoaded",()=>{initTheme();initThemeToggle();setTimeout(()=>autoAppShell?.(),0)});
+/* B19C: rutas reales del menú. "Clientes" abre el LISTADO (clientes.html, no
+   cliente.html sin id); "Altas" ahora es la alta interna real (alta-cliente.html;
+   altas.html no existe). Se añade Consolidación (consolidacion-clientes.html). */
 const APP_MENU={
   soporte:[
     {key:"dashboard",label:"Inicio",href:"dashboard.html",icon:"⌂"},
     {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
-    {key:"clientes",label:"Clientes",href:"cliente.html",icon:"👥"},
-    {key:"altas",label:"Altas",href:"altas.html",icon:"＋"},
+    {key:"clientes",label:"Clientes",href:"clientes.html",icon:"👥"},
+    {key:"consolidacion",label:"Consolidación",href:"consolidacion-clientes.html",icon:"🔗"},
+    {key:"altas",label:"Alta de cliente",href:"alta-cliente.html",icon:"＋"},
     {key:"recent_clients",label:"Últimos clientes",panel:"recent_clients",icon:"🕘"}
   ],
   ventas:[
     {key:"dashboard",label:"Inicio",href:"dashboard.html",icon:"⌂"},
     {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
-    {key:"clientes",label:"Clientes",href:"cliente.html",icon:"👥"},
-    {key:"altas",label:"Altas",href:"altas.html",icon:"＋"},
+    {key:"clientes",label:"Clientes",href:"clientes.html",icon:"👥"},
+    {key:"altas",label:"Alta de cliente",href:"alta-cliente.html",icon:"＋"},
     {key:"ventas",label:"Ventas",icon:"📈",children:[{panel:"oportunidades",label:"Oportunidades"},{panel:"renovaciones",label:"Renovaciones"}]}
   ],
   admin:[
     {key:"dashboard",label:"Inicio",href:"dashboard.html",icon:"⌂"},
     {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
-    {key:"clientes",label:"Clientes",href:"cliente.html",icon:"👥"},
-    {key:"altas",label:"Altas",href:"altas.html",icon:"＋"},
+    {key:"clientes",label:"Clientes",href:"clientes.html",icon:"👥"},
+    {key:"consolidacion",label:"Consolidación",href:"consolidacion-clientes.html",icon:"🔗"},
+    {key:"altas",label:"Alta de cliente",href:"alta-cliente.html",icon:"＋"},
     {key:"recent_clients",label:"Últimos clientes",panel:"recent_clients",icon:"🕘"},
     {key:"ventas",label:"Ventas",icon:"📈",children:[{panel:"oportunidades",label:"Oportunidades"},{panel:"renovaciones",label:"Renovaciones"}]},
-    {key:"admin_tools",label:"Admin",panel:"admin_tools",icon:"⚙️"}
+    {key:"admin_tools",label:"Administración",href:"dashboard.html#admin",icon:"⚙️"}
   ]
 };
 
 const roleKey=r=>{const x=norm(r||"soporte");return x==="admin"?"admin":x==="ventas"||x==="venta"||x==="sales"?"ventas":"soporte"};
-const pageTitleMap={dashboard:"Dashboard interno",tickets:"Tickets",ticket:"Ticket",clientes:"Clientes",cliente:"Cliente",altas:"Altas"};
+const pageTitleMap={dashboard:"Dashboard interno",tickets:"Tickets",ticket:"Ticket",clientes:"Clientes",cliente:"Cliente",consolidacion:"Consolidación de clientes","alta-cliente":"Alta interna de cliente"};
 const breadcrumbHtml=page=>`<nav class="crumbs" aria-label="Ruta"><a href="dashboard.html">Panel</a><span>/</span><span>${esc(pageTitleMap[page]||page||"Vista")}</span></nav>`;
 
 
@@ -90,9 +95,9 @@ export const initAppRail=page=>{const rail=$("#appRail"),scrim=$("#appScrim"),to
 const GLOBAL_PAGES=[
   {type:"pagina",id:"dashboard",label:"Dashboard",href:"dashboard.html",sub:"Vista general"},
   {type:"pagina",id:"tickets",label:"Tickets",href:"tickets.html",sub:"Mesa operativa"},
-  {type:"pagina",id:"ticket",label:"Ticket",href:"ticket.html",sub:"Detalle"},
-  {type:"pagina",id:"cliente",label:"Cliente",href:"cliente.html",sub:"Detalle de cliente"},
-  {type:"pagina",id:"altas",label:"Altas",href:"altas.html",sub:"Mesa de altas"}
+  {type:"pagina",id:"clientes",label:"Clientes",href:"clientes.html",sub:"Listado de clientes"},
+  {type:"pagina",id:"consolidacion",label:"Consolidación",href:"consolidacion-clientes.html",sub:"Cola de consolidación"},
+  {type:"pagina",id:"alta-cliente",label:"Alta de cliente",href:"alta-cliente.html",sub:"Alta interna"}
 ];
 let __globalSearchBound=0,__globalSearchData={clientes:[],tickets:[],extras:[]};
 export const setGlobalSearchData=({clientes=[],tickets=[],extras=[]}={})=>{__globalSearchData={clientes,tickets,extras:[...GLOBAL_PAGES,...extras]}};

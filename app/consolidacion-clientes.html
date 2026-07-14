@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Consolidación de clientes | Ticket Core Janome</title>
+<script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
+<link rel="stylesheet" href="global.css"><link rel="stylesheet" href="clientes.css?v=b19d-1"><link rel="stylesheet" href="consolidacion-clientes.css?v=b19d-2">
+<link rel="icon" href="../favicon.ico" type="image/x-icon">
+<!-- B19D-cont: comparación capturado vs candidato, capability gate de la Edge,
+     acciones seguras sin doble ejecución. -->
+</head>
+<body data-surface="admin" data-page="consolidacion">
+<header class="topbar" id="navInterna"></header>
+<main class="wrap">
+  <section class="panel">
+    <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Consolidación de clientes</h1></div><span class="tag warn" id="cqTotal">—</span></div>
+    <p class="mut">Tickets públicos cuya identidad capturada aún no está confirmada contra el directorio. La asociación siempre la confirma un humano; el score solo propone.</p>
+    <div class="cq-gate hidden" id="cqGate"></div>
+    <div class="cl-toolbar cq-toolbar">
+      <select class="select" id="cqNivel" aria-label="Nivel de candidato"><option value="">Candidato: todos</option><option value="sin">Sin candidato</option><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select>
+      <select class="select" id="cqAgente" aria-label="Agente"><option value="">Agente: todos</option></select>
+      <select class="select" id="cqOrden" aria-label="Orden"><option value="antiguo">Más antiguos primero</option><option value="reciente">Más recientes primero</option><option value="score">Mejor score primero</option></select>
+    </div>
+  </section>
+  <section class="panel"><div id="cqList"><div class="cl-skel"></div><div class="cl-skel"></div></div></section>
+</main>
+<script src="supabase.config.public.js"></script>
+<script type="module" src="consolidacion-clientes.js?v=b19d-2"></script>
+</body>
+</html>

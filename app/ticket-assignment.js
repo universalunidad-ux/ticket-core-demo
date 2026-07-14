@@ -94,7 +94,7 @@ async function loadAgents(){
     .order("nombre", { ascending:true });
 
   if(error){
-    console.warn("ASSIGN_LOAD_AGENTS_ERROR", error);
+    console.warn("ASSIGN_LOAD_AGENTS_ERROR");
     AGENTS = [];
     return;
   }
@@ -111,7 +111,7 @@ async function loadTicket(){
     .maybeSingle();
 
   if(error){
-    console.warn("ASSIGN_LOAD_TICKET_ERROR", error);
+    console.warn("ASSIGN_LOAD_TICKET_ERROR");
     return null;
   }
 
@@ -196,7 +196,7 @@ async function onAssignChange(e){
   e.target.disabled = false;
 
   if(error){
-    console.error("ASSIGN_TICKET_ERROR", error);
+    console.error("ASSIGN_TICKET_ERROR");
     alert(error.message || "No se pudo asignar.");
     return;
   }

@@ -6,7 +6,7 @@
 .support-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(290px,.88fr);gap:16px;align-items:start}
 .support-form{display:grid;gap:18px;position:relative}
 .support-form::after{content:"";display:block;height:1px;background:transparent}
-.support-side{display:grid;gap:12px;position:sticky;top:86px}
+.support-side{display:grid;gap:12px;position:sticky;top:72px}/* B17C43C: recibo fijo al hacer scroll; el formulario es lo que se desplaza */
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
 .field{display:grid;gap:7px;min-width:0}
 .field.span-2{grid-column:1/-1}
@@ -22,8 +22,9 @@
 .preview-card .v{font-size:14px;font-weight:820;line-height:1.45;word-break:break-word}
 .support-form .actions{display:flex;gap:10px;flex-wrap:wrap}
 .support-form .actions .btn{min-width:190px}
-#spStatus{min-height:20px}
-#spFiles.input{padding:10px 12px}
+#spStatus:empty{display:none}
+#spStatus:not(:empty){min-height:20px}
+/* B17C43B: #spFiles ya no es input visible (regla vieja eliminada) */
 #spDesc,#spExtra{min-height:120px}
 .support-side .panel.inset{padding:14px;box-shadow:var(--shadow-xs);background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 97%,transparent),color-mix(in srgb,var(--panel-2) 99%,transparent))}
 .support-side .chips{display:flex;gap:8px;flex-wrap:wrap}
@@ -37,6 +38,20 @@
 #spFilesMeta .item{padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 96%,transparent),color-mix(in srgb,var(--panel-2) 98%,transparent))}
 #spFilesMeta .item-meta{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 .hero-support .chips .tag{font-weight:800}
+/* B17C43G-R2: el título pertenece siempre al hero */
+.sp-mobile-form-heading-host{
+  display:block;
+  margin-top:12px
+}
+.sp-mobile-form-heading-host .section-head{
+  margin:0;
+  padding:0
+}
+.sp-mobile-form-heading-host h2{
+  margin:0;
+  font-size:20px;
+  line-height:1.2
+}
 .support-form .section-head h2,.support-form .section-head h3{margin:0}
 @media(max-width:1100px){.support-layout,.hero-support{grid-template-columns:1fr}.support-side{position:static}.hero-badges{justify-content:flex-start}}
 
@@ -54,19 +69,171 @@
 .support-global-notice.ok{border-color:color-mix(in srgb,var(--ok) 30%,var(--line));background:color-mix(in srgb,var(--ok) 8%,var(--panel))}
 
 
-.support-ticket-preview{overflow:hidden}
-.ticket-preview-card{display:grid;gap:14px;padding:14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 97%,transparent),color-mix(in srgb,var(--panel-2) 98%,transparent));box-shadow:var(--shadow-xs)}
-.ticket-preview-head{display:grid;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line)}
-.ticket-preview-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.ticket-preview-title{font-size:18px;font-weight:950;line-height:1.15;letter-spacing:-.02em;color:var(--text)}
-.ticket-preview-chips{display:flex;gap:8px;flex-wrap:wrap}
-.ticket-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.pv-item,.pv-block{display:grid;gap:6px}
-.pv-item .k,.pv-block .k{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.pv-item .v,.pv-block .v{font-size:14px;line-height:1.5;font-weight:720;color:var(--text);word-break:break-word}
-.pv-block{padding-top:10px;border-top:1px dashed color-mix(in srgb,var(--line) 88%,transparent)}
-.support-side .support-ticket-preview .panel.inset{padding:0;background:transparent;box-shadow:none}
-@media(max-width:760px){.ticket-preview-grid{grid-template-columns:1fr}.support-side{gap:10px}.support-ticket-preview{order:-1}}
+/* ====== B17C43B — header público Janome ====== */
+.jn-topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.jn-topbar-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px}
+.jn-brand{display:flex;align-items:center;gap:10px}
+.jn-brand-img{height:32px;width:auto;border-radius:6px}
+.jn-brand-sub{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.jn-top-actions{display:flex;align-items:center;gap:10px}
+.jn-wa-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;background:#22c55e;color:#fff;font-weight:800;font-size:13.5px;text-decoration:none;box-shadow:0 4px 12px rgba(34,197,94,.28)}
+.jn-wa-pill:hover{background:#16a34a}
+.jn-wa-pill img{display:block;filter:brightness(0) invert(1)}
+@media(max-width:599px){.jn-wa-pill span{display:none}.jn-wa-pill{padding:8px}}
+
+/* ====== B17C43B — botón de archivos (input nativo oculto) ====== */
+.sp-files-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sp-files-btn{min-height:44px;border-radius:999px;font-weight:800}
+.sp-files-label{font-size:13px;color:var(--muted);font-weight:700}
+
+/* ====== B17C43B/C/D — CTA a la derecha; TODOS los CTA brand con texto blanco ====== */
+.sp-send-head{display:flex;justify-content:flex-end}
+.sp-send-head h3{text-align:right}
+.support-form .actions.sp-send-actions{justify-content:flex-end}
+body[data-surface="client"] .btn-brand,
+body[data-surface="client"] .btn-brand:hover,
+body[data-surface="client"] .btn-brand:focus-visible,
+body[data-surface="client"] .btn-brand:active{color:#fff}
+@media(max-width:760px){.sp-send-head{justify-content:flex-start}.sp-send-head h3{text-align:left}}
+
+/* ====== B17C43C/D — menos aire vertical ====== */
+.soporte-page{gap:10px}
+.hero-support{align-items:start;padding:10px 16px}
+.hero-support h1{margin:2px 0 0;font-size:clamp(24px,3vw,34px)}
+.hero-support .chips{margin-top:6px}
+.hero-help{padding:8px 12px}
+.hero-help h3{font-size:13.5px;margin-bottom:4px}
+.hero-help .mini-list{gap:2px;font-size:12px}
+.hero-help .mini-list li{line-height:1.4}
+.support-form{gap:14px}
+.sp-files-hint{margin:2px 0 0;line-height:1.4}
+.sp-inline-success{margin-top:6px;font-size:13px;font-weight:800;color:var(--ok)}
+.sp-inline-success.hidden{display:none}
+
+/* ====== B17C43D — desktop: header/hero/recibo estables, formulario con
+   scroll interno; sin doble scroll ni rebote. Solo ≥1024px y alto suficiente. */
+@media(min-width:1024px) and (min-height:640px){
+  html,body{
+    height:100%;
+    overflow:hidden
+  }
+
+  body[data-surface="client"]{
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior:none
+  }
+
+  main.soporte-page{
+    height:calc(100dvh - 58px);
+    min-height:0;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    row-gap:0;
+    overflow:hidden
+  }
+
+  .hero-support{
+    margin-bottom:12px
+  }
+
+  .support-layout{
+    height:100%;
+    min-height:0;
+    margin:0;
+    overflow:hidden;
+    align-items:stretch
+  }
+
+  .support-form{
+    height:100%;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior:contain;
+    padding-bottom:22px;
+    scrollbar-width:thin
+  }
+
+  .support-side{
+    position:static;
+    min-height:0;
+    overflow:visible;
+    align-self:start
+  }
+
+  .jn-footer{
+    margin-top:0;
+    padding:8px 4px 6px
+  }
+}
+.sp-files-status{min-height:0;margin-top:4px;font-weight:700}
+.sp-files-status.ok{color:var(--ok)}
+.sp-files-status.warn{color:var(--warn)}
+.sp-files-status.bad{color:var(--danger)}
+.sp-files-status[hidden]{display:none}
+
+/* ====== B17C43C — segmentos del catálogo (Máquinas / Accesorios) ====== */
+.jn-cat-seg{font-size:10.5px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:8px 10px 3px;border-top:1px solid var(--line);margin-top:4px}
+.jn-combo-cats .jn-cat-seg:first-of-type{border-top:0;margin-top:0}
+
+/* B17C43C: el recibo usa vars de tema; ya no necesita override oscuro */
+
+/* ====== B17C43 — buscador de producto ======
+   1) El atributo hidden perdía contra display:flex de janome.css: el panel
+      colapsado se veía como una "pill" partida en 2 bajo el input. */
+.jn-combo-panel[hidden]{display:none!important}
+/* 2) Desktop: categorías a la IZQUIERDA, productos a la DERECHA.
+   (especificidad .jn-combo .jn-combo-cats: janome.css carga después) */
+@media(min-width:641px){
+  .jn-combo .jn-combo-cats{order:-1;border-left:0;border-right:1px solid var(--line)}
+}
+
+/* ====== B17C43C — Vista previa tipo ticket, versión minimalista ======
+   Sin rotación, sin dentado, sombra sobria; identidad de "recibo" via
+   separadores punteados y valores en monoespaciada. */
+.support-side.panel{background:transparent;border:0;box-shadow:none;padding:0}
+.tk-receipt{padding:2px 2px 10px}
+.tk-receipt-paper{
+  padding:14px 16px 12px;
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:var(--shadow-xs);
+}
+.tk-receipt-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:9px;margin-bottom:6px;border-bottom:2px dashed color-mix(in srgb,var(--muted) 32%,transparent)}
+.tk-receipt-sub{margin:0;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tk-receipt-folio{font-size:11px;font-weight:700;color:color-mix(in srgb,var(--muted) 75%,transparent);border:1px dashed color-mix(in srgb,var(--muted) 35%,transparent);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.tk-receipt-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px dashed color-mix(in srgb,var(--muted) 20%,transparent)}
+.tk-receipt-row .k{flex:0 0 auto;font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.tk-receipt-row .v{min-width:0;text-align:right;font-size:13px;font-weight:700;line-height:1.4;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.tk-receipt-block{
+  display:grid;
+  grid-template-columns:minmax(88px,.30fr) minmax(0,1fr);
+  align-items:start
+}
+
+.tk-receipt-block .v{
+  min-width:0;
+  text-align:left;
+  padding-top:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:normal
+}
+.tk-receipt-barcode{height:20px;margin:12px auto 4px;width:64%;background:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 5px,currentColor 5px 6px,transparent 6px 10px,currentColor 10px 13px,transparent 13px 16px);opacity:.28}
+.tk-receipt-thanks{text-align:center;font-size:10.5px;letter-spacing:.08em;color:var(--muted);padding-bottom:2px}
+@media(max-width:760px){.support-side{gap:10px}}
+
+/* B17C43C/D: comprobante de éxito bajo el recibo — folio como dato principal */
+.tk-success{margin-top:10px;padding:14px 16px;background:var(--panel);border:1px dashed color-mix(in srgb,var(--ok) 45%,var(--line));border-radius:14px;box-shadow:var(--shadow-xs);display:grid;gap:8px}
+.tk-success h3{font-size:15px;font-weight:900;color:var(--ok)}
+.tk-success-folio{display:flex;align-items:baseline;gap:10px}
+.tk-success-folio .k{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.tk-success-folio b{font-size:20px;font-weight:950;letter-spacing:.02em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.tk-success .actions{display:flex;gap:8px;flex-wrap:wrap}
+.tk-success .actions .btn{min-width:0}
 
 
 
@@ -74,19 +241,60 @@
 /* ====== Responsive 3 cortes — soporte (Janome) ====== */
 /* Tablet 600–1023: una columna, vista previa/ayuda arriba */
 @media (max-width:1023px){
-  body[data-surface="client"] .support-layout{grid-template-columns:1fr!important}
-  body[data-surface="client"] .hero-support{grid-template-columns:1fr!important;gap:12px!important}
-  body[data-surface="client"] .support-side{position:static!important;order:-1!important}
+  body[data-surface="client"] main.soporte-page{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important
+  }
+
+  body[data-surface="client"] .support-layout{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    grid-template-columns:1fr!important
+  }
+
+  body[data-surface="client"] .support-form{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important
+  }
+
+  body[data-surface="client"] .hero-support{
+    grid-template-columns:1fr!important;
+    gap:12px!important
+  }
+
+  body[data-surface="client"] .support-side{
+    position:static!important;
+    order:2!important
+  }
 }
 /* Móvil ≤599: todo en una columna, toques cómodos */
 @media (max-width:599px){
   body[data-surface="client"] .form-grid,
-  body[data-surface="client"] .upload-grid{grid-template-columns:1fr!important}
-  body[data-surface="client"] .hero-support h1{font-size:clamp(24px,7vw,32px)!important}
-  body[data-surface="client"] .support-form{padding:14px!important}
+  body[data-surface="client"] .upload-grid{
+    grid-template-columns:1fr!important
+  }
+
+  body[data-surface="client"] .hero-support h1{
+    font-size:clamp(24px,7vw,32px)!important
+  }
+
+  body[data-surface="client"] .support-form{
+    padding:12px 14px 16px!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important
+  }
+
   body[data-surface="client"] .actions .btn,
-  body[data-surface="client"] .support-form .actions .btn{width:100%!important;min-width:0!important}
-  body[data-surface="client"] .jn-combo-panel{max-height:62svh!important}
+  body[data-surface="client"] .support-form .actions .btn{
+    width:100%!important;
+    min-width:0!important
+  }
 }
 
 
@@ -113,59 +321,8 @@
 }
 
 
-/* TC CONTACT GRID MOBILE JANOME — compacta datos básicos en 2x2 */
-.tcContactGrid{
-  display:grid;
-  gap:14px;
-}
-
-@media (max-width:1023px){
-  body[data-surface="client"] .tcContactGrid,
-  .tcContactGrid{
-    display:grid !important;
-    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
-    gap:12px !important;
-    align-items:start;
-  }
-
-  body[data-surface="client"] .tcContactGridItem,
-  .tcContactGridItem{
-    min-width:0 !important;
-    margin:0 !important;
-  }
-
-  body[data-surface="client"] .tcContactGridItem input,
-  .tcContactGridItem input{
-    width:100% !important;
-    min-width:0 !important;
-  }
-
-  body[data-surface="client"] .tcContactGridItem label,
-  .tcContactGridItem label{
-    font-size:11px !important;
-    letter-spacing:.16em !important;
-    white-space:nowrap;
-  }
-
-  body[data-surface="client"] .tcContactGridItem input::placeholder,
-  .tcContactGridItem input::placeholder{
-    font-size:14px;
-  }
-}
-
-@media (max-width:380px){
-  body[data-surface="client"] .tcContactGrid,
-  .tcContactGrid{
-    gap:10px !important;
-  }
-
-  body[data-surface="client"] .tcContactGridItem input,
-  .tcContactGridItem input{
-    padding-left:12px !important;
-    padding-right:10px !important;
-  }
-}
-
+/* B17C43: bloques .tcContactGrid eliminados — su fuente (client-form-compact.js)
+   ya no se carga en soporte.html. El 2x2 de datos lo da .form-grid. */
 
 /* TC EDGE MOBILE PRODUCT JANOME — menos margen lateral y dropdown producto usable */
 @media (max-width:1023px){
@@ -194,56 +351,18 @@
     max-width:none !important;
   }
 
-  body[data-surface="client"] .tcContactGrid{
-    width:100% !important;
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-    gap:10px !important;
-  }
-
-  body[data-surface="client"] .tcContactGrid input{
-    min-height:52px !important;
-    padding:12px 13px !important;
-  }
-
   body[data-surface="client"] input,
   body[data-surface="client"] textarea,
   body[data-surface="client"] select{
     max-width:100% !important;
   }
 
-  /* Dropdown/lista de productos: evitar que se salga o ocupe media página lateral */
-  body[data-surface="client"] [role="listbox"],
-  body[data-surface="client"] .autocomplete,
-  body[data-surface="client"] .suggestions,
-  body[data-surface="client"] .search-results,
-  body[data-surface="client"] .product-results,
-  body[data-surface="client"] .product-list,
-  body[data-surface="client"] .product-picker,
-  body[data-surface="client"] .janome-results,
-  body[data-surface="client"] .janome-product-results,
-  body[data-surface="client"] .model-results,
-  body[data-surface="client"] .model-list{
-    max-width:calc(100vw - 12px) !important;
-    width:calc(100vw - 12px) !important;
-    left:6px !important;
-    right:6px !important;
-    margin-left:0 !important;
-    margin-right:0 !important;
+  /* B17C43: el panel de producto va en flujo (janome.css); solo acotar alto.
+     Se eliminó el selector-soup viejo que forzaba anchos de 100vw dentro
+     del panel (causaba desborde horizontal interno). */
+  body[data-surface="client"] .jn-combo-panel{
     max-height:52vh !important;
-    overflow:auto !important;
-    box-sizing:border-box !important;
-  }
-
-  body[data-surface="client"] [role="listbox"] *,
-  body[data-surface="client"] .product-results *,
-  body[data-surface="client"] .product-list *,
-  body[data-surface="client"] .product-picker *,
-  body[data-surface="client"] .janome-results *,
-  body[data-surface="client"] .janome-product-results *,
-  body[data-surface="client"] .model-results *,
-  body[data-surface="client"] .model-list *{
-    max-width:100% !important;
-    box-sizing:border-box !important;
+    overflow:hidden !important;
   }
 }
 
@@ -264,37 +383,9 @@
     border-radius:20px !important;
   }
 
-  body[data-surface="client"] .tcContactGrid{
-    gap:8px !important;
-  }
-
-  body[data-surface="client"] .tcContactGrid label{
-    font-size:10px !important;
-    letter-spacing:.13em !important;
-  }
-
-  body[data-surface="client"] .tcContactGrid input{
-    min-height:50px !important;
-    padding-left:10px !important;
-    padding-right:8px !important;
-    font-size:15px !important;
-  }
-
-  body[data-surface="client"] [role="listbox"],
-  body[data-surface="client"] .autocomplete,
-  body[data-surface="client"] .suggestions,
-  body[data-surface="client"] .search-results,
-  body[data-surface="client"] .product-results,
-  body[data-surface="client"] .product-list,
-  body[data-surface="client"] .product-picker,
-  body[data-surface="client"] .janome-results,
-  body[data-surface="client"] .janome-product-results,
-  body[data-surface="client"] .model-results,
-  body[data-surface="client"] .model-list{
-    width:calc(100vw - 8px) !important;
-    max-width:calc(100vw - 8px) !important;
-    left:4px !important;
-    right:4px !important;
+  /* B17C43: reglas .tcContactGrid y selector-soup de listbox eliminadas
+     (fuente vieja retirada). Panel de producto: alto acotado en móvil. */
+  body[data-surface="client"] .jn-combo-panel{
     max-height:48vh !important;
   }
 }

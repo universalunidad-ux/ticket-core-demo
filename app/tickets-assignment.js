@@ -14,6 +14,7 @@ const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 
 let AGENTS = [];
 let CURRENT_USER_ID = "";
+let IS_ADMIN = false;
 let FILTER_MODE = localStorage.getItem("tc_assign_filter") || "all";
 let BUSY = false;
 let OBS = null;
@@ -137,6 +138,18 @@ async function loadAgents(){
   const user = await s.auth.getUser().catch(() => ({ data:{ user:null } }));
   CURRENT_USER_ID = user?.data?.user?.id || "";
 
+  const { data: me, error: meError } = await s
+    .from("perfiles")
+    .select("id,rol")
+    .eq("id", CURRENT_USER_ID)
+    .maybeSingle();
+  IS_ADMIN = !meError && String(me?.rol || "").toLowerCase() === "admin";
+  document.body.dataset.accessRole = IS_ADMIN ? "admin" : "soporte";
+  if(!IS_ADMIN){
+    AGENTS = [];
+    return;
+  }
+
   const { data, error } = await s
     .from("perfiles")
     .select("*")
@@ -144,7 +157,7 @@ async function loadAgents(){
     .order("nombre", { ascending:true });
 
   if(error){
-    console.warn("ASSIGN_BOARD_AGENTS_ERROR", error);
+    console.warn("ASSIGN_BOARD_AGENTS_ERROR");
     AGENTS = [];
     return;
   }
@@ -204,6 +217,7 @@ function mountViewModal(){
 }
 
 function openView(){
+  if(!IS_ADMIN) return;
   mountViewModal();
   syncViewPills();
   $("#tcViewOverlay")?.classList.add("open");
@@ -239,6 +253,7 @@ function mountAssignModal(){
 }
 
 function openAssign(id){
+  if(!IS_ADMIN) return;
   const t = ticketById(id);
   if(!t) return;
   mountAssignModal();
@@ -255,6 +270,7 @@ function openAssign(id){
 function closeAssign(){ $("#tcAssignOverlay")?.classList.remove("open"); }
 
 async function saveAssignment(){
+  if(!IS_ADMIN){ closeAssign(); return; }
   if(BUSY) return;
   const ov = $("#tcAssignOverlay");
   const id = ov?.dataset?.id || "";
@@ -282,7 +298,7 @@ async function saveAssignment(){
   BUSY = false;
 
   if(error){
-    console.error("ASSIGN_BOARD_SAVE_ERROR", error);
+    console.error("ASSIGN_BOARD_SAVE_ERROR");
     alert(error.message || "No se pudo guardar asignación.");
     return;
   }
@@ -404,6 +420,13 @@ function applyAssignmentDecorations(){
   // B.1: desconectar el observer mientras decoramos para no auto-disparar el bucle
   // (las inserciones de badge son mutaciones childList y re-disparaban el observer).
   OBS?.disconnect();
+  if(!IS_ADMIN){
+    $("#tcAssignViewBtn")?.remove();
+    $("#tcAssignOverlay")?.remove();
+    $("#tcViewOverlay")?.remove();
+    $$(".tcAssignBadge").forEach(x=>x.remove());
+    return;
+  }
   mountViewButton();
   mountViewModal();
   mountAssignModal();
@@ -452,6 +475,7 @@ function bind(){
 async function boot(){
   mountStyles();
   await loadAgents();
+  if(!IS_ADMIN) return;
   mountViewButton();
   mountViewModal();
   mountAssignModal();

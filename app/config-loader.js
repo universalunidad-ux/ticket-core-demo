@@ -30,10 +30,28 @@ let _cache = null;
 let _loaded = false;
 let _loading = null;
 
+/* B19C/B19D — capability check con memoria de sesión.
+   Si site_config no existe/no está expuesta, se registra UNA vez por sesión de
+   navegador ("0") y no se vuelve a pedir: sin 404 repetido, sin consola ruidosa. */
+const CAP_KEY = "tc_sitecfg_available";
+const capGet = () => { try { return sessionStorage.getItem(CAP_KEY); } catch { return null; } };
+const capSet = (v) => { try { sessionStorage.setItem(CAP_KEY, v); } catch { /* noop */ } };
+
+/* true/false según disponibilidad real (cacheada por sesión). */
+export async function probeSiteConfig() {
+  const known = capGet();
+  if (known === "0") return false;
+  if (known === "1") return true;
+  await loadSiteConfig();
+  return capGet() === "1";
+}
+export const siteConfigKnownUnavailable = () => capGet() === "0";
+
 /* Lectura única cacheada. Nunca lanza: cualquier fallo → cache vacío → defaults. */
 export async function loadSiteConfig(force = false) {
   if (_loaded && !force) return _cache;
   if (_loading) return _loading;
+  if (capGet() === "0" && !force) { _cache = _cache || {}; _loaded = true; return _cache; }
   _loading = (async () => {
     const out = {};
     try {
@@ -42,8 +60,11 @@ export async function loadSiteConfig(force = false) {
         for (const row of r.data) {
           if (row && row.clave != null) out[row.clave] = row.valor;
         }
+        capSet("1");
+      } else if (r.error) {
+        capSet("0"); /* tabla ausente / sin permiso: no reintentar esta sesión */
       }
-    } catch (_) { /* tabla ausente / sin permiso → degradación con gracia */ }
+    } catch (_) { capSet("0"); }
     _cache = out;
     _loaded = true;
     _loading = null;
@@ -65,8 +86,10 @@ export function cfg(key, def = "") {
 export function configDefaults() { return { ...DEFAULTS }; }
 
 /* Aplica los valores configurados a todos los [data-cfg] del documento.
-   Solo toca texto plano (no HTML) por seguridad. */
+   Solo toca texto plano (no HTML) por seguridad.
+   B19C: si la página no tiene consumidores reales ([data-cfg]) NO se consulta nada. */
 export async function applyConfigDom(root = document) {
+  if (!root.querySelector("[data-cfg]")) return;
   await loadSiteConfig();
   root.querySelectorAll("[data-cfg]").forEach((el) => {
     const key = el.getAttribute("data-cfg");

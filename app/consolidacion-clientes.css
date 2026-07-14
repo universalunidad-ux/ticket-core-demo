@@ -1,0 +1,29 @@
+/* B19A/B19D-cont — cola de consolidación (comparación clara + gate honesto). */
+.cq-toolbar{grid-template-columns:repeat(3,minmax(160px,240px))}
+.cq-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--panel-2) 96%,transparent);margin-bottom:10px}
+.cq-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.cq-head .cl-name{overflow-wrap:anywhere}
+
+/* Comparación capturado vs candidato */
+.cq-compare{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cq-col{display:grid;gap:6px;align-content:start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 96%,transparent)}
+.cq-col-h{font-size:11px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.cq-col.is-cand{border-style:dashed;border-color:color-mix(in srgb,var(--brand) 40%,var(--line))}
+.cq-kv{display:grid;gap:1px;font-size:13px;min-width:0}
+.cq-kv .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.cq-kv .v{overflow-wrap:anywhere}
+.cq-match{color:var(--ok);font-weight:800}
+
+.cq-actions{display:flex;gap:8px;flex-wrap:wrap}
+.cq-actions .btn{min-height:36px;padding:7px 12px;font-size:13px}
+.cq-gate{display:grid;gap:6px;padding:12px 14px;border:1px dashed color-mix(in srgb,var(--warn) 45%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--warn) 6%,transparent);margin-top:10px}
+.cq-gate b{font-size:13.5px}
+.cq-gate span{font-size:12.5px;color:var(--muted);line-height:1.45}
+.cl-skel{height:52px;border-radius:14px;background:color-mix(in srgb,var(--panel-2) 92%,transparent);animation:cqPulse 1.2s ease-in-out infinite;margin-bottom:8px}
+@keyframes cqPulse{0%,100%{opacity:.55}50%{opacity:1}}
+
+@media (max-width:860px){
+  .cq-toolbar{grid-template-columns:1fr}
+  .cq-compare{grid-template-columns:1fr}
+  .cq-actions .btn{flex:1;justify-content:center}
+}
