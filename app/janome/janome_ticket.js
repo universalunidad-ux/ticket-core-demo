@@ -32,8 +32,8 @@ let PLANO = new Map(JANOME_PLANO.map((p) => [String(p.id), p]));
 // Carga janome_enriquecido.json (si está disponible). Llamar una vez al inicio.
 export async function cargarEnriquecido(url = null) {
   if (!url) {
-    ENRIQUECIDO = [];
-    return ENRIQUECIDO;
+    ENRIQUECIDO = new Map();
+    return true;
   }
   try {
     const res = await fetch(url);
