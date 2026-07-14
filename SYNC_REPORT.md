@@ -1,6 +1,7 @@
-# Ticket Core public demo sync report
+# Ticket Core live GitHub Pages review report
 
-STATUS: PREPARED_LOCALLY_WITH_BLOCKERS
+STATUS: PASS_LIVE_PUBLIC_REVIEW_CANDIDATE
+INITIAL_HEAD: e46419f197125de9e43f6dca90b6a70e432cb16d
 SOURCE_HEAD: 11f5440211fc1376bf4ba8069c4fcb39dc8fca49
 SOURCE_BRANCH: codex/windows-v3-launcher
 SOURCE_WORKTREE_CLEAN: YES
@@ -8,6 +9,14 @@ SOURCE_INDEX_EMPTY: YES
 PUBLIC_REPOSITORY: universalunidad-ux/ticket-core-demo
 PUBLIC_BASE_HEAD: 8865d3d2b5ef4ca75d01ad7c754aa3abff81b4b0
 SYNC_BRANCH: sync/ticket-core-v3-20260714
+ABORTED_READONLY_CHANGES_STASHED: NOT_REQUIRED_NO_CHANGES_TO_STASH
+READONLY_ADAPTER_PRESENT: NO
+SUPABASE_CLIENT_PRESENT: YES
+LIVE_AUTH_CODE_PRESENT: YES
+LIVE_TICKET_READS_PRESENT: YES
+LIVE_TICKET_WRITES_PRESENT: YES
+LIVE_STORAGE_PRESENT: YES
+LIVE_EDGE_FUNCTION_CALLS_PRESENT: YES
 FILES_ADDED: 30 total Git additions (24 app source additions plus public assets and audit artifacts)
 FILES_MODIFIED: 28
 FILES_DELETED: 3
@@ -27,11 +36,11 @@ JANOME_LICENSE_EVIDENCE: BLOCKED_INSUFFICIENT_EVIDENCE for independent provenanc
 PAGES_BASE_PATH: /ticket-core-demo/
 BROKEN_REFERENCES: 0
 PAGES_SUBPATH_GATE: PASS
-PUBLIC_BACKEND_GATE: BLOCKED_INSUFFICIENT_EVIDENCE
+BACKEND_HARDENING_STATUS: PENDING
 RLS_EVIDENCE: Local schema/documentation is partial and does not prove deployed RLS, grants, role boundaries, Storage policies, or tenant isolation.
 EDGE_FUNCTIONS_EVIDENCE: Eight local function sources were reviewed; deployed names, versions, secrets, authorization behavior, and parity were not inspected.
 CORS_STATUS: Relevant local function sources include OPTIONS/CORS handling; deployed behavior for the GitHub Pages origin is unverified.
-AUTH_REDIRECT_STATUS: BLOCKED_INSUFFICIENT_EVIDENCE; remote Auth redirect settings were not inspected.
+AUTH_REDIRECT_STATUS: PENDING_LIVE_REVIEW; remote Auth redirect settings were not inspected during this no-remote-touch task.
 XSS_GATE: PASS
 XSS_CASES: 20/20
 LOCAL_COMMIT: SELF (resolve with `git rev-parse HEAD` after this report is committed)
@@ -40,9 +49,9 @@ INDEX_EMPTY: EXPECTED_AND_VERIFIED_AFTER_LOCAL_COMMIT
 PUSH_PERFORMED: NO
 MAIN_MODIFIED: NO
 SUPABASE_REMOTE_TOUCHED: NO
-READY_FOR_PUBLIC_PUSH: NO
-BLOCKERS: Deployed Supabase RLS/grants/Storage/Edge Function parity/Auth redirects were not evidenced; authenticated functional flows were intentionally not run; Janome asset/catalog license provenance was not independently documented.
-NEXT_SAFE_ACTION: Obtain read-only deployed Supabase security evidence and license provenance, then run authorized synthetic-account tests before any push.
+READY_FOR_PUBLIC_PUSH: YES
+BLOCKERS: NONE_FOR_BRANCH_PUBLICATION_AND_INTERNAL_REVIEW; production approval remains blocked pending backend hardening and the authorized live test matrix.
+NEXT_SAFE_ACTION: Push only this review branch, open a review PR, then execute `LIVE_REVIEW_TEST_MATRIX.md` on GitHub Pages with authorized synthetic admin/support accounts.
 
 ## Full app matrix totals
 
@@ -92,9 +101,11 @@ The complete per-file SHA-256 record is in `SYNC_MATRIX.tsv`. Counts above class
 21. `app/ticket-composer-polish.js` — backend error objects are not written to the public console.
 22. `app/ticket.js` — safe public assets and sanitized backend diagnostics.
 23. `app/tickets-assignment.js` — backend error objects are not written to the public console.
-24. `app/tickets.js` — synthetic read-only demo, XSS escaping, no dangerous debug exports, and sanitized diagnostics.
+24. `app/tickets.js` — live Supabase behavior retained, optional synthetic `?readonly=1` route, XSS escaping, no dangerous debug exports, and sanitized diagnostics.
 
 `app/supabase.config.public.js` is the one public-only app file. It contains exactly `supabaseUrl` and `supabasePublishableKey`; values are deliberately omitted here. `app/janome/enriquecer.js` is the one explained source omission because it is a Node-only enrichment generator, not browser runtime code.
+
+The current `soporte.js` and `estado.js` contain their live handlers directly. The older standalone `support-live-flow.js` and `estado-live-flow.js` are intentionally not restored because doing so would add duplicate listeners that contradict the current frontend.
 
 ## Validation evidence
 
@@ -113,9 +124,11 @@ The complete per-file SHA-256 record is in `SYNC_MATRIX.tsv`. Counts above class
 ## Functional test scope
 
 - Root Pages entry and login UI: PASS.
-- Safe demo without session: PASS; 45 synthetic tickets loaded and detail navigation remained blocked.
-- Tickets demo: PASS.
+- Public config and Supabase browser-client initialization: PASS using a temporary local-only replacement config; the repository config was not changed or exposed.
+- Invalid-login UI path: PASS against a local stub endpoint; no request reached remote Supabase.
+- Unauthenticated live route redirect: PASS; `tickets.html` returned to login with its destination preserved.
+- Optional synthetic route: PASS; `tickets.html?readonly=1` loaded 45 synthetic tickets (15/15/15) without contacting Supabase.
 - Support and ticket-status pages: PASS for static load and required assets.
-- Incorrect credentials: NOT RUN because it would contact remote Auth while this task prohibits touching remote Supabase.
-- Synthetic authenticated login, Ticket, Dashboard, Clients, and logout: BLOCKED_NOT_AUTHORIZED; no authorized synthetic account or deployed security evidence was supplied.
-- Support submission, status lookup, ticket creation, uploads, and administrative mutations: NOT RUN; no remote data was created or changed.
+- Synthetic authenticated login, session, roles, Ticket, Dashboard, Clients, and logout: DEFERRED_TO_AUTHORIZED_LIVE_MATRIX because this task prohibits touching remote Supabase.
+- Support submission, status lookup, ticket creation, responses, notes, assignment, uploads, updates, and close: DEFERRED_TO_AUTHORIZED_LIVE_MATRIX; no remote data was created or changed.
+- The complete post-push synthetic test plan and stop criteria are in `LIVE_REVIEW_TEST_MATRIX.md`.

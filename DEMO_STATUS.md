@@ -1,20 +1,21 @@
-# Ticket Core Demo — estado controlado
+# Ticket Core Demo — revisión interna live
 
-Este repositorio sirve una demostración navegable de Ticket Core mediante GitHub Pages bajo `/ticket-core-demo/`.
+Este repositorio sirve una instancia live de revisión interna de Ticket Core mediante GitHub Pages bajo `/ticket-core-demo/`.
 
 ## Alcance
 
 - La interfaz se sincroniza desde una revisión local aprobada.
 - `supabase.config.public.js` contiene únicamente la URL pública del proyecto y su publishable key.
 - No se publica configuración local, claves de servidor, variables de entorno, instaladores, dumps ni datos reales.
-- La ruta `tickets.html?readonly=1` usa sólo datos sintéticos en memoria y no consulta ni modifica Supabase.
-- Los formularios públicos y el acceso autenticado conservan el cliente Supabase; su autorización efectiva depende del backend.
+- El login, la sesión persistente, las pantallas internas, Storage y las Edge Functions conservan la integración real con Supabase.
+- La ruta opcional `tickets.html?readonly=1` sigue disponible como vista sintética de 45 tickets, pero no sustituye los flujos live autenticados.
+- Los formularios públicos y el acceso autenticado dependen de los permisos efectivos del backend.
 
 ## Estado de seguridad
 
-La evidencia local no basta para certificar el conjunto desplegado de RLS, grants, vistas, Storage, redirects de Auth y funciones remotas. Por ello, `PUBLIC_BACKEND_GATE` permanece `BLOCKED_INSUFFICIENT_EVIDENCE` hasta una revisión remota separada y autorizada.
+`BACKEND_HARDENING_STATUS` permanece `PENDING`: la evidencia local no certifica el conjunto desplegado de RLS, grants, vistas, Storage, redirects de Auth y funciones remotas. Esta observación no desactiva la integración live solicitada, pero impide declarar el entorno apto para producción.
 
-No uses datos reales para probar la demo. No publiques secretos, capturas con información personal ni credenciales en issues.
+Las pruebas deben usar exclusivamente cuentas y registros sintéticos autorizados. No publiques secretos, capturas con información personal ni credenciales en issues.
 
 ## Janome
 
