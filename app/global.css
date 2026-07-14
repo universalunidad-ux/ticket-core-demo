@@ -75,3 +75,9 @@ input.btn-brand,
   color:inherit!important;
   -webkit-text-fill-color:inherit!important;
 }
+
+/* Controles canónicos de sesión del appShell. */
+.app-logout-btn{width:auto!important;min-width:54px!important;padding:0 12px!important;font-size:12px!important;font-weight:850!important}
+.app-drawer-logout{width:100%;margin-top:auto;text-align:left;cursor:pointer}
+.app-drawer-logout:disabled,.app-logout-btn:disabled{opacity:.55;cursor:wait}
+@media(max-width:980px){.app-logout-btn{display:none!important}}

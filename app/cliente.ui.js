@@ -83,7 +83,7 @@ export function renderTickets(data) {
   if (!tickets.length) return emptyBox(
     "Este cliente aún no tiene tickets",
     "Aquí aparecerá el historial de casos: folio, estado, prioridad, agente y última actualización.",
-    '<a class="btn btn-ghost" href="soporte.html">Crear un ticket</a>',
+    `<a class="btn btn-ghost" href="soporte.html?from=cliente&amp;returnTo=cliente.html${location.search?`%3F${encodeURIComponent(location.search.slice(1))}`:""}">Crear un ticket</a>`,
   );
   return `<div class="cf-list">${tickets.map(t => `
     <div class="cf-ticket cf-link" data-ticket="${esc(t.id)}" role="link" tabindex="0">
