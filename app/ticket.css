@@ -1500,6 +1500,8 @@ body[data-page="ticket"] .tc-supervisor-send{
   padding:0 18px!important;
   font-weight:950!important;
 }
+@keyframes tc-admin-ellipsis{0%{content:""}33%{content:"."}66%{content:".."}100%{content:"..."}}
+body[data-page="ticket"] .tc-supervisor-send.is-sending::after{content:"";display:inline-block;width:1.25em;text-align:left;animation:tc-admin-ellipsis 1.1s steps(1,end) infinite}
 
 
 /* B16C_SUPERVISION_REFINE */
@@ -2041,6 +2043,11 @@ body[data-page="ticket"] #tkQrModal .tk-qr-vars-row{display:grid!important;grid-
 body[data-page="ticket"] #tkQrModal .tk-qr-vars-row:last-child{border-bottom:0!important}
 body[data-page="ticket"] #tkQrModal .tk-qr-vars-row code{font-family:ui-monospace,monospace!important;font-size:.82rem!important;padding:2px 6px!important;border-radius:6px!important;background:rgba(148,163,184,.14)!important;white-space:nowrap!important;color:var(--text)!important}
 body[data-page="ticket"] #tkQrModal .tk-qr-vars-row span{font-size:.84rem!important;color:var(--muted)!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-row{grid-template-columns:minmax(130px,.7fr) 126px minmax(0,1.35fr) 36px!important}
+body[data-page="ticket"] #tkQrModal .tk-qr-type{height:36px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);color:var(--text);padding:0 9px;font-weight:800}
+body[data-page="ticket"] .qr-pill{display:inline-flex!important;align-items:center!important;gap:7px!important}
+body[data-page="ticket"] .qr-pill-type{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border-radius:999px;background:color-mix(in srgb,var(--brand) 11%,var(--panel));color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+@media(max-width:680px){body[data-page="ticket"] #tkQrModal .tk-qr-row{grid-template-columns:1fr 118px 34px!important}body[data-page="ticket"] #tkQrModal .tk-qr-text{grid-column:1/-1!important}}
 
 body[data-page="ticket"] .tk-qr-row{
   display:grid!important;
@@ -2775,7 +2782,7 @@ body[data-page="ticket"] #logArea .log-msg.tc-close-system-event .log-text{
   font-weight:950!important;
 }
 
-/* ---------- Supervisión: "Sistema · Mensaje enviado a supervisión" + comentario ---------- */
+/* ---------- Supervisión: un solo titular semántico + fecha ---------- */
 body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision,
 body[data-page="ticket"] #logArea .log-msg.sys.tc-msg-supervision{
   position:relative!important;
@@ -2788,7 +2795,7 @@ body[data-page="ticket"] #logArea .log-msg.sys.tc-msg-supervision{
   min-width:min(320px,100%)!important;
   width:auto!important;
   max-width:min(600px,80%)!important;
-  padding:10px 88px 28px 14px!important;
+  padding:12px 88px 28px 14px!important;
   border-radius:18px!important;
   background:color-mix(in srgb,#1d4ed8 8%,var(--panel))!important;
   border-color:color-mix(in srgb,#1d4ed8 34%,var(--line))!important;
@@ -2801,14 +2808,10 @@ body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta{
   color:#1d4ed8!important;
 }
 body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta b{
-  display:inline!important;
-  color:#1d4ed8!important;
-  font-weight:950!important;
+  display:none!important;
 }
 body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta b::after{
-  content:" · Mensaje enviado a supervisión";
-  color:#1d4ed8!important;
-  font-weight:950!important;
+  content:none!important;
 }
 body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .log-meta span{
   position:absolute!important;
@@ -2837,16 +2840,20 @@ body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .tc-supervision-ca
   font-weight:400!important;
   white-space:normal!important;
 }
-/* El título lo pinta .log-meta b::after; el preview reenviado ya no se usa. */
-body[data-page="ticket"] #logArea .tc-supervision-title,
+body[data-page="ticket"] #logArea .tc-supervision-title{
+  display:block!important;
+  color:#1d4ed8!important;
+  font-weight:950!important;
+}
 body[data-page="ticket"] #logArea .tc-supervision-forward-preview,
 body[data-page="ticket"] #logArea .tc-supervision-forward-thumb,
-body[data-page="ticket"] #logArea .tc-supervision-forward-copy{
+body[data-page="ticket"] #logArea .tc-supervision-forward-copy,
+body[data-page="ticket"] #logArea .tc-supervision-comment{
   display:none!important;
 }
 /* Comentario: crece con su contenido. (Antes: max-height 68px + hidden.) */
 body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .tc-supervision-comment{
-  display:block!important;
+  display:none!important;
   margin:0!important;
   padding:0!important;
   height:auto!important;

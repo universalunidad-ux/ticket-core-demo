@@ -49,8 +49,8 @@
      colapsaba el formulario completo y no se podía elegir producto. -->
 <div class="form-grid" id="spIdentityFields">
   <div class="field"><label class="lbl" for="spName">Nombre <span class="req">*</span></label><input class="input" id="spName" maxlength="80" autocomplete="name" placeholder="Tu nombre"></div>
-  <div class="field"><label class="lbl" for="spEmail">Correo <span class="req">*</span></label><input class="input" id="spEmail" type="email" maxlength="120" autocomplete="email" placeholder="correo@ejemplo.com"></div>
-  <div class="field"><label class="lbl" for="spPhone">Teléfono <span class="req">*</span></label><div class="jn-phone"><input class="jn-phone-input" id="spPhone" type="tel" inputmode="numeric" placeholder="10 dígitos"><label class="jn-wa hidden" id="spWhatsRow"><input type="checkbox" id="spWhats"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>¿Este número tiene WhatsApp?</span></label></div></div>
+  <div class="field"><label class="lbl" for="spEmail">Correo <span class="req">*</span></label><input class="input" id="spEmail" type="email" maxlength="120" autocomplete="email" inputmode="email" aria-describedby="spEmailError" placeholder="correo@ejemplo.com"><div class="sp-field-error" id="spEmailError" aria-live="polite"></div></div>
+  <div class="field"><label class="lbl" for="spPhone">Teléfono <span class="req">*</span></label><div class="jn-phone"><input class="jn-phone-input" id="spPhone" type="tel" inputmode="tel" autocomplete="tel" aria-describedby="spPhoneError" placeholder="10 dígitos"><label class="jn-wa hidden" id="spWhatsRow"><input type="checkbox" id="spWhats"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>¿Este número tiene WhatsApp?</span></label></div><div class="sp-field-error" id="spPhoneError" aria-live="polite"></div></div>
   <div class="field"><label class="lbl" for="spCompany">Empresa o negocio</label><input class="input" id="spCompany" placeholder="Opcional"></div>
 </div>
 

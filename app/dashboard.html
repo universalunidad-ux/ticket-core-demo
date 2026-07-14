@@ -14,8 +14,8 @@
      también se retiró: global.js (importado por dashboard.js) ya gestiona el tema;
      tener ambos duplicaba el listener del toggle. -->
 </head>
-<body data-surface="admin" data-page="dashboard">
-<header class="topbar" id="navInterna"></header>
+<body data-surface="admin" data-shell="app" data-page="dashboard">
+<div id="appShell"></div>
 
 <main class="wrap">
   <!-- Hero compacto: rol + contexto + máximo 2 acciones. Sin KPIs ni navegación. -->
@@ -26,7 +26,7 @@
       <p class="mut" id="dashLead">Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.</p>
       <div class="dash-hero-meta">
         <span class="tag ok" id="dashRoleBadge">Cargando…</span>
-        <span class="tag" id="dashScope">Toda la operación</span>
+        <span class="tag" id="dashScope" hidden></span>
       </div>
     </div>
     <div class="dash-hero-actions">

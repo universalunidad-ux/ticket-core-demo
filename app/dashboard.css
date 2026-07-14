@@ -56,11 +56,14 @@ a.kpi:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--bran
 @media(max-width:700px){.dash-agent-grid{grid-template-columns:1fr}.dash-agent-metrics,.dash-agent-detail{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .dash-supervision-list{display:grid;gap:8px;margin-top:10px}
+.dash-supervision-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:15px;background:color-mix(in srgb,var(--info) 4%,var(--panel-2))}
+.dash-supervision-thumb{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;overflow:hidden;background:color-mix(in srgb,var(--info) 10%,var(--panel));color:var(--info);font-weight:950}.dash-supervision-thumb img{width:100%;height:100%;object-fit:cover}
+.dash-supervision-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.dash-supervision-main a{font-weight:900;color:var(--text)}.dash-supervision-main>span{font-size:12px;color:var(--muted)}
 .dash-supervision-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--warn) 5%,var(--panel-2));color:var(--text);text-decoration:none}
 .dash-supervision-row:hover{border-color:color-mix(in srgb,var(--warn) 42%,var(--line))}
 .dash-supervision-main{display:grid;gap:3px;min-width:0}.dash-supervision-main span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .dash-supervision-meta{display:flex;gap:7px;align-items:center;justify-content:flex-end;color:var(--muted);font-size:11px;white-space:nowrap}
-@media(max-width:720px){.dash-supervision-row{grid-template-columns:1fr}.dash-supervision-meta{justify-content:flex-start;flex-wrap:wrap}}
+@media(max-width:720px){.dash-supervision-row,.dash-supervision-card{grid-template-columns:44px minmax(0,1fr)}.dash-supervision-meta{grid-column:1/-1;justify-content:flex-start;flex-wrap:wrap}.dash-supervision-thumb{width:44px;height:44px}}
 
 /* ---- Administración: tabs + paneles lazy ---- */
 .adm-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -116,12 +119,14 @@ a.kpi:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--bran
 
 /* Bitácora admin */
 .adm-log{display:grid;gap:6px}
+.adm-log-filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(150px,.45fr) minmax(150px,.45fr);gap:8px}
 .adm-log-row{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;font-size:12.5px;background:color-mix(in srgb,var(--panel-2) 96%,transparent)}
-.adm-log-row .mut{white-space:nowrap}
+.adm-log-row>span:first-child{display:grid;gap:4px;min-width:0}.adm-log-row>span:last-child{white-space:nowrap;text-align:right}.adm-log-row small{overflow-wrap:anywhere}
 
 @media(max-width:560px){
   .dash-hero{padding:14px}
   .dash-hero-actions{width:100%}
   .dash-hero-actions .btn{flex:1;justify-content:center}
   .dash-mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .adm-log-filters{grid-template-columns:1fr}.adm-log-row{display:grid}.adm-log-row>span:last-child{text-align:left}
 }

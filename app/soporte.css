@@ -394,3 +394,6 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
     max-height:48vh !important;
   }
 }
+/* Validación accesible de identidad pública. */
+.sp-field-error{min-height:18px;margin-top:5px;color:var(--danger);font-size:12px;font-weight:700;line-height:1.35}
+#spEmail:invalid:not(:placeholder-shown),#spPhone:invalid:not(:placeholder-shown){border-color:color-mix(in srgb,var(--danger) 55%,var(--line))}

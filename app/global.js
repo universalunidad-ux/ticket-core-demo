@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded",()=>{initTheme();initThemeToggle();
    altas.html no existe). Se añade Consolidación (consolidacion-clientes.html). */
 const APP_MENU={
   soporte:[
-    {key:"dashboard",label:"Inicio",href:"dashboard.html",icon:"⌂"},
+    {key:"dashboard",label:"Dashboard",href:"dashboard.html",icon:"⌂"},
     {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
     {key:"clientes",label:"Clientes",href:"clientes.html",icon:"👥"},
     {key:"consolidacion",label:"Consolidación",href:"consolidacion-clientes.html",icon:"🔗"},
@@ -37,14 +37,14 @@ const APP_MENU={
     {key:"recent_clients",label:"Últimos clientes",panel:"recent_clients",icon:"🕘"}
   ],
   ventas:[
-    {key:"dashboard",label:"Inicio",href:"dashboard.html",icon:"⌂"},
+    {key:"dashboard",label:"Dashboard",href:"dashboard.html",icon:"⌂"},
     {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
     {key:"clientes",label:"Clientes",href:"clientes.html",icon:"👥"},
     {key:"altas",label:"Alta de cliente",href:"alta-cliente.html",icon:"＋"},
     {key:"ventas",label:"Ventas",icon:"📈",children:[{panel:"oportunidades",label:"Oportunidades"},{panel:"renovaciones",label:"Renovaciones"}]}
   ],
   admin:[
-    {key:"dashboard",label:"Inicio",href:"dashboard.html",icon:"⌂"},
+    {key:"dashboard",label:"Dashboard",href:"dashboard.html",icon:"⌂"},
     {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
     {key:"clientes",label:"Clientes",href:"clientes.html",icon:"👥"},
     {key:"consolidacion",label:"Consolidación",href:"consolidacion-clientes.html",icon:"🔗"},
@@ -64,15 +64,64 @@ const navItemHtml=item=>item.children?`<div class="app-nav-dd"><button class="ap
 const drawerItemHtml=item=>item.children?`<div class="app-drawer-group"><button class="app-drawer-item" type="button" data-drawer-group="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b><i>›</i></button><div class="app-drawer-sub">${item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join("")}</div></div>`:item.panel?`<button class="app-drawer-item" type="button" data-open-panel="${esc(item.panel)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b></button>`:`<a class="app-drawer-item" href="${esc(item.href)}" data-nav="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b>${item.badge==="open"?`<em id="railOpenCountMob">0</em>`:""}</a>`;
 const headerMoreItemHtml=item=>item.children?item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join(""):item.panel?`<button type="button" data-open-panel="${esc(item.panel)}">${esc(item.label)}</button>`:`<a href="${esc(item.href)}" data-nav="${esc(item.key)}">${esc(item.label)}</a>`;
 const moreItemHtml=item=>item.children?item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join(""):item.panel?`<button type="button" data-open-panel="${esc(item.panel)}">${esc(item.label)}</button>`:`<a href="${esc(item.href)}" data-nav="${esc(item.key)}">${esc(item.label)}</a>`;
-const appHeaderHtml=(role,page,{title=""}={})=>{const items=APP_MENU[role]||APP_MENU.soporte,ttl=title||pageTitleMap[page]||"Panel interno",main=items.filter(x=>["dashboard","tickets","clientes"].includes(x.key)),more=[...items.filter(x=>["altas","recent_clients"].includes(x.key))];return`<div class="app-hotzone" id="appHotzone" aria-hidden="true"></div><header class="app-header" id="appHeader"><div class="app-head-inner"><a class="app-brand" href="dashboard.html" aria-label="Inicio Ticket Core"><strong>Ticket Core</strong></a><nav class="app-nav" aria-label="Principal">${main.map(navItemHtml).join("")}${more.length?`<div class="app-nav-dd"><button class="app-nav-link" type="button"><b>Más</b><i>⌄</i></button><div class="app-nav-menu app-nav-menu-right">${more.map(moreItemHtml).join("")}</div></div>`:""}</nav><div class="app-head-tools"><div class="global-search app-search"><input class="input" id="globalSearchInput" placeholder="Buscar" autocomplete="off"><div class="suggest-panel hidden" id="globalSearchSuggest" hidden></div></div><button class="app-head-btn app-theme-btn" data-theme-toggle type="button" aria-label="Tema">🌓</button><button class="app-head-btn app-logout-btn" data-app-logout type="button" aria-label="Salir">Salir</button><button class="app-burger" id="appBurger" type="button" aria-label="Abrir menú" aria-expanded="false">≡</button></div></div></header><div class="app-mobile-title"><h1>${esc(ttl)}</h1></div><div class="app-dim" id="appDim" hidden></div><aside class="app-drawer" id="appDrawer" aria-hidden="true" hidden><div class="app-drawer-head"><a class="app-brand" href="dashboard.html" aria-label="Inicio Ticket Core"><strong>Ticket Core</strong></a><button class="app-drawer-close" id="appDrawerClose" type="button" aria-label="Cerrar">×</button></div><div class="app-drawer-body">${items.map(drawerItemHtml).join("")}<button class="app-drawer-item app-drawer-logout" data-app-logout type="button"><span>↪</span><b>Salir</b></button></div></aside>`};
+const historyIcon=direction=>direction==="back"
+  ?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>'
+  :'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+const appBrandHtml=()=>`<a class="app-brand" href="dashboard.html" aria-label="Inicio Janome"><img src="../IMG/janome.jpg" alt=""><strong>JANOME</strong></a>`;
+const appHeaderHtml=(role,page,{title=""}={})=>{
+  const items=APP_MENU[role]||APP_MENU.soporte;
+  const ttl=title||pageTitleMap[page]||"Panel interno";
+  const primaryKeys=new Set(["dashboard","tickets","clientes","consolidacion","admin_tools"]);
+  const main=items.filter(x=>primaryKeys.has(x.key));
+  const more=items.filter(x=>!primaryKeys.has(x.key));
+  return`<header class="app-header" id="appHeader"><div class="app-head-inner"><div class="app-head-start"><div class="app-history" aria-label="Historial"><button class="app-history-btn" type="button" data-history="back" aria-label="Atrás" disabled>${historyIcon("back")}</button><button class="app-history-btn" type="button" data-history="forward" aria-label="Adelante" disabled>${historyIcon("forward")}</button></div>${appBrandHtml()}</div><nav class="app-nav" aria-label="Principal">${main.map(navItemHtml).join("")}${more.length?`<div class="app-nav-dd app-more"><button class="app-nav-link" type="button" data-more-toggle aria-expanded="false" aria-controls="appMoreMenu"><b>Más</b><i aria-hidden="true">⌄</i></button><div class="app-nav-menu app-nav-menu-right" id="appMoreMenu">${more.map(moreItemHtml).join("")}</div></div>`:""}</nav><div class="app-head-tools"><div class="global-search app-search"><input class="input" id="globalSearchInput" placeholder="Buscar" autocomplete="off" aria-label="Búsqueda global"><div class="suggest-panel hidden" id="globalSearchSuggest" hidden></div></div><button class="app-head-btn app-theme-btn" data-theme-toggle type="button" aria-label="Tema">🌓</button><button class="app-head-btn app-logout-btn" data-app-logout type="button" aria-label="Salir">Salir</button><button class="app-burger" id="appBurger" type="button" aria-label="Abrir menú" aria-expanded="false">≡</button></div></div></header><div class="app-mobile-title"><h1>${esc(ttl)}</h1></div><div class="app-dim" id="appDim" hidden></div><aside class="app-drawer" id="appDrawer" aria-hidden="true" hidden><div class="app-drawer-head">${appBrandHtml()}<button class="app-drawer-close" id="appDrawerClose" type="button" aria-label="Cerrar">×</button></div><div class="app-drawer-body">${items.map(drawerItemHtml).join("")}<button class="app-drawer-item app-drawer-logout" data-app-logout type="button"><span>↪</span><b>Salir</b></button></div></aside>`;
+};
 const panelHtml=()=>`<div class="app-panel-backdrop" id="appPanelBackdrop"></div><aside class="app-panel app-panel-left" id="appPanel" aria-hidden="true"><div class="app-panel-head"><div><div class="app-panel-title" id="appPanelTitle">Panel</div><div class="app-panel-sub" id="appPanelSub">Vista interna</div></div><button class="close-x" id="appPanelClose" type="button" aria-label="Cerrar panel">×</button></div><div class="app-panel-body" id="appPanelBody"></div></aside>`;
 
 const openAppDrawer=()=>{const d=$("#appDrawer"),m=$("#appDim"),b=$("#appBurger");if(!d)return;d.hidden=false;d.inert=false;m&&(m.hidden=false);requestAnimationFrame(()=>{document.documentElement.classList.add("app-drawer-open");d.setAttribute("aria-hidden","false");b?.setAttribute("aria-expanded","true");$("#appDrawerClose")?.focus()})};
 const closeAppDrawer=()=>{const d=$("#appDrawer"),m=$("#appDim"),b=$("#appBurger");document.documentElement.classList.remove("app-drawer-open");if(d){blurInside(d);d.inert=true;d.setAttribute("aria-hidden","true")}b?.setAttribute("aria-expanded","false");setTimeout(()=>{if(!document.documentElement.classList.contains("app-drawer-open")){d&&(d.hidden=true);m&&(m.hidden=true)}},180)};
 
 const performAppLogout=async()=>{const root=document.documentElement;if(root.dataset.logoutPending==="1")return;root.dataset.logoutPending="1";document.querySelectorAll("[data-app-logout]").forEach(b=>b.disabled=true);try{const{logout}=await import("./supabase.js");await logout("index.html")}catch(err){delete root.dataset.logoutPending;document.querySelectorAll("[data-app-logout]").forEach(b=>b.disabled=false);toast("No se pudo cerrar la sesión.","bad");console.error("APP_LOGOUT_ERROR",err?.message||"logout_failed")}};
-const initAppHeader=(page)=>{if(document.documentElement.dataset.appHeaderBound)return;document.documentElement.dataset.appHeaderBound="1";document.addEventListener("click",e=>{if(e.target.closest("[data-app-logout]")){e.preventDefault();return performAppLogout()}if(e.target.closest("#appBurger"))return openAppDrawer();if(e.target.closest("#appDrawerClose")||e.target.closest("#appDim"))return closeAppDrawer();const g=e.target.closest("[data-drawer-group]");if(g)return g.closest(".app-drawer-group")?.classList.toggle("open");if(e.target.closest(".app-drawer a,.app-drawer [data-open-panel]"))closeAppDrawer()});document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAppDrawer()});document.querySelectorAll("[data-nav]").forEach(x=>x.classList.remove("is-active"));if(page)document.querySelectorAll(`[data-nav="${page}"]`).forEach(x=>x.classList.add("is-active"))};
-export const ensureAppShell=({page,title="",kicker="",actionsHtml="",role="soporte"}={})=>{const shell=$("#appShell");if(!shell)return;const rk=roleKey(role),mountedHeader=shell.querySelector("#appHeader"),mountedPanel=shell.querySelector("#appPanel");if(mountedHeader&&mountedPanel){setAppRole(rk);bindGlobalSearch();initAppHeader(page);document.querySelectorAll("[data-nav]").forEach(x=>x.classList.remove("is-active"));if(page)document.querySelectorAll(`[data-nav="${page}"]`).forEach(x=>x.classList.add("is-active"));return}shell.innerHTML=`${appHeaderHtml(rk,page,{title,kicker,actionsHtml})}${panelHtml()}`;initAppHeader(page);initAppPanel();setAppRole(rk);bindGlobalSearch()};
+const appPathRoot=()=>{const p=location.pathname,i=p.lastIndexOf("/app/");return i>=0?p.slice(0,i+5):p.slice(0,p.lastIndexOf("/")+1)};
+const isSafeHistoryUrl=value=>{try{const u=new URL(value,location.href);return u.origin===location.origin&&u.pathname.startsWith(appPathRoot())}catch{return false}};
+const historyEntry=delta=>{try{if(!globalThis.navigation?.entries)return null;const entries=navigation.entries(),idx=entries.findIndex(x=>x.key===navigation.currentEntry?.key);return idx>=0?entries[idx+delta]||null:null}catch{return null}};
+const updateHistoryButtons=()=>{
+  const back=$("[data-history=back]"),forward=$("[data-history=forward]");
+  const navBack=historyEntry(-1),navForward=historyEntry(1);
+  if(back)back.disabled=globalThis.navigation?.entries?!isSafeHistoryUrl(navBack?.url):!isSafeHistoryUrl(document.referrer);
+  if(forward)forward.disabled=!isSafeHistoryUrl(navForward?.url);
+};
+const navigateHistory=delta=>{
+  const entry=historyEntry(delta);
+  if(entry&&isSafeHistoryUrl(entry.url))return navigation.traverseTo(entry.key);
+  if(delta<0&&isSafeHistoryUrl(document.referrer))history.back();
+};
+const closeMoreMenu=()=>{const wrap=$(".app-more"),btn=$("[data-more-toggle]");wrap?.classList.remove("is-open");btn?.setAttribute("aria-expanded","false")};
+const initAppHeader=(page)=>{
+  if(!document.documentElement.dataset.appHeaderBound){
+    document.documentElement.dataset.appHeaderBound="1";
+    document.addEventListener("click",e=>{
+      const historyBtn=e.target.closest("[data-history]");
+      if(historyBtn){e.preventDefault();if(!historyBtn.disabled)navigateHistory(historyBtn.dataset.history==="back"?-1:1);return}
+      const more=e.target.closest("[data-more-toggle]");
+      if(more){e.preventDefault();const open=!more.closest(".app-more")?.classList.contains("is-open");closeMoreMenu();more.closest(".app-more")?.classList.toggle("is-open",open);more.setAttribute("aria-expanded",String(open));return}
+      if(e.target.closest(".app-more .app-nav-menu a,.app-more .app-nav-menu button"))closeMoreMenu();
+      else if(!e.target.closest(".app-more"))closeMoreMenu();
+      if(e.target.closest("[data-app-logout]")){e.preventDefault();return performAppLogout()}
+      if(e.target.closest("#appBurger"))return openAppDrawer();
+      if(e.target.closest("#appDrawerClose")||e.target.closest("#appDim"))return closeAppDrawer();
+      const g=e.target.closest("[data-drawer-group]");
+      if(g)return g.closest(".app-drawer-group")?.classList.toggle("open");
+      if(e.target.closest(".app-drawer a,.app-drawer [data-open-panel]"))closeAppDrawer();
+    });
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMoreMenu();closeAppDrawer()}});
+    globalThis.navigation?.addEventListener?.("navigatesuccess",updateHistoryButtons);
+  }
+  updateHistoryButtons();
+  document.querySelectorAll("[data-nav]").forEach(x=>x.classList.remove("is-active"));
+  if(page)document.querySelectorAll(`[data-nav="${page}"]`).forEach(x=>x.classList.add("is-active"));
+};
+export const ensureAppShell=({page,title="",kicker="",actionsHtml="",role="soporte"}={})=>{const shell=$("#appShell");if(!shell)return;const rk=roleKey(role),mountedHeader=shell.querySelector("#appHeader"),mountedPanel=shell.querySelector("#appPanel"),roleChanged=shell.dataset.appRole&&shell.dataset.appRole!==rk;if(mountedHeader&&mountedPanel&&!roleChanged){setAppRole(rk);bindGlobalSearch();initAppHeader(page);return}shell.dataset.appRole=rk;shell.innerHTML=`${appHeaderHtml(rk,page,{title,kicker,actionsHtml})}${panelHtml()}`;initAppHeader(page);initAppPanel();setAppRole(rk);bindGlobalSearch()};
 export const autoAppShell=()=>{const b=document.body;if(!b||b.dataset.shell!=="app"||!$("#appShell")||$("#appHeader"))return;const page=b.dataset.page||"dashboard";ensureAppShell({page,title:pageTitleMap[page]||page||"Panel",role:b.dataset.role||"soporte"})};
 
 
@@ -118,5 +167,3 @@ export const ticketPriorityCls=v=>{const x=norm(v);return x==="urgente"?"bad":x=
 export const telHref=v=>{const d=String(v||"").replace(/\D+/g,"");return d?`tel:${d}`:"#"};
 export const mailHref=v=>String(v||"").trim()?`mailto:${String(v).trim()}`:"#";
 export const ago=v=>{if(!v)return"—";const s=Math.floor((Date.now()-new Date(v).getTime())/1000);if(s<60)return`hace ${s}s`;if(s<3600)return`hace ${Math.floor(s/60)}m`;if(s<86400)return`hace ${Math.floor(s/3600)}h`;return`hace ${Math.floor(s/86400)}d`};
-
-(()=>{if(window.__appHeadTap)return;window.__appHeadTap=1;const touch=()=>matchMedia("(hover:none)").matches,close=()=>document.body.classList.remove("app-head-open");document.addEventListener("click",e=>{const hot=e.target.closest?.(".app-hotzone"),head=e.target.closest?.(".app-header");if(hot&&touch()){document.body.classList.toggle("app-head-open");return}if(touch()&&!head)close()},{passive:true});document.addEventListener("keydown",e=>{if(e.key==="Escape")close()})})();
