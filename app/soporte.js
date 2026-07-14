@@ -1,7 +1,6 @@
 import{$,$$,toast,esc,debounce}from"./global.js";
 import{supabase}from"./supabase.js";
 import{poblarSelect,montarBuscadorEquipo}from"./janome/janome_catalogo.js?v=b17c43f-20260710_011946";
-import{cargarEnriquecido}from"./janome/janome_ticket.js";
 
 // Etiqueta legible del equipo Janome elegido (el <select> guarda el ID interno).
 const sistemaLabel=()=>{const o=$("#spSystem")?.selectedOptions?.[0];if(!o||!o.value)return"";if(o.value==="OTRO"){const t=($("#spOtroModelo")?.value||"").trim();return t?`Otro: ${t}`:"Otro / no aparece en la lista";}const nombre=o.dataset?.nombre||o.textContent||"";const grupo=o.dataset?.grupo||"";return grupo?`Janome ${nombre} (${grupo})`:`Janome ${nombre}`};
@@ -392,7 +391,7 @@ const bindSupportFormWheel=()=>{
   },{passive:false});
 };
 
-document.addEventListener("DOMContentLoaded",async()=>{mountSupportBack();const box=document.createElement("div");box.id="spFilesMeta";box.className="list";$("#spFiles")?.closest(".field")?.appendChild(box);const fst=document.createElement("div");fst.id="spFilesStatus";fst.className="sp-files-status mut";fst.hidden=true;$("#spFiles")?.closest(".field")?.appendChild(fst);poblarSelect($("#spSystem"));montarBuscadorEquipo($("#spSystem"),$("#spEquipoCombo"));cargarEnriquecido("./janome/janome_enriquecido.json").catch(()=>console.warn("Catálogo enriquecido no disponible aún"));bind();bindSupportFormWheel();$("#spSystem")?.addEventListener("change",preview);preview();renderFiles();renderFaq(null);evalFaq();syncUrgentUi();syncWhats();syncOtro();hydrateKnownIdentity();bindB17C43B();if(restoreDraft()){preview();evalFaq();setStatus("Restauramos tu borrador. Por seguridad, vuelve a seleccionar tus archivos si recargaste la página.","ok")}if(!TURNSTILE_ENABLED)$("#spTurnstileWrap")?.classList.add("hidden");await loadGlobalNotice()});
+document.addEventListener("DOMContentLoaded",async()=>{mountSupportBack();const box=document.createElement("div");box.id="spFilesMeta";box.className="list";$("#spFiles")?.closest(".field")?.appendChild(box);const fst=document.createElement("div");fst.id="spFilesStatus";fst.className="sp-files-status mut";fst.hidden=true;$("#spFiles")?.closest(".field")?.appendChild(fst);poblarSelect($("#spSystem"));montarBuscadorEquipo($("#spSystem"),$("#spEquipoCombo"));bind();bindSupportFormWheel();$("#spSystem")?.addEventListener("change",preview);preview();renderFiles();renderFaq(null);evalFaq();syncUrgentUi();syncWhats();syncOtro();hydrateKnownIdentity();bindB17C43B();if(restoreDraft()){preview();evalFaq();setStatus("Restauramos tu borrador. Por seguridad, vuelve a seleccionar tus archivos si recargaste la página.","ok")}if(!TURNSTILE_ENABLED)$("#spTurnstileWrap")?.classList.add("hidden");await loadGlobalNotice()});
 window.onTurnstileSuccess=token=>{TURNSTILE_TOKEN=token||"";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="Validación correcta.");};
 window.onTurnstileExpired=()=>{TURNSTILE_TOKEN="";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="La validación expiró. Confírmela de nuevo.");};
 window.onTurnstileError=()=>{TURNSTILE_TOKEN="";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="No se pudo validar. Intente de nuevo.");};
