@@ -55,6 +55,13 @@ a.kpi:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--bran
 .dash-agent-modal{width:min(620px,100%);display:grid;gap:14px}
 @media(max-width:700px){.dash-agent-grid{grid-template-columns:1fr}.dash-agent-metrics,.dash-agent-detail{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+.dash-supervision-list{display:grid;gap:8px;margin-top:10px}
+.dash-supervision-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--warn) 5%,var(--panel-2));color:var(--text);text-decoration:none}
+.dash-supervision-row:hover{border-color:color-mix(in srgb,var(--warn) 42%,var(--line))}
+.dash-supervision-main{display:grid;gap:3px;min-width:0}.dash-supervision-main span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.dash-supervision-meta{display:flex;gap:7px;align-items:center;justify-content:flex-end;color:var(--muted);font-size:11px;white-space:nowrap}
+@media(max-width:720px){.dash-supervision-row{grid-template-columns:1fr}.dash-supervision-meta{justify-content:flex-start;flex-wrap:wrap}}
+
 /* ---- Administración: tabs + paneles lazy ---- */
 .adm-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .adm-tab{min-height:38px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:transparent;font-weight:850;cursor:pointer;color:var(--text)}

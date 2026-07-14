@@ -157,7 +157,7 @@ async function loadAgents(){
     .order("nombre", { ascending:true });
 
   if(error){
-    console.warn("ASSIGN_BOARD_AGENTS_ERROR");
+    console.warn("ASSIGN_BOARD_AGENTS_ERROR", error);
     AGENTS = [];
     return;
   }
@@ -291,14 +291,13 @@ async function saveAssignment(){
   }
 
   BUSY = true;
-  const { error } = await s
-    .from("tickets")
-    .update({ asignado_a: next, asignado_en, fecha_actualizacion: now })
-    .eq("id", id);
-  BUSY = false;
+  let error=null;
+  try{const result=await s.from("tickets").update({asignado_a:next,asignado_en,fecha_actualizacion:now}).eq("id",id);error=result.error}
+  catch(err){error=err}
+  finally{BUSY=false}
 
   if(error){
-    console.error("ASSIGN_BOARD_SAVE_ERROR");
+    console.error("ASSIGN_BOARD_SAVE_ERROR",{code:String(error?.code||error?.name||"UNKNOWN"),status:Number(error?.status||0)||null,operation:"tickets.update_assignment"});
     alert(error.message || "No se pudo guardar asignación.");
     return;
   }
