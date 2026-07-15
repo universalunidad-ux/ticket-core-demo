@@ -14,9 +14,9 @@
    - tras un fallo la UI no queda ambigua: la tarjeta vuelve a estado operable
      y se ofrece reintentar.
    ============================================================================ */
-import { mountNav } from "./shared/nav-interna.js";
-import { fmtFecha, estadoTag, matchTag } from "./shared/formatters.js";
-import { esc, toast } from "./global.js";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-stabilization-03b";
+import { fmtFecha, estadoTag, matchTag } from "./shared/formatters.js?v=frontend-stabilization-03b";
+import { esc, toast } from "./global.js?v=frontend-stabilization-03b";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
 import { probeEdge, noteEdgeResponse } from "./shared/capabilities.js";
 import { perfPrimaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";

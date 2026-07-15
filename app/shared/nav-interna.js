@@ -2,7 +2,7 @@
    Sesión obligatoria (guardSession) + rol desde perfiles. No se muestra en páginas públicas.
    Nota: la seguridad real vive en RLS/Edge; ocultar links es solo UX (documentado en B19A). */
 import{supabase as s,guardSession,getProfile}from"../supabase.js";
-import{ensureAppShell}from"../global.js";
+import{ensureAppShell}from"../global.js?v=frontend-stabilization-03b";
 export async function mountNav(active){
   const auth=await guardSession();if(!auth)return null;
   const perfil=await getProfile();

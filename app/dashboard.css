@@ -69,7 +69,8 @@ a.kpi:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--bran
 .adm-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .adm-tab{min-height:38px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:transparent;font-weight:850;cursor:pointer;color:var(--text)}
 .adm-tab.is-active{background:color-mix(in srgb,var(--brand) 14%,transparent);border-color:color-mix(in srgb,var(--brand) 30%,var(--line))}
-.adm-panel{margin-top:12px}
+.adm-panel{margin-top:12px;overflow-anchor:none}
+#dashAdmin{overflow-anchor:none}
 
 /* ---- Editores (avisos / personalización / reglas) ---- */
 .av-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}

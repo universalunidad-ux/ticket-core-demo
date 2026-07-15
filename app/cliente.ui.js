@@ -4,8 +4,8 @@
    diseñado (qué aparecerá + CTA permitido) y filas de ticket profesionales.
    No se inventan conteos: solo se muestran cuando el dato es real.
    ============================================================================ */
-import { esc } from "./global.js";
-import { fmtFecha, fmtFechaHora, estadoTag, prioTag, matchTag, initials } from "./shared/formatters.js";
+import { esc } from "./global.js?v=frontend-stabilization-03b";
+import { fmtFecha, fmtFechaHora, estadoTag, prioTag, matchTag, initials } from "./shared/formatters.js?v=frontend-stabilization-03b";
 
 const kv = (k, v) => `<div class="cf-item"><div class="k">${esc(k)}</div><div class="v">${v || "—"}</div></div>`;
 

@@ -1,6 +1,6 @@
 /* B19A — formateadores compartidos del módulo interno (clientes/cliente/consolidación/alta).
    Reusa la fuente canónica de estados de global.js; aquí solo lo que global no tiene. */
-import{ticketStateLabel,ticketStateCls}from"../global.js";
+import{ticketStateLabel,ticketStateCls}from"../global.js?v=frontend-stabilization-03b";
 export const fmtFecha=v=>v?new Date(v).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}):"—";
 export const fmtFechaHora=v=>v?new Date(v).toLocaleString("es-MX",{day:"2-digit",month:"short",hour:"numeric",minute:"2-digit"}):"—";
 export const estadoTag=e=>`<span class="tag ${ticketStateCls(e)}">${ticketStateLabel(e)}</span>`;

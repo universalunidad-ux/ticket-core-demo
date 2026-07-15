@@ -1,4 +1,4 @@
-import{$,$$,toast,esc,debounce}from"./global.js";
+import{$,$$,toast,esc,debounce}from"./global.js?v=frontend-stabilization-03b";
 import{supabase}from"./supabase.js";
 import{poblarSelect,montarBuscadorEquipo}from"./janome/janome_catalogo.js?v=b17c43f-20260710_011946";
 

@@ -1,4 +1,4 @@
-import{$,toast,esc,fmtDT,ticketStateKey,ticketStateCls,prettyBytes}from"./global.js";
+import{$,toast,esc,fmtDT,ticketStateKey,ticketStateCls,prettyBytes}from"./global.js?v=frontend-stabilization-03b";
 
 const cfg = globalThis.TICKET_CORE_CONFIG || {};
 const API_BASE = String(cfg.supabaseUrl || "").trim()
