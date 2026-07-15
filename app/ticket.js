@@ -1,9 +1,9 @@
 import{supabase as s,guardSession,getProfile,logAction,msg}from"./supabase.js";
-import{$,toast,esc,norm,ensureAppShell,setAppRole,setRailOpenCount,pushRecentClient,setGlobalSearchData,setBreadcrumb,ticketStateKey,ticketStateLabel,ticketStateCls,prettyBytes}from"./global.js?v=frontend-stabilization-03b";
+import{$,toast,esc,norm,ensureAppShell,setAppRole,setRailOpenCount,pushRecentClient,setGlobalSearchData,setBreadcrumb,ticketStateKey,ticketStateLabel,ticketStateCls,prettyBytes}from"./global.js?v=frontend-final-20260715-01";
 import{montarFichaAgente}from"./janome/janome_ticket.js";
 import{qrTpl as qrTplShared,qrCanon,qrDefaults as qrDefaultsShared}from"./quick-replies.shared.js";
 import{JANOME_CATALOGO}from"./janome/janome_catalogo.js";
-import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-stabilization-03b";
+import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260715-01";
 
 let CLIENT_SYSTEMS=[];
 const $$=(q,ctx=document)=>[...ctx.querySelectorAll(q)];

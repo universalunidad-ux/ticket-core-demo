@@ -110,6 +110,7 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .chat-reply-help.hidden{display:none}
 .chat-reply-help strong{font-weight:850}
 .chat-reply-help span{color:var(--muted)}
+.chat-video-future{display:inline-flex;width:max-content;max-width:100%;padding:3px 8px;border:1px dashed var(--line);border-radius:999px;color:var(--muted);font-size:11px;font-weight:800;opacity:.76}
 .chat-send-btn{min-width:44px;min-height:44px}
 .chat-send-btn:focus-visible{outline:3px solid color-mix(in srgb,var(--brand) 55%,transparent);outline-offset:2px}
 .chat-send-btn:disabled{opacity:.58;cursor:not-allowed}
@@ -123,6 +124,7 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .chat-reply-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--brand) 7%,transparent)}
 .chat-reply-bar.hidden{display:none}
 .chat-msg-flash{outline:2px solid color-mix(in srgb,var(--brand) 55%,transparent);outline-offset:2px;transition:outline-color .3s ease}
+.chat-quote-thumb-wrap{display:grid;place-items:center;width:68px;min-height:36px;flex:none}
 .chat-quote-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;flex:none}
 .chat-quote-copy{display:grid;gap:2px;min-width:0}
 .chat-quote-meta{font-size:11px;font-weight:900;opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -130,6 +132,7 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 /* B17C45: adjuntos en mensajes — miniaturas en cuadrícula (+N) y tarjeta PDF */
 .chat-msg-files{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
 .chat-th{position:relative;display:block;padding:0;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel-2) 94%,transparent);overflow:hidden;cursor:zoom-in;aspect-ratio:1}
+.chat-th .st-thumb-open{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;cursor:zoom-in}
 .chat-th img{width:100%;height:100%;object-fit:cover;display:block}
 .chat-th-more{position:absolute;inset:0;display:grid;place-items:center;background:rgba(2,6,23,.55);color:#fff;font-weight:900;font-size:16px}
 .chat-file-chip{grid-column:1/-1;display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 96%,transparent);font-size:12px;font-weight:700;overflow:hidden}
@@ -143,6 +146,14 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .file-card{display:grid;gap:6px;padding:8px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--panel-2) 94%,transparent);min-width:0}
 .file-card .file-thumb-btn{display:block;padding:0;border:0;border-radius:10px;overflow:hidden;cursor:zoom-in;aspect-ratio:4/3;background:color-mix(in srgb,var(--panel) 92%,transparent)}
 .file-card .file-thumb-btn img{width:100%;height:100%;object-fit:cover;display:block}
+.file-thumb-wrap{display:block;overflow:hidden;aspect-ratio:4/3;border-radius:10px;background:color-mix(in srgb,var(--panel) 92%,transparent)}
+.file-thumb-wrap .file-thumb-btn{width:100%;height:100%;aspect-ratio:auto}
+.st-thumb-fallback{display:grid;place-items:center;align-content:center;gap:7px;width:100%;height:100%;min-height:54px;padding:8px;text-align:center;color:var(--muted);font-size:11px;font-weight:850;cursor:default}
+.st-thumb-fallback button{min-height:28px;padding:3px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);font:inherit;cursor:pointer}
+.chat-quote-thumb-wrap .st-thumb-fallback{min-height:36px;padding:3px;font-size:9px}
+.st-thumb-loading{display:grid;place-items:center;width:100%;height:100%;min-height:54px;padding:8px;color:var(--muted);font-size:10px;font-weight:800;text-align:center;background:linear-gradient(100deg,transparent 20%,color-mix(in srgb,var(--line) 35%,transparent) 45%,transparent 70%);background-size:220% 100%;animation:st-thumb-loading 1.25s linear infinite}
+.chat-quote-thumb-wrap .st-thumb-loading{min-height:36px}
+@keyframes st-thumb-loading{to{background-position:-220% 0}}
 .file-card .file-doc{display:grid;place-items:center;aspect-ratio:4/3;border-radius:10px;background:color-mix(in srgb,var(--panel) 92%,transparent);font-size:26px}
 .file-card-title{font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-card-meta{font-size:11px;opacity:.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

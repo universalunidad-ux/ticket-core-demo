@@ -1613,3 +1613,15 @@ body[data-access-role="soporte"] #tkQuickEditBtn{display:none!important}
   body[data-page="tickets"] .kanban-board>.kanban-col{border-radius:17px!important}
   body[data-page="tickets"] .col-body{overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;padding:10px 7px 20px!important}
 }
+
+/* FRONTEND_FINAL: autoridad móvil final; intencionalmente última. */
+@media(max-width:720px){
+  body[data-page="tickets"] #tkMobileStatebar,
+  body[data-page="tickets"] #tkMobileStatebar [data-mobile-state]{height:46px!important;min-height:46px!important}
+  body[data-page="tickets"] .kanban-board>.kanban-col>.col-header,
+  body[data-page="tickets"] .kanban-board>.kanban-col>.col-header .tk-col-total{display:none!important}
+  body[data-page="tickets"] .kanban-board>.kanban-col{display:none!important}
+  body[data-page="tickets"][data-mobile-state="abierto"] .kanban-board>.kanban-col:nth-child(1),
+  body[data-page="tickets"][data-mobile-state="en_proceso"] .kanban-board>.kanban-col:nth-child(2),
+  body[data-page="tickets"][data-mobile-state="resuelto"] .kanban-board>.kanban-col:nth-child(3){display:flex!important}
+}

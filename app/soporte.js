@@ -1,6 +1,6 @@
-import{$,$$,toast,esc,debounce}from"./global.js?v=frontend-stabilization-03b";
+import{$,$$,toast,esc,debounce}from"./global.js?v=frontend-final-20260715-01";
 import{supabase}from"./supabase.js";
-import{poblarSelect,montarBuscadorEquipo}from"./janome/janome_catalogo.js?v=b17c43f-20260710_011946";
+import{poblarSelect,montarBuscadorEquipo}from"./janome/janome_catalogo.js?v=frontend-final-20260715-01";
 
 // Etiqueta legible del equipo Janome elegido (el <select> guarda el ID interno).
 const sistemaLabel=()=>{const o=$("#spSystem")?.selectedOptions?.[0];if(!o||!o.value)return"";if(o.value==="OTRO"){const t=($("#spOtroModelo")?.value||"").trim();return t?`Otro: ${t}`:"Otro / no aparece en la lista";}const nombre=o.dataset?.nombre||o.textContent||"";const grupo=o.dataset?.grupo||"";return grupo?`Janome ${nombre} (${grupo})`:`Janome ${nombre}`};

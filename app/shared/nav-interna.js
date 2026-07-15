@@ -2,7 +2,7 @@
    Sesión obligatoria (guardSession) + rol desde perfiles. No se muestra en páginas públicas.
    Nota: la seguridad real vive en RLS/Edge; ocultar links es solo UX (documentado en B19A). */
 import{supabase as s,guardSession,getProfile}from"../supabase.js";
-import{ensureAppShell,registerGlobalSearchProvider}from"../global.js?v=frontend-stabilization-03b";
+import{ensureAppShell,registerGlobalSearchProvider}from"../global.js?v=frontend-final-20260715-01";
 const cleanSearchTerm=value=>String(value||"").normalize("NFKC").replace(/[^\p{L}\p{N}\s-]/gu," ").replace(/\s+/g," ").trim().slice(0,80);
 const signalQuery=(query,signal)=>typeof query?.abortSignal==="function"?query.abortSignal(signal):query;
 export function registerInternalSearchProvider({sb=s,user,rol="soporte"}={}){

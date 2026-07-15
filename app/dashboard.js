@@ -16,8 +16,8 @@
      (solo admin, nunca como KPI roto).
    ============================================================================ */
 import { supabase, esc } from "./supabase.js";
-import { mountNav } from "./shared/nav-interna.js?v=frontend-stabilization-03b";
-import { ticketStateLabel, ticketStateCls, ago, prettyBytes, setRailOpenCount } from "./global.js?v=frontend-stabilization-03b";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260715-01";
+import { ticketStateLabel, ticketStateCls, ago, prettyBytes, setRailOpenCount } from "./global.js?v=frontend-final-20260715-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 
 const $ = (q, c = document) => c.querySelector(q);

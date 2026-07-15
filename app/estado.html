@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Seguimiento de ticket | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="estado.css?v=whatsapp-status-05c"><link rel="stylesheet" href="janome/janome.css?v=janome-02">
+<link rel="stylesheet" href="global.css?v=frontend-final-20260715-01">
+<link rel="stylesheet" href="estado.css?v=frontend-final-20260715-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260715-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B17C45: theme.js removido — global.js (importado por estado.js) ya ejecuta
      initTheme()+initThemeToggle(); tener ambos duplicaba el listener y cada
@@ -140,7 +140,8 @@
   </div>
 
   <div class="chat-reply-help hidden" id="stChatReplyHelp">
-    <strong>Hasta 3 fotos, 1 PDF y 1 video de hasta 1 min 30 s (máx. 20 MB por archivo).</strong>
+    <strong>Hasta 3 fotos y 1 PDF (máx. 20 MB por archivo).</strong>
+    <span class="chat-video-future" aria-disabled="true">Video: próximamente</span>
     <span>Puedes escribir aquí si tienes un dato nuevo, evidencia adicional o una aclaración útil para soporte. Máximo 2 mensajes seguidos del cliente.</span>
   </div>
 
@@ -161,8 +162,7 @@
     </div>
   </div>
 
-  <!-- Compositor único. El frontend valida el video; el envío queda bloqueado de
-       forma controlada hasta que el contrato remoto acepte ese tipo de archivo. -->
+  <!-- Compositor único. Video no es seleccionable hasta que exista contrato remoto. -->
   <div class="chat-compose hidden" id="stChatCompose">
     <!-- B19B: cita activa (reply_to) — se envía solo el UUID; el server deriva el preview -->
     <div class="chat-reply-bar hidden" id="stReplyQuote">
@@ -170,13 +170,14 @@
       <button class="chat-pick-rm" id="stReplyQuoteX" type="button" aria-label="Cancelar cita">×</button>
     </div>
     <textarea class="area chat-compose-area" id="stReplyTextPop" placeholder="Escribe tu respuesta aquí..." aria-label="Tu respuesta"></textarea>
-    <input class="sr-only" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,.mp4,.webm,.mov,video/mp4,video/webm,video/quicktime">
+    <input class="sr-only" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
     <div class="chat-file-chips hidden" id="stFileChips"></div>
     <div class="chat-compose-row">
       <button class="btn btn-ghost chat-attach-btn" id="stAttachBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.5 11.5-8.1 8.1a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 1 1-2.8-2.8l8.2-8.2"/></svg><span>Adjuntar</span></button>
       <button class="btn btn-brand chat-send-btn" id="stReplySendPop" type="button">Enviar respuesta</button>
     </div>
-    <div class="chat-compose-note" id="stReplyFilesMetaPop">Hasta 3 fotos, 1 PDF y 1 video de hasta 1 min 30 s (máx. 20 MB por archivo).</div>
+    <div class="chat-compose-note" id="stReplyFilesMetaPop">Hasta 3 fotos y 1 PDF (máx. 20 MB por archivo).</div>
+    <div class="chat-compose-note chat-video-future" aria-disabled="true">Video: próximamente</div>
     <div class="chat-compose-note" id="stReplyStatusPop">Este bloque se activa solo cuando el ticket está esperando tu respuesta.</div>
   </div>
 </section>
@@ -200,7 +201,8 @@
   <div class="st-viewer-backdrop" id="stViewerBackdrop"></div>
   <figure class="st-viewer-stage">
     <img class="st-viewer-img" id="stViewerImg" alt="">
-    <div class="st-viewer-error hidden" id="stViewerError">No se pudo cargar la imagen. El enlace pudo haber expirado; recarga la página para renovarlo.</div>
+    <div class="st-viewer-error hidden" id="stViewerError">Imagen no disponible.</div>
+    <button class="btn btn-ghost hidden" id="stViewerRetry" type="button">Reintentar</button>
     <figcaption class="st-viewer-meta">
       <span id="stViewerName">—</span>
       <span class="st-viewer-count" id="stViewerCount"></span>
@@ -215,12 +217,12 @@
 <audio id="stSoftPing" preload="auto"></audio>
 <audio id="stStrongPing" preload="auto"></audio>
 
-<script src="supabase.config.public.js"></script>
+<script src="supabase.config.public.js?v=frontend-final-20260715-01"></script>
 <!-- B19C: config-loader.js retirado. Era el origen del 404 a /rest/v1/site_config
      (la tabla no está expuesta aún). El único consumidor era un data-cfg cuyo texto
      ya vive inline como copy canónico local; al retirarlo esta página pública no
      ejecuta ninguna consulta REST adicional. Cuando site_config exista (DDL DRAFT
      B20A), reevaluar con capability check, nunca con carga incondicional. -->
-<script type="module" src="estado.js?v=whatsapp-status-05b"></script>
+<script type="module" src="estado.js?v=frontend-final-20260715-01"></script>
 </body>
 </html>
