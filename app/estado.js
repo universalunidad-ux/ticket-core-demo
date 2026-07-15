@@ -12,7 +12,7 @@ const ESTADO_ENDPOINT=`${requireApiBase()}/estado-ticket-ts`;
 const RESPONDER_ENDPOINT=`${requireApiBase()}/estado-ticket-responder-ts`;
 const QS=new URLSearchParams(location.search),folio=(QS.get("folio")||"").trim(),token=(QS.get("token")||"").trim();
 const STATUS_FIXTURE_MODE=QS.get("fixture")||"";
-const DEV_STATUS_FIXTURE=/^(localhost|127\\.0\\.0\\.1)$/.test(location.hostname)&&["1","available","error"].includes(STATUS_FIXTURE_MODE);
+const DEV_STATUS_FIXTURE=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&["1","available","error"].includes(STATUS_FIXTURE_MODE);
 const ST={ticket:null,sending:false,replyBlocked:false,files:[],open:false,tab:"history",notify:false,notifyOpen:false,notifyFocus:null,lastSig:"",lastState:"",poller:null,lastMsgs:0,lastFiles:0,seenFirstLoad:false,lastFocus:null};
 const IDENTITY_KEY="tc_identity";
 const getKnownIdentity=()=>{try{return JSON.parse(localStorage.getItem(IDENTITY_KEY)||"null")}catch{return null}};
