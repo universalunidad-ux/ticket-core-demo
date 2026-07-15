@@ -2849,12 +2849,21 @@ body[data-page="ticket"] #logArea .tc-supervision-forward-preview,
 body[data-page="ticket"] #logArea .tc-supervision-forward-thumb,
 body[data-page="ticket"] #logArea .tc-supervision-forward-copy,
 body[data-page="ticket"] #logArea .tc-supervision-comment{
-  display:none!important;
+  display:block!important;
+  color:#1d4ed8!important;
+  font-weight:850!important;
+}
+body[data-page="ticket"] #logArea .tc-supervision-forward-preview{
+  margin-top:6px!important;
+  padding:7px 9px!important;
+  border-left:3px solid color-mix(in srgb,#1d4ed8 48%,transparent)!important;
+  background:color-mix(in srgb,#1d4ed8 5%,transparent)!important;
+  border-radius:8px!important;
 }
 /* Comentario: crece con su contenido. (Antes: max-height 68px + hidden.) */
 body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .tc-supervision-comment{
-  display:none!important;
-  margin:0!important;
+  display:block!important;
+  margin:6px 0 0!important;
   padding:0!important;
   height:auto!important;
   max-height:none!important;
@@ -2864,8 +2873,8 @@ body[data-page="ticket"] #logArea .log-msg.tc-msg-supervision .tc-supervision-co
   white-space:normal!important;
   overflow-wrap:anywhere!important;
   word-break:break-word!important;
-  color:var(--text)!important;
-  font-weight:400!important;
+  color:#1d4ed8!important;
+  font-weight:850!important;
 }
 body[data-page="ticket"] #logArea .tc-supervision-comment:empty{
   display:none!important;

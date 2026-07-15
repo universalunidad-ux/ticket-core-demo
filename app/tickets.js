@@ -1,5 +1,6 @@
 import{supabase as s,guardSession,msg}from"./supabase.js";
 import{$,$$,toast,debounce,show,hide,bindModal,norm,ensureAppShell,setAppRole,setRailOpenCount,setGlobalSearchData,setBreadcrumb,daysSince,ticketStateKey as baseTicketStateKey,ticketStateLabel,ticketPriorityCls}from"./global.js?v=frontend-stabilization-03b";
+import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-stabilization-03b";
 
 window.s=s;
 let QR_SHARED_OK=false;
@@ -215,6 +216,7 @@ const tkAuthContext=async()=>{
   if(error)throw new Error(`No se pudo determinar el rol: ${error.message||error.code||"error de perfiles"}`);
   const rol=norm(data?.rol||"soporte");
   TK_AUTH_CTX={userId:user.id,rol,isAdmin:rol==="admin"};
+  registerInternalSearchProvider({sb:s,user,rol});
   window.__TC_ACCESS_CONTEXT=Object.freeze({...TK_AUTH_CTX});
   document.body.dataset.accessRole=TK_AUTH_CTX.isAdmin?"admin":"soporte";
   setAppRole(TK_AUTH_CTX.rol);
