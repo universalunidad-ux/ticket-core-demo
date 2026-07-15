@@ -50,6 +50,7 @@ assert(semanticCases.every(([event,expected])=>isInitialRequestReceivedEvent(eve
 assert(estado.includes("initialRichness")&&estadoCss.includes(".is-system.is-initial"),"dedupe/pill inicial incompleto");
 assert(estado.includes("Imagen no disponible")&&estado.includes("data-thumb-retry")&&estado.includes("retries>=1")&&!estadoHtml.includes("onerror="),"fallback de miniaturas incompleto");
 assert(estado.includes("if(rec.loadingPromise)return rec.loadingPromise")&&estado.includes("rec.objectUrl=URL.createObjectURL(blob)")&&estado.includes("queueMicrotask(loadVisibleThumbs)"),"owner/dedupe de requests de miniaturas incompleto");
+assert(estado.includes("thumbId:rec.id")&&estado.includes("img.src=rec.objectUrl")&&estado.includes("loadThumb(rec).then"),"visor no reutiliza el owner/request de miniaturas");
 const accept=estadoHtml.match(/id="stReplyFilesPop"[^>]*accept="([^"]*)"/)?.[1]||"";
 assert(accept&&!/video|mp4|webm|mov/i.test(accept),"video sigue activo en accept");
 assert(!/1 video|video de hasta|video listo/i.test(estadoHtml)&&estadoHtml.includes("Video: próximamente"),"copy de video no es honesta");
