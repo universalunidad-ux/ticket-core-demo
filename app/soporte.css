@@ -403,3 +403,25 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
 /* Validación accesible de identidad pública. */
 .sp-field-error{min-height:18px;margin-top:5px;color:var(--danger);font-size:12px;font-weight:700;line-height:1.35}
 #spEmail:invalid:not(:placeholder-shown),#spPhone:invalid:not(:placeholder-shown){border-color:color-mix(in srgb,var(--danger) 55%,var(--line))}
+
+/* WHATSAPP-CONSENT-05 */
+.hero-support-main{display:flex;align-items:center;justify-content:center;gap:18px;min-width:0;width:100%}
+.hero-support-main h1{flex:0 0 auto;max-width:none;white-space:nowrap;margin:0}
+.hero-support-main .support-hints{margin:0;flex-wrap:nowrap;white-space:nowrap}
+.support-hints span,.support-hints i{cursor:default;box-shadow:none}
+#spIdentityFields .field:has(#spWhatsRow:not(.hidden)){grid-template-rows:auto auto auto}
+#spIdentityFields .jn-phone:has(#spWhatsRow:not(.hidden)){height:auto;min-height:47px}
+#spWhatsRow.hidden{display:none!important}
+.sp-consent{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px 10px;align-items:start;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--panel-2) 72%,var(--panel));font-size:13px;line-height:1.45}
+.sp-consent>input{width:18px;height:18px;margin:1px 0 0}
+.sp-consent>label{min-width:0}
+.sp-consent a{font-weight:800;text-underline-offset:2px}
+.sp-consent .sp-field-error{grid-column:2;min-height:0;margin:0}
+.support-legal-strip{margin:0;padding:8px 3px 2px;border-top:1px solid var(--line);font-size:12px;line-height:1.25}
+.support-legal-strip nav{gap:6px}
+@media(max-width:760px){
+  .hero-support-main{align-items:flex-start;justify-content:flex-start;gap:7px;flex-direction:column}
+  .hero-support-main h1{white-space:normal}
+  .hero-support-main .support-hints{width:100%;gap:7px;font-size:12px;overflow:hidden}
+  .support-legal-strip{align-items:flex-start;gap:4px;padding-inline:4px}
+}

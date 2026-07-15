@@ -4,7 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Soporte Janome | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css"><link rel="stylesheet" href="soporte.css?v=frontend-stabilization-03b"><link rel="stylesheet" href="janome/janome.css?v=janome-02">
+<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css"><link rel="stylesheet" href="soporte.css?v=whatsapp-consent-05"><link rel="stylesheet" href="janome/janome.css?v=janome-02">
 
 </head>
 <body data-surface="client">
@@ -27,7 +27,7 @@
 <section class="panel hero-support"><div class="hero-support-main"><h1>Estamos para ayudarte</h1><div class="support-hints" aria-label="Consejos para tu solicitud"><span>Fácil y rápido</span><i aria-hidden="true">•</i><span>Indica tu modelo</span><i aria-hidden="true">•</i><span>Una foto ayuda</span></div></div></section>
 
 <section class="support-layout">
-<form class="panel support-form" id="supportForm">
+<form class="panel support-form" id="supportForm" novalidate>
 <!-- B17C43G-R2: identidad pública recordada únicamente en este navegador -->
 
 <section class="panel inset hidden" id="spKnownIdentityBox">
@@ -50,7 +50,7 @@
 <div class="form-grid" id="spIdentityFields">
   <div class="field"><label class="lbl" for="spName">Nombre <span class="req">*</span></label><input class="input" id="spName" maxlength="80" autocomplete="name" placeholder="Tu nombre"></div>
   <div class="field"><label class="lbl" for="spEmail">Correo <span class="req">*</span></label><input class="input" id="spEmail" type="email" maxlength="120" autocomplete="email" inputmode="email" aria-describedby="spEmailError" placeholder="correo@ejemplo.com"><div class="sp-field-error" id="spEmailError" aria-live="polite"></div></div>
-  <div class="field"><label class="lbl" for="spPhone">Teléfono <span class="req">*</span></label><div class="jn-phone"><input class="jn-phone-input" id="spPhone" type="tel" inputmode="tel" autocomplete="tel" aria-describedby="spPhoneError" placeholder="10 dígitos"><label class="jn-wa hidden" id="spWhatsRow"><input type="checkbox" id="spWhats"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>¿Este número tiene WhatsApp?</span></label></div><div class="sp-field-error" id="spPhoneError" aria-live="polite"></div></div>
+  <div class="field"><label class="lbl" for="spPhone">Teléfono <span class="req">*</span></label><div class="jn-phone"><input class="jn-phone-input" id="spPhone" type="tel" inputmode="tel" autocomplete="tel" aria-describedby="spPhoneError" placeholder="10 dígitos"><label class="jn-wa hidden" id="spWhatsRow" for="spWhats"><input type="checkbox" id="spWhats"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>¿Este número tiene WhatsApp?</span></label></div><div class="sp-field-error" id="spPhoneError" aria-live="polite"></div></div>
   <div class="field"><label class="lbl" for="spCompany">Empresa o negocio</label><input class="input" id="spCompany" placeholder="Opcional"></div>
 </div>
 
@@ -85,6 +85,7 @@
   <div class="cf-turnstile" data-sitekey="0x4AAAAAAC_3a20019HrKmhm" data-theme="auto" data-response-field="false" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError"></div>
   <div class="mut" id="spCaptchaStatus">Confirma la validación para enviar tu solicitud.</div>
 </div>
+<div class="sp-consent" id="spConsentField"><input type="checkbox" id="spConsent" required aria-required="true" aria-describedby="spConsentError"><label for="spConsent">He leído y acepto el <a href="aviso-privacidad.html" target="_blank" rel="noopener">Aviso de privacidad</a> y los <a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a>.</label><div class="sp-field-error" id="spConsentError" aria-live="polite"></div></div>
 <div class="actions sp-send-actions"><button class="btn btn-brand" id="spSendBtn" type="submit">Enviar</button></div>
 <div class="mut" id="spStatus">Completa tus datos y elige tu producto. Si tienes una foto del problema, adjúntala.</div>
 
@@ -106,20 +107,20 @@
     <div class="tk-receipt-thanks">Estamos para servirte.</div>
   </div>
 </section>
+<footer class="jn-footer support-legal-strip">
+  <span>© Janome — Soporte</span>
+  <nav><a href="aviso-privacidad.html" target="_blank" rel="noopener">Aviso de privacidad</a><span aria-hidden="true">·</span><a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a></nav>
+</footer>
 <!-- B17C43C: comprobante de éxito bajo el recibo (fuera del formulario) -->
 <!-- B17C43D: comprobante sobrio — folio como dato principal, solo 2 acciones -->
 </aside>
 
 </section>
 
-<footer class="jn-footer">
-  <span>© Janome — Soporte</span>
-  <nav><a href="aviso-privacidad.html">Aviso de privacidad</a><span aria-hidden="true">·</span><a href="terminos.html">Términos y condiciones</a></nav>
-</footer>
 </main>
 
 <script src="supabase.config.public.js"></script>
-<script type="module" src="soporte.js?v=frontend-stabilization-03b"></script>
+<script type="module" src="soporte.js?v=whatsapp-consent-05"></script>
 <script src="client-mobile-trim.js?v=1"></script>
 <!-- B17C43: client-form-compact.js eliminado — sacaba Nombre/Correo/Teléfono/Empresa del form-grid
      y los metía en .tcContactGrid (1 columna en desktop, 2x2 forzado en móvil). El 2x2 desktop

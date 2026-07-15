@@ -6,7 +6,7 @@
 <title>Seguimiento de ticket | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="estado.css?v=tc-windows-final-02"><link rel="stylesheet" href="janome/janome.css?v=janome-02">
+<link rel="stylesheet" href="estado.css?v=whatsapp-status-05c"><link rel="stylesheet" href="janome/janome.css?v=janome-02">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B17C45: theme.js removido — global.js (importado por estado.js) ya ejecuta
      initTheme()+initThemeToggle(); tener ambos duplicaba el listener y cada
@@ -93,7 +93,7 @@
     <aside class="estado-side">
       <article class="estado-card">
         <div class="section-kicker">Tu seguimiento</div>
-        <div class="estado-lock"><strong>Aquí verás los avances de tu caso y podrás responder a tu agente de atención.</strong><br>Vuelve a este enlace para consultar novedades o enviar la información que te solicitemos.</div>
+        <div class="estado-lock"><strong>Aquí verás los avances de tu caso y podrás responder a tu agente de servicio.</strong><br>Vuelve a este enlace para consultar novedades o enviar la información que te solicitemos.</div>
       </article>
 
       <article class="estado-card estado-last hidden" id="stLastSupportCard">
@@ -134,8 +134,14 @@
       <div class="chat-pop-sub" id="stChatSub">Cargando conversación…</div>
     </div>
     <div class="chat-pop-actions">
+      <button class="chat-icon-btn" id="stChatHelpToggle" type="button" aria-label="Ver ayuda para responder" aria-expanded="false" aria-controls="stChatReplyHelp">?</button>
       <button class="chat-icon-btn" id="stChatClose" type="button" aria-label="Cerrar conversación"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </div>
+  </div>
+
+  <div class="chat-reply-help hidden" id="stChatReplyHelp">
+    <strong>Hasta 3 fotos, 1 PDF y 1 video de hasta 1 min 30 s (máx. 20 MB por archivo).</strong>
+    <span>Puedes escribir aquí si tienes un dato nuevo, evidencia adicional o una aclaración útil para soporte. Máximo 2 mensajes seguidos del cliente.</span>
   </div>
 
   <div class="chat-tabs">
@@ -155,8 +161,8 @@
     </div>
   </div>
 
-  <!-- B17C44: compositor único. accept alineado al contrato real de
-       estado-ticket-responder-ts (sin video/heic; PDF sí). Input nativo oculto + pill. -->
+  <!-- Compositor único. El frontend valida el video; el envío queda bloqueado de
+       forma controlada hasta que el contrato remoto acepte ese tipo de archivo. -->
   <div class="chat-compose hidden" id="stChatCompose">
     <!-- B19B: cita activa (reply_to) — se envía solo el UUID; el server deriva el preview -->
     <div class="chat-reply-bar hidden" id="stReplyQuote">
@@ -164,13 +170,13 @@
       <button class="chat-pick-rm" id="stReplyQuoteX" type="button" aria-label="Cancelar cita">×</button>
     </div>
     <textarea class="area chat-compose-area" id="stReplyTextPop" placeholder="Escribe tu respuesta aquí..." aria-label="Tu respuesta"></textarea>
-    <input class="sr-only" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
+    <input class="sr-only" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,.mp4,.webm,.mov,video/mp4,video/webm,video/quicktime">
     <div class="chat-file-chips hidden" id="stFileChips"></div>
     <div class="chat-compose-row">
       <button class="btn btn-ghost chat-attach-btn" id="stAttachBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.5 11.5-8.1 8.1a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 1 1-2.8-2.8l8.2-8.2"/></svg><span>Adjuntar</span></button>
       <button class="btn btn-brand chat-send-btn" id="stReplySendPop" type="button">Enviar respuesta</button>
     </div>
-    <div class="chat-compose-note" id="stReplyFilesMetaPop">Hasta 3 fotos y 1 PDF (máx. 20 MB c/u).</div>
+    <div class="chat-compose-note" id="stReplyFilesMetaPop">Hasta 3 fotos, 1 PDF y 1 video de hasta 1 min 30 s (máx. 20 MB por archivo).</div>
     <div class="chat-compose-note" id="stReplyStatusPop">Este bloque se activa solo cuando el ticket está esperando tu respuesta.</div>
   </div>
 </section>
@@ -215,6 +221,6 @@
      ya vive inline como copy canónico local; al retirarlo esta página pública no
      ejecuta ninguna consulta REST adicional. Cuando site_config exista (DDL DRAFT
      B20A), reevaluar con capability check, nunca con carga incondicional. -->
-<script type="module" src="estado.js?v=tc-global-parity-xss02-3"></script>
+<script type="module" src="estado.js?v=whatsapp-status-05b"></script>
 </body>
 </html>

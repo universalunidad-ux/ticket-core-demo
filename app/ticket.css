@@ -93,7 +93,7 @@ body[data-page="ticket"]{overflow:hidden}
 .composer-left #logFilesMeta{display:block!important}
 #logStatus,#tkComposerModeText{display:none!important}
 .quick-replies-wrap{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:6px;overflow:hidden;margin-top:0}
-.quick-replies{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;max-width:100%;padding-bottom:4px;scrollbar-width:thin;mask-image:linear-gradient(90deg,#000 0,#000 86%,transparent 100%)}
+.quick-replies{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;max-width:100%;padding:0 8px 4px 0;scrollbar-width:thin;mask-image:none;-webkit-mask-image:none}
 .quick-replies .mini{flex:0 0 auto;width:auto;min-width:max-content;max-width:170px;min-height:34px;padding:7px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .quick-edit-btn{width:38px;min-width:38px;height:38px;border-radius:13px}
 .log-msg.close,.log-msg.me.close{width:auto;height:auto;min-height:unset;aspect-ratio:auto;overflow:visible;border-radius:18px 18px 8px 18px;padding:12px 14px;max-width:min(780px,88%)}
@@ -162,7 +162,7 @@ body[data-page="ticket"]{overflow:hidden}
 @media(min-width:1181px){.ticket-side{display:grid;grid-template-columns:1fr;grid-template-rows:auto repeat(5,minmax(92px,1fr));gap:14px;padding:14px 12px 18px}.case-grid{gap:14px;margin-bottom:0}.ticket-side>.fold-card:not([open]){min-height:clamp(92px,12dvh,128px);display:flex}.ticket-side>.fold-card:not([open])>.fold-head{width:100%;min-height:100%;padding:18px}.ticket-side>.fold-card{border-radius:24px}.fold-head .tag,.fold-head .fold-kicker{box-shadow:0 8px 20px rgba(15,23,42,.035)}.ticket-side .box{border-radius:20px}.case-grid>.box{min-height:96px}.case-grid>.span-2{min-height:104px}#tkHeatFold .heat-periods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:hidden}#tkHeatFold .heat-period{flex:auto;min-width:0;width:100%}#tkHeatFold[open]{overflow:hidden}#tkHeatFold[open] .fold-body{overflow:hidden}}
 #tkComposerStateTag{display:none!important}
 
-@media(max-width:740px) and (orientation:portrait){body[data-page="ticket"] #appShell>header{display:none!important}body[data-page="ticket"] #appShell>.app-hero,body[data-page="ticket"] #appShell>.shell-hero{display:none!important}body[data-page="ticket"] .ticket-page{width:100vw;height:100dvh;margin:0}body[data-page="ticket"] .ticket-main,body[data-page="ticket"] .ticket-thread{width:100vw;height:100dvh;margin:0;border-radius:0}body[data-page="ticket"] .ticket-thread{grid-template-rows:52px minmax(120px,1fr) auto}body[data-page="ticket"] .thread-topbar{position:relative;height:52px;min-height:52px;padding:10px 8px 0}body[data-page="ticket"] .thread-topbar:before{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);width:62px;height:5px;border-radius:999px;background:color-mix(in srgb,var(--muted) 26%,transparent)}body[data-page="ticket"] .thread-left-actions,body[data-page="ticket"] .thread-actions,body[data-page="ticket"] .thread-gear-wrap{height:42px}body[data-page="ticket"] #tkSideToggle{display:grid!important}body[data-page="ticket"] #tkBackInline{display:grid!important}body[data-page="ticket"] #tkThreadStamp{font-size:12px;font-weight:760}}
+@media(max-width:740px) and (orientation:portrait){body[data-page="ticket"] #appShell>header{display:block!important}body[data-page="ticket"] .app-mobile-title{display:none!important}body[data-page="ticket"] .ticket-page{width:100vw;height:calc(100dvh - 62px);margin:0}body[data-page="ticket"] .ticket-main,body[data-page="ticket"] .ticket-thread{width:100vw;height:calc(100dvh - 62px);margin:0;border-radius:0}body[data-page="ticket"] .ticket-thread{grid-template-rows:52px minmax(120px,1fr) auto}body[data-page="ticket"] .thread-topbar{position:relative;height:52px;min-height:52px;padding:10px 8px 0}body[data-page="ticket"] .thread-topbar:before{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);width:62px;height:5px;border-radius:999px;background:color-mix(in srgb,var(--muted) 26%,transparent)}body[data-page="ticket"] .thread-left-actions,body[data-page="ticket"] .thread-actions,body[data-page="ticket"] .thread-gear-wrap{height:42px}body[data-page="ticket"] #tkSideToggle{display:grid!important}body[data-page="ticket"] #tkThreadStamp{font-size:12px;font-weight:760}}
 
 .overlay[hidden],#tkSystemOverlay[hidden],#tkContactOverlay[hidden],#tkQrModal[hidden],#evModal[hidden]{display:none!important;pointer-events:none!important;visibility:hidden!important}
 
@@ -2914,4 +2914,15 @@ body[data-page="ticket"] #tcReplyContext.has-thumb .tc-reply-context-thumb img{
 /* /B17C38_FABLE_SPECIAL_BUBBLES_SINGLE_SOURCE */
 
 /* B17C9_CLOSE_CONFIRM_MODAL END */
-.tc-image-unavailable{display:grid;place-content:center;gap:3px;width:100%;min-height:96px;padding:12px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 86%,var(--bg));color:var(--muted);text-align:center}.tc-image-unavailable b{color:var(--text);font-size:13px}.tc-image-unavailable small{font-size:11px}
+.tc-image-unavailable{display:grid;place-content:center;gap:6px;width:100%;min-height:96px;padding:12px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 86%,var(--bg));color:var(--muted);text-align:center}.tc-image-unavailable b{color:var(--text);font-size:13px}.tc-image-unavailable small{font-size:11px}.tc-image-unavailable-actions{display:flex;justify-content:center;gap:7px;margin-top:3px}.tc-image-unavailable button,.tc-image-unavailable a{min-height:30px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);font:750 11px/1 system-ui;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.tc-image-unavailable button:disabled{opacity:.55;cursor:not-allowed}
+
+/* HEADER-SYSTEM-05: el header global nunca desaparece y Sistema usa azul completo. */
+body[data-page="ticket"] #appShell>.app-header{display:block!important}
+body[data-page="ticket"] #logArea .log-msg.sys,
+body[data-page="ticket"] #logArea .log-msg.sys :is(.log-meta,.log-meta b,.log-meta strong,.log-meta span,.log-text,.tc-system-inline-text),
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event,
+body[data-page="ticket"] #logArea .log-msg.tc-close-system-event :is(.log-meta,.log-meta b,.log-meta strong,.log-meta span,.log-text,.tc-system-inline-text){color:#1d4ed8!important;font-weight:850!important}
+html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.sys,
+html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.sys *,
+html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.tc-close-system-event,
+html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.tc-close-system-event *{color:#93c5fd!important}

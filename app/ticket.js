@@ -451,19 +451,21 @@ const signedEvidenceUrl=async(f,variant="original")=>{
 };
 /* B17C42_IMG_RECOVERY: re-firma <img> con signed URL expirada (miniaturas del hilo y quotes @thumb) */
 const tcPathFromSignedUrl=u=>{try{const m=String(u||"").match(/\/(?:object|render\/image)\/sign\/soporte_adjuntos\/([^?]+)/);return m?decodeURIComponent(m[1]):""}catch{return""}};
-const tcMarkImageUnavailable=img=>{if(!img?.parentElement)return;const box=document.createElement("span");box.className="tc-image-unavailable";box.setAttribute("role","img");box.setAttribute("aria-label","Imagen no disponible");box.innerHTML="<b>Imagen no disponible</b><small>El archivo no pudo cargarse.</small>";img.replaceWith(box)};
+const tcUnavailableHtml=(path="",retry=true)=>`<b>Imagen no disponible</b><small>El archivo no pudo cargarse.</small><span class="tc-image-unavailable-actions"><button type="button" data-tc-image-retry ${retry&&path?"":"disabled"}>Reintentar</button></span>`;
+const tcMarkImageUnavailable=(img,retry=true)=>{if(!img?.parentElement)return;const path=tcPathFromSignedUrl(img.currentSrc||img.src)||img.dataset.tcStoragePath||"",box=document.createElement("span");box.className="tc-image-unavailable";box.setAttribute("role","img");box.setAttribute("aria-label","Imagen no disponible");if(path)box.dataset.tcStoragePath=path;box.innerHTML=tcUnavailableHtml(path,retry);img.replaceWith(box)};
 if(!window.__tcImgRecoveryBound){
   window.__tcImgRecoveryBound=true;
   document.addEventListener("error",e=>{
     const img=e.target;
     if(!(img instanceof HTMLImageElement))return;
     if(!img.closest("#logArea,.ev-body,.tc-reply-context-thumb,.tc-msg-quote"))return;
-    if(img.dataset.tcResigned==="1")return tcMarkImageUnavailable(img);
+    if(img.dataset.tcResigned==="1")return tcMarkImageUnavailable(img,true);
     const path=tcPathFromSignedUrl(img.currentSrc||img.src);
     if(!path)return tcMarkImageUnavailable(img);
     img.dataset.tcResigned="1";
-    signedEvidenceUrl({storage_path:path},"original").then(u=>{if(u&&u!==img.src){img.addEventListener("error",()=>tcMarkImageUnavailable(img),{once:true});img.src=u}else tcMarkImageUnavailable(img)}).catch(()=>tcMarkImageUnavailable(img));
+    signedEvidenceUrl({storage_path:path},"original").then(u=>{if(u&&u!==img.src){img.dataset.tcStoragePath=path;img.addEventListener("error",()=>tcMarkImageUnavailable(img,true),{once:true});img.src=u}else tcMarkImageUnavailable(img,true)}).catch(()=>tcMarkImageUnavailable(img,true));
   },true);
+  document.addEventListener("click",async e=>{const btn=e.target.closest?.("[data-tc-image-retry]"),box=btn?.closest?.(".tc-image-unavailable"),path=box?.dataset.tcStoragePath;if(!btn||!box||!path||btn.disabled)return;btn.disabled=true;btn.textContent="Reintentando…";const u=await signedEvidenceUrl({storage_path:path},"original").catch(()=>"");if(!u){btn.textContent="Reintento agotado";return}const img=document.createElement("img");img.alt="";img.dataset.tcResigned="1";img.dataset.tcStoragePath=path;img.addEventListener("error",()=>tcMarkImageUnavailable(img,false),{once:true});box.replaceWith(img);img.src=u},true);
 }
 const isImgF=f=>/^image\//.test(f?.type||"")||/\.(jpe?g|png|webp|heic)$/i.test(f?.name||"");
 const isVidF=f=>/^video\//.test(f?.type||"")||/\.(mp4|mov|m4v)$/i.test(f?.name||"");
@@ -724,7 +726,7 @@ const hydrateThreadFileThumbs=async()=>{
     }
     const u=await signedEvidenceUrl(f,"thumb");
     if(!u){
-      node.innerHTML='<span class="tc-image-unavailable" role="img" aria-label="Imagen no disponible"><b>Imagen no disponible</b><small>El archivo no pudo cargarse.</small></span>';
+      const path=String(f.storage_path||"");node.innerHTML=`<span class="tc-image-unavailable" role="img" aria-label="Imagen no disponible" ${path?`data-tc-storage-path="${escHtml(path)}"`:""}>${tcUnavailableHtml(path,true)}</span>`;
       node.dataset.ready="1";
       continue;
     }

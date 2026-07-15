@@ -420,6 +420,7 @@ body[data-page="tickets"] .tk-filter-pop,body[data-page="tickets"] .tickets-gear
 @media(min-width:721px){body[data-page="tickets"] .tk-filter-pop{right:0!important;left:auto!important}body[data-page="tickets"] .tickets-gear-menu{right:0!important;left:auto!important;transform:none!important}}
 @media(max-width:720px){body[data-page="tickets"] .tk-filter-pop,body[data-page="tickets"] .tickets-gear-menu{position:fixed!important;left:10px!important;right:10px!important;width:auto!important;max-width:none!important;z-index:10080!important}}
 @media(max-width:720px){body[data-page="tickets"],body[data-page="tickets"] #pageMount,body[data-page="tickets"] .tickets-page{height:100dvh!important;max-height:100dvh!important;overflow:hidden!important}body[data-page="tickets"] .board-layout,body[data-page="tickets"] .kanban-board{height:100%!important;min-height:0!important;overflow:hidden!important}body[data-page="tickets"] .kanban-board>.kanban-col{height:100%!important;min-height:0!important;overflow:hidden!important}body[data-page="tickets"] .col-body{min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;padding-bottom:84px!important}body[data-page="tickets"] .col-body::-webkit-scrollbar{width:0!important;height:0!important}}
+@media(max-width:720px){body[data-page="tickets"] .kanban-col>.col-header,body[data-page="tickets"] .kanban-col>.col-header .tk-col-total{display:none!important}body[data-page="tickets"] .tk-mobile-statebar{isolation:isolate}body[data-page="tickets"] .tk-mobile-statebar button:focus-visible{outline:3px solid color-mix(in srgb,var(--brand) 62%,#fff);outline-offset:2px}}
 @media(max-width:720px){body[data-page="tickets"] .tk-quick-chips,body[data-page="tickets"] .tk-pillbar,body[data-page="tickets"] .tk-range-pills,body[data-page="tickets"] .tk-bg-pills,body[data-page="tickets"] .tk-order-pills,body[data-page="tickets"] .tk-qr-tabs{display:flex!important;flex-wrap:nowrap!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;justify-content:flex-start!important}body[data-page="tickets"] .tk-quick-chips::-webkit-scrollbar,body[data-page="tickets"] .tk-pillbar::-webkit-scrollbar,body[data-page="tickets"] .tk-range-pills::-webkit-scrollbar,body[data-page="tickets"] .tk-bg-pills::-webkit-scrollbar,body[data-page="tickets"] .tk-order-pills::-webkit-scrollbar,body[data-page="tickets"] .tk-qr-tabs::-webkit-scrollbar{display:none!important}body[data-page="tickets"] .tk-quick-chips .mini,body[data-page="tickets"] .tk-pillbar .mini,body[data-page="tickets"] .tk-range,body[data-page="tickets"] .tk-bg-pills .mini,body[data-page="tickets"] .tk-order-pills .mini,body[data-page="tickets"] .tk-qr-tabs .mini{flex:0 0 auto!important;white-space:nowrap!important}body[data-page="tickets"] .tk-qr-tabs [data-board-qrscope]{flex:0 0 auto!important;width:auto!important;white-space:nowrap!important}}
 body[data-page="tickets"] #tkGearMenu[data-gear-tab="bg"]{background:color-mix(in srgb,var(--panel) 72%,transparent)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important}
 body[data-page="tickets"] #tkGearMenu[data-gear-tab="bg"] .tk-board-bg-section{background:transparent!important}
@@ -1544,3 +1545,71 @@ body[data-access-role="soporte"] #tcAssignViewBtn,
 body[data-access-role="soporte"] .tcAssignBadge,
 body[data-access-role="soporte"] #tcAssignOverlay,
 body[data-access-role="soporte"] #tcViewOverlay{display:none!important}
+
+/* MOBILE-TICKETS-04: estados de control distinguibles en claro y oscuro. */
+body[data-page="tickets"]{
+  --tc-control-normal-bg:var(--panel);
+  --tc-control-normal-fg:var(--text);
+  --tc-control-hover-bg:color-mix(in srgb,var(--brand) 9%,var(--panel));
+  --tc-control-selected-bg:#115e59;
+  --tc-control-selected-fg:#fff;
+  --tc-control-focus:#0f766e;
+  --tc-control-disabled-bg:color-mix(in srgb,var(--line) 40%,var(--panel));
+  --tc-control-disabled-fg:var(--muted);
+}
+html[data-theme="dark"] body[data-page="tickets"]{
+  --tc-control-hover-bg:rgba(94,234,212,.12);
+  --tc-control-selected-bg:#5eead4;
+  --tc-control-selected-fg:#042f2e;
+  --tc-control-focus:#99f6e4;
+}
+body[data-page="tickets"] :is(.tk-mobile-statebar button,.metric-pill,[data-quick-scope],[data-board-qrscope],.tk-filter-pop button):not(.is-active):not(.is-on):not(.btn-brand){
+  background:var(--tc-control-normal-bg);
+  color:var(--tc-control-normal-fg);
+}
+body[data-page="tickets"] :is(.tk-mobile-statebar button,.metric-pill,[data-quick-scope],[data-board-qrscope],.tk-filter-pop button):not(:disabled):hover{
+  background:var(--tc-control-hover-bg);
+}
+body[data-page="tickets"] :is(.tk-mobile-statebar button.is-active,.metric-pill.is-active,[data-quick-scope].is-active,[data-board-qrscope].is-on,.tk-filter-pop .is-active,.tk-filter-pop .btn-brand){
+  background:var(--tc-control-selected-bg)!important;
+  color:var(--tc-control-selected-fg)!important;
+  border-color:var(--tc-control-selected-bg)!important;
+}
+body[data-page="tickets"] :is(.tk-mobile-statebar button,.metric-pill,[data-quick-scope],[data-board-qrscope],.tk-filter-pop button):focus-visible{
+  outline:3px solid var(--tc-control-focus)!important;
+  outline-offset:3px;
+}
+body[data-page="tickets"] :is(button,.metric-pill):disabled{
+  background:var(--tc-control-disabled-bg)!important;
+  color:var(--tc-control-disabled-fg)!important;
+  cursor:not-allowed;
+}
+body[data-page="tickets"] .tk-active-filter{
+  width:max-content;
+  max-width:100%;
+  margin:-2px 0 2px;
+  padding:7px 11px;
+  border:1px solid color-mix(in srgb,var(--tc-control-selected-bg) 40%,var(--line));
+  border-radius:999px;
+  background:color-mix(in srgb,var(--tc-control-selected-bg) 10%,var(--panel));
+  color:var(--text);
+  font-size:.82rem;
+  font-weight:800;
+}
+body[data-page="tickets"] .metric-pill{text-decoration:none}
+body[data-access-role="soporte"] #tkQuickEditBtn{display:none!important}
+
+@media(max-width:720px){
+  body[data-page="tickets"],body[data-page="tickets"] #pageMount{height:calc(100dvh - 62px)!important;min-height:0!important}
+  body[data-page="tickets"] .tickets-page{height:calc(100dvh - 62px)!important;min-height:0!important;max-height:calc(100dvh - 62px)!important;padding:8px!important;gap:8px!important;grid-template-rows:auto auto minmax(0,1fr)!important}
+  body[data-page="tickets"] .tk-mobile-statebar{position:relative!important;z-index:240!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:auto!important;align-self:start!important;gap:5px!important;width:100%!important;min-width:0!important;padding:5px!important;border:1px solid var(--line)!important;border-radius:17px!important;background:var(--panel)!important;box-shadow:0 8px 24px rgba(15,23,42,.08)!important;overflow:hidden!important}
+  body[data-page="tickets"] .tk-mobile-statebar button{display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;min-width:0!important;min-height:46px!important;padding:0 8px!important;border:1px solid transparent!important;border-radius:12px!important;background:transparent!important;color:var(--muted)!important;box-shadow:none!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important}
+  body[data-page="tickets"] .tk-mobile-statebar button span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:12px!important;letter-spacing:0!important;text-transform:none!important;line-height:1.1!important}
+  body[data-page="tickets"] .tk-mobile-statebar button b{display:inline-grid!important;place-items:center!important;flex:0 0 auto!important;min-width:22px!important;height:22px!important;padding:0 6px!important;border-radius:999px!important;background:color-mix(in srgb,var(--line) 48%,var(--panel))!important;color:var(--text)!important;font-size:11px!important;line-height:1!important}
+  body[data-page="tickets"] .tk-mobile-statebar button.is-active{background:var(--tc-control-selected-bg)!important;color:var(--tc-control-selected-fg)!important;border-color:var(--tc-control-selected-bg)!important;box-shadow:none!important}
+  body[data-page="tickets"] .tk-mobile-statebar button.is-active b{background:color-mix(in srgb,var(--tc-control-selected-fg) 18%,transparent)!important;color:var(--tc-control-selected-fg)!important}
+  body[data-page="tickets"] .board-layout{min-height:0!important}
+  body[data-page="tickets"] .kanban-board{border-radius:17px!important}
+  body[data-page="tickets"] .kanban-board>.kanban-col{border-radius:17px!important}
+  body[data-page="tickets"] .col-body{overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;padding:10px 7px 20px!important}
+}

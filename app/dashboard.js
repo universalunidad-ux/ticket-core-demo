@@ -213,6 +213,7 @@ async function loadActividad() {
 
 /* ---------- Supervisión pendiente (misma recarga central, sin polling adicional) ---------- */
 async function loadSupervision(){
+  if(!CTX.isAdmin){$("#dashSupervision")?.classList.add("hidden");return}
   const box=$("#dashSupervisionList");
   if(!box)return;
   try{
@@ -872,6 +873,8 @@ async function init() {
   CTX.isAdmin = ["admin", "jefe", "owner", "administrador"].includes(ctx.rol);
   CTX.me = ctx.perfil?.id || ctx.user?.id || null;
   CTX.nombre = ctx.perfil?.nombre || "";
+  document.body.dataset.accessRole=CTX.isAdmin?"admin":"soporte";
+  document.body.dataset.surface=CTX.isAdmin?"admin":"support";
 
   const badge = $("#dashRoleBadge");
   if (badge) badge.textContent = CTX.isAdmin ? "Administrador" : "Soporte";
@@ -892,6 +895,7 @@ async function init() {
     const l1 = $("#dashLead"); if (l1) l1.textContent = "Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.";
     $("#dashAdmin")?.classList.remove("hidden");
     $("#dashAgents")?.classList.remove("hidden");
+    $("#dashSupervision")?.classList.remove("hidden");
     $("#dashAgentGrid")?.addEventListener("click",e=>{const b=e.target.closest("[data-agent-row]");if(b)openAgent(AGENT_ROWS[Number(b.dataset.agentRow)])});
     const closeAgent=()=>{$("#dashAgentModal").hidden=true};
     $("#dashAgentClose")?.addEventListener("click",closeAgent);
@@ -902,7 +906,7 @@ async function init() {
   /* Progresivo: KPIs primero; actividad y adaptador de vistas después. */
   await loadMetrics();
   perfPageReady();
-  Promise.allSettled([loadActividad(), loadAgentSummary(), loadSupervision()]).then(perfSecondaryDone);
+  Promise.allSettled([loadActividad(), loadAgentSummary(), CTX.isAdmin?loadSupervision():Promise.resolve()]).then(perfSecondaryDone);
 }
 
 document.addEventListener("DOMContentLoaded", init);

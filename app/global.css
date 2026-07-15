@@ -134,3 +134,24 @@ input.btn-brand,
 .app-drawer-logout{width:100%;margin-top:auto;text-align:left;cursor:pointer}
 .app-drawer-logout:disabled,.app-logout-btn:disabled{opacity:.55;cursor:wait}
 @media(max-width:980px){.app-logout-btn{display:none!important}}
+
+/* HEADER-SEARCH-ATTENTION-05 */
+.app-nav-link .app-attention-dot,.app-drawer-item .app-attention-dot{display:inline-block!important;width:8px;height:8px;min-width:8px;border-radius:999px;background:#ef4444;box-shadow:0 0 0 3px color-mix(in srgb,#ef4444 18%,transparent);animation:appAttention 1s ease-in-out 4}
+.app-attention-dot[hidden]{display:none!important}
+@keyframes appAttention{50%{transform:scale(1.22);box-shadow:0 0 0 6px color-mix(in srgb,#ef4444 10%,transparent)}}
+.app-search{width:clamp(220px,24vw,360px)}
+.app-search .input{padding-left:34px;padding-right:34px}
+.app-search-icon{position:absolute;left:11px;top:50%;z-index:2;transform:translateY(-50%);font-size:18px;color:var(--muted);pointer-events:none}
+.app-search-clear{position:absolute;right:6px;top:50%;z-index:3;transform:translateY(-50%);display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+.app-search-clear[hidden]{display:none}
+.app-search .suggest-panel{position:absolute;top:calc(100% + 8px);right:0;width:min(440px,calc(100vw - 20px));max-height:min(66dvh,560px);overflow:auto;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 22px 60px rgba(2,6,23,.2)}
+.app-search-group{display:grid;gap:3px}
+.app-search-group+.app-search-group{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.app-search-group-title{padding:5px 8px;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.app-search .suggest-item{display:grid;gap:2px;padding:9px 10px;border-radius:11px;text-decoration:none;color:var(--text)}
+.app-search .suggest-item:hover,.app-search .suggest-item.is-active{background:color-mix(in srgb,var(--brand) 10%,var(--panel-2));outline:1px solid color-mix(in srgb,var(--brand) 24%,var(--line))}
+.app-search .item-title{font-size:13px;font-weight:850;overflow-wrap:anywhere}
+.app-search .item-meta{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.app-search-state{padding:14px 12px;color:var(--muted);font-size:12px;font-weight:750}
+@media(prefers-reduced-motion:reduce){.app-attention-dot{animation:none!important}}
+@media(max-width:1180px) and (min-width:981px){.app-search{width:190px}}
