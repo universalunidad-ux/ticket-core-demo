@@ -17,7 +17,7 @@
    ============================================================================ */
 import { supabase, esc } from "./supabase.js";
 import { mountNav } from "./shared/nav-interna.js";
-import { ticketStateLabel, ticketStateCls, ago, prettyBytes } from "./global.js";
+import { ticketStateLabel, ticketStateCls, ago, prettyBytes, setRailOpenCount } from "./global.js";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 
 const $ = (q, c = document) => c.querySelector(q);
@@ -122,7 +122,7 @@ const renderRail = (keys, M, skel = false) => {
 async function loadMetrics() {
   const keys = CTX.isAdmin ? ADMIN_RAIL : SOPORTE_RAIL;
   const cached = mcacheGet(CTX.rol);
-  if (cached) { renderRail(keys, cached); renderMiCarga(cached); perfPrimaryDone(); return cached; }
+  if (cached) { renderRail(keys, cached); renderMiCarga(cached);setRailOpenCount(CTX.isAdmin?[cached.abiertos,cached.proceso,cached.esperando,cached.resueltos].reduce((a,v)=>a+(Number(v)||0),0):(Number(cached.misAbiertos)||0)+(Number(cached.misCerrables)||0)); perfPrimaryDone(); return cached; }
   renderRail(keys, null, true);
 
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -159,6 +159,7 @@ async function loadMetrics() {
   const M = Object.fromEntries(names.map((k, i) => [k, settled[i].status === "fulfilled" ? settled[i].value : null]));
   renderRail(keys, M);
   renderMiCarga(M);
+  setRailOpenCount(CTX.isAdmin?[M.abiertos,M.proceso,M.esperando,M.resueltos].reduce((a,v)=>a+(Number(v)||0),0):(Number(M.misAbiertos)||0)+(Number(M.misCerrables)||0));
   mcacheSet(CTX.rol, M);
   perfPrimaryDone();
   return M;
@@ -283,7 +284,7 @@ function openAdmin(tab, push = true) {
   sec?.classList.remove("hidden");
   tab = ["avisos", "personalizacion", "reglas", "bitacora"].includes(tab) ? tab : "avisos";
   ADM.current = tab;
-  document.querySelectorAll("#admTabs .adm-tab").forEach(b => b.classList.toggle("is-active", b.dataset.adm === tab));
+  document.querySelectorAll("#admTabs .adm-tab").forEach(b => {const active=b.dataset.adm===tab;b.classList.toggle("is-active",active);b.setAttribute("aria-selected",String(active));b.tabIndex=active?0:-1});
   document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.admPanel !== tab));
   if (!ADM.mounted[tab]) {
     ADM.mounted[tab] = true;
@@ -295,10 +296,11 @@ function openAdmin(tab, push = true) {
     ({ avisos: mountAvisos, personalizacion: mountConfig, reglas: mountReglas, bitacora: mountBitacora }[tab])(host);
   }
   if (push && location.hash !== admHash(tab)) history.replaceState(null, "", admHash(tab));
-  sec?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function bindAdmin() {
+  if (document.documentElement.dataset.adminTabsBound === "1") return;
+  document.documentElement.dataset.adminTabsBound = "1";
   $("#admTabs")?.addEventListener("click", e => {
     const b = e.target.closest(".adm-tab");
     if (b) openAdmin(b.dataset.adm);
@@ -476,6 +478,11 @@ async function mountConfig(host) {
   CFGMOD = CFGMOD || await import("./config-loader.js");
   const disponible = await CFGMOD.probeSiteConfig(); /* 1 request máx. por sesión */
   const cfg = CFGMOD.cfg, defaults = CFGMOD.configDefaults();
+  if (!disponible) {
+    host.innerHTML = `<div class="sc-disabled-note"><b>Personalización pendiente de activación</b><span>Los textos públicos continúan usando valores locales seguros. No hay acciones de guardado disponibles hasta completar la activación administrativa.</span></div><button class="mini btn-ghost" id="scShowCurrent" type="button" aria-expanded="false">Ver valores actuales</button><div id="scCurrentValues" class="sc-preview hidden">${CFG_GROUPS.map(g=>`<section class="sc-mock"><b>${esc(g.titulo)}</b>${g.keys.map(k=>`<p><span class="mut">${esc(k.label)}:</span> ${esc(cfg(k.clave,"")||defaults[k.clave]||"—")}</p>`).join("")}</section>`).join("")}</div><details><summary>Detalle técnico</summary><p class="mut">Requiere desplegar la migración revisable de site_config con RLS, grants y bitácora.</p></details>`;
+    $("#scShowCurrent")?.addEventListener("click",e=>{const box=$("#scCurrentValues"),open=box?.classList.contains("hidden");box?.classList.toggle("hidden",!open);e.currentTarget.setAttribute("aria-expanded",String(!!open));e.currentTarget.textContent=open?"Ocultar valores actuales":"Ver valores actuales"});
+    return;
+  }
 
   const fieldHtml = (k) => {
     const val = cfg(k.clave, "");
@@ -630,7 +637,7 @@ async function rgLoad() {
     .select("id,nombre,prioridad,tipo_condicion,valor,agente_id,activo")
     .is("eliminado_en", null)
     .order("prioridad", { ascending: true }).limit(100);
-  if (error) { cont.innerHTML = `<div class="empty-state">${esc(errText(error, "leer las reglas"))} <button class="mini btn-ghost" id="rgRetry" type="button">Reintentar</button></div>`; $("#rgRetry")?.addEventListener("click", rgLoad); return; }
+  if (error) { document.documentElement.dataset.assignmentRulesDeployRequired="1";cont.innerHTML = `<div class="empty-state"><b>Las reglas requieren una actualización administrativa del backend.</b><span class="mut">La asignación automática no está conectada. La vista previa permanece como simulación local y no modifica tickets.</span></div>`;document.querySelectorAll("#rgCrear,[data-rg-move],[data-rg-edit],[data-rg-toggle],[data-rg-del]").forEach(b=>b.disabled=true);return; }
   RG_ROWS = data || [];
   rgRender();
 }
@@ -791,9 +798,9 @@ async function mountReglas(host) {
 
 /* ---------- Bitácora (solo admin, lazy, paginada y sin payloads sensibles) ---------- */
 async function mountBitacora(host) {
-  const PAGE = 25;
+  const PAGE = 10;
   let page = 0;
-  host.innerHTML = `<p class="mut">Historial administrativo y operativo. Los resúmenes excluyen tokens, URLs firmadas y payloads completos.</p>
+  host.innerHTML = `<div class="section-head"><div><h3>Historial de actividad</h3><p class="mut">Actividad administrativa y operativa relevante de la mesa de soporte.</p></div></div>
     <div class="adm-log-filters" style="margin-top:10px">
       <input class="input" id="logSearch" type="search" placeholder="Buscar acción, actor o entidad">
       <select class="select" id="logType"><option value="">Todos los tipos</option><option value="nota_interna">Nota interna</option><option value="sistema">Sistema</option></select>
@@ -812,6 +819,8 @@ async function mountBitacora(host) {
       return txt ? [`${k}: ${txt}`] : [];
     }).slice(0, 3).join(" · ");
   };
+  const friendlyAction = value => ({portal_respondio:"El cliente respondió",portal_abierto:"El cliente abrió el seguimiento",ticket_asignado:"Ticket asignado",ticket_reasignado:"Ticket reasignado",supervision_solicitada:"Se solicitó supervisión",ticket_supervision_escalada:"Se solicitó supervisión",estado_actualizado:"Estado actualizado",ticket_seguimiento:"Seguimiento del ticket",ticket_solucion:"Solución registrada",ticket_creado:"Ticket creado",ticket_creado_desde_soporte_publico:"Solicitud de soporte creada",contacto_consolidado:"Contacto consolidado"}[String(value||"")]||"Actividad registrada");
+  const absoluteDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}):"Fecha no disponible"};
   const load = async () => {
     const rowsHost = $("#logRows");
     rowsHost.innerHTML = '<div class="dash-skel"></div>';
@@ -840,7 +849,8 @@ async function mountBitacora(host) {
     rowsHost.innerHTML = filtered.length ? filtered.map(b => {
       const summary = safeDetail(b.detalle);
       const failed = /error|fall|rechaz/i.test(`${b.accion} ${b.detalle?.resultado || ""}`);
-      return `<div class="adm-log-row"><span><b>${esc(b.accion || "evento")}</b> <span class="tag ${failed ? "bad" : "ok"}">${failed ? "Error" : "Correcto"}</span>${summary ? `<small class="mut">${esc(summary)}</small>` : ""}</span><span class="mut">${esc(actors[b.usuario_id] || "Sistema")} · ${esc(ago(b.fecha))}</span></div>`;
+      const folio=b.detalle?.folio,ticketId=b.detalle?.ticket_id,actor=actors[b.usuario_id]||"Automatización del sistema";
+      return `<article class="adm-log-row"><span><b>${esc(friendlyAction(b.accion))}</b> <span class="tag ${failed ? "bad" : "ok"}">${failed ? "Error" : "Correcto"}</span>${folio&&ticketId?`<a class="adm-log-ticket" href="ticket.html?id=${encodeURIComponent(ticketId)}">${esc(folio)}</a>`:""}${summary ? `<small class="mut">${esc(summary.replace(/ticket_id:[^·]+·?/i,"").trim())}</small>` : ""}<details><summary>Ver detalle</summary><small class="mut">Código: ${esc(b.accion||"evento")}</small></details></span><span class="mut">${esc(actor)}<br><time datetime="${esc(b.fecha||"")}">${esc(absoluteDate(b.fecha))}</time> · ${esc(ago(b.fecha))}</span></article>`;
     }).join("") : '<div class="empty-state">No hay eventos que coincidan con estos filtros.</div>';
     $("#logPage").textContent = `Página ${page + 1}`;
     $("#logPrev").disabled = page === 0;
@@ -878,6 +888,8 @@ async function init() {
     const act = $("#dashActTitle"); if (act) act.textContent = "Mi actividad reciente";
     document.querySelectorAll(".dash-admin-only").forEach(el => el.classList.add("hidden"));
   } else {
+    const t1 = $("#dashTitle"); if (t1) t1.textContent = "Mesa de soporte Janome";
+    const l1 = $("#dashLead"); if (l1) l1.textContent = "Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.";
     $("#dashAdmin")?.classList.remove("hidden");
     $("#dashAgents")?.classList.remove("hidden");
     $("#dashAgentGrid")?.addEventListener("click",e=>{const b=e.target.closest("[data-agent-row]");if(b)openAgent(AGENT_ROWS[Number(b.dataset.agentRow)])});

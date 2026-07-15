@@ -22,8 +22,8 @@
   <section class="panel dash-hero">
     <div>
       <div class="section-kicker">Operación de soporte</div>
-      <h1 id="dashTitle">Mesa de soporte Janome</h1>
-      <p class="mut" id="dashLead">Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.</p>
+      <h1 id="dashTitle" aria-live="polite">Preparando tu mesa de soporte…</h1>
+      <p class="mut" id="dashLead">Cargando tu contexto de trabajo.</p>
       <div class="dash-hero-meta">
         <span class="tag ok" id="dashRoleBadge">Cargando…</span>
         <span class="tag" id="dashScope" hidden></span>
@@ -78,13 +78,13 @@
     <div class="section-head">
       <div><div class="section-kicker">Administración</div><h2>Configuración de la mesa</h2></div>
     </div>
-    <nav class="adm-tabs" id="admTabs" aria-label="Secciones de administración">
-      <button class="adm-tab" data-adm="avisos" type="button">Avisos del sitio</button>
-      <button class="adm-tab" data-adm="personalizacion" type="button">Personalización</button>
-      <button class="adm-tab" data-adm="reglas" type="button">Reglas de asignación</button>
-      <button class="adm-tab" data-adm="bitacora" type="button">Bitácora</button>
+    <nav class="adm-tabs" id="admTabs" role="tablist" aria-label="Secciones de administración">
+      <button class="adm-tab" data-adm="avisos" id="admTabAvisos" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Avisos del sitio</button>
+      <button class="adm-tab" data-adm="personalizacion" id="admTabPersonalizacion" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Personalización</button>
+      <button class="adm-tab" data-adm="reglas" id="admTabReglas" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Reglas de asignación</button>
+      <button class="adm-tab" data-adm="bitacora" id="admTabBitacora" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Bitácora</button>
     </nav>
-    <div class="adm-panel" id="admPanel"><div class="mut">Elige una sección. Cada sección carga sus datos solo al abrirla.</div></div>
+    <div class="adm-panel" id="admPanel" role="tabpanel"><div class="mut">Elige una sección. Cada sección carga sus datos solo al abrirla.</div></div>
   </section>
 </main>
 

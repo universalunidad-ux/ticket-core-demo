@@ -36,13 +36,6 @@ const APP_MENU={
     {key:"altas",label:"Alta de cliente",href:"alta-cliente.html",icon:"＋"},
     {key:"recent_clients",label:"Últimos clientes",panel:"recent_clients",icon:"🕘"}
   ],
-  ventas:[
-    {key:"dashboard",label:"Dashboard",href:"dashboard.html",icon:"⌂"},
-    {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
-    {key:"clientes",label:"Clientes",href:"clientes.html",icon:"👥"},
-    {key:"altas",label:"Alta de cliente",href:"alta-cliente.html",icon:"＋"},
-    {key:"ventas",label:"Ventas",icon:"📈",children:[{panel:"oportunidades",label:"Oportunidades"},{panel:"renovaciones",label:"Renovaciones"}]}
-  ],
   admin:[
     {key:"dashboard",label:"Dashboard",href:"dashboard.html",icon:"⌂"},
     {key:"tickets",label:"Tickets",href:"tickets.html",icon:"🎫",badge:"open"},
@@ -50,18 +43,17 @@ const APP_MENU={
     {key:"consolidacion",label:"Consolidación",href:"consolidacion-clientes.html",icon:"🔗"},
     {key:"altas",label:"Alta de cliente",href:"alta-cliente.html",icon:"＋"},
     {key:"recent_clients",label:"Últimos clientes",panel:"recent_clients",icon:"🕘"},
-    {key:"ventas",label:"Ventas",icon:"📈",children:[{panel:"oportunidades",label:"Oportunidades"},{panel:"renovaciones",label:"Renovaciones"}]},
     {key:"admin_tools",label:"Administración",href:"dashboard.html#admin",icon:"⚙️"}
   ]
 };
 
-const roleKey=r=>{const x=norm(r||"soporte");return x==="admin"?"admin":x==="ventas"||x==="venta"||x==="sales"?"ventas":"soporte"};
+const roleKey=r=>norm(r||"soporte")==="admin"?"admin":"soporte";
 const pageTitleMap={dashboard:"Dashboard interno",tickets:"Tickets",ticket:"Ticket",clientes:"Clientes",cliente:"Cliente",consolidacion:"Consolidación de clientes","alta-cliente":"Alta interna de cliente"};
 const breadcrumbHtml=page=>`<nav class="crumbs" aria-label="Ruta"><a href="dashboard.html">Panel</a><span>/</span><span>${esc(pageTitleMap[page]||page||"Vista")}</span></nav>`;
 
 
-const navItemHtml=item=>item.children?`<div class="app-nav-dd"><button class="app-nav-link" type="button" data-nav-dd="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b><i>⌄</i></button><div class="app-nav-menu">${item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join("")}</div></div>`:item.panel?`<button class="app-nav-link" type="button" data-open-panel="${esc(item.panel)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b></button>`:`<a class="app-nav-link" href="${esc(item.href)}" data-nav="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b>${item.badge==="open"?`<em id="railOpenCount">0</em>`:""}</a>`;
-const drawerItemHtml=item=>item.children?`<div class="app-drawer-group"><button class="app-drawer-item" type="button" data-drawer-group="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b><i>›</i></button><div class="app-drawer-sub">${item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join("")}</div></div>`:item.panel?`<button class="app-drawer-item" type="button" data-open-panel="${esc(item.panel)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b></button>`:`<a class="app-drawer-item" href="${esc(item.href)}" data-nav="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b>${item.badge==="open"?`<em id="railOpenCountMob">0</em>`:""}</a>`;
+const navItemHtml=item=>item.children?`<div class="app-nav-dd"><button class="app-nav-link" type="button" data-nav-dd="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b><i>⌄</i></button><div class="app-nav-menu">${item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join("")}</div></div>`:item.panel?`<button class="app-nav-link" type="button" data-open-panel="${esc(item.panel)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b></button>`:`<a class="app-nav-link" href="${esc(item.href)}" data-nav="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b>${item.badge==="open"?`<em id="railOpenCount" aria-live="polite" hidden>—</em>`:""}</a>`;
+const drawerItemHtml=item=>item.children?`<div class="app-drawer-group"><button class="app-drawer-item" type="button" data-drawer-group="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b><i>›</i></button><div class="app-drawer-sub">${item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join("")}</div></div>`:item.panel?`<button class="app-drawer-item" type="button" data-open-panel="${esc(item.panel)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b></button>`:`<a class="app-drawer-item" href="${esc(item.href)}" data-nav="${esc(item.key)}"><span>${item.icon||"•"}</span><b>${esc(item.label)}</b>${item.badge==="open"?`<em id="railOpenCountMob" aria-live="polite" hidden>—</em>`:""}</a>`;
 const headerMoreItemHtml=item=>item.children?item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join(""):item.panel?`<button type="button" data-open-panel="${esc(item.panel)}">${esc(item.label)}</button>`:`<a href="${esc(item.href)}" data-nav="${esc(item.key)}">${esc(item.label)}</a>`;
 const moreItemHtml=item=>item.children?item.children.map(x=>`<button type="button" data-open-panel="${esc(x.panel)}">${esc(x.label)}</button>`).join(""):item.panel?`<button type="button" data-open-panel="${esc(item.panel)}">${esc(item.label)}</button>`:`<a href="${esc(item.href)}" data-nav="${esc(item.key)}">${esc(item.label)}</a>`;
 const historyIcon=direction=>direction==="back"
@@ -121,20 +113,18 @@ const initAppHeader=(page)=>{
   document.querySelectorAll("[data-nav]").forEach(x=>x.classList.remove("is-active"));
   if(page)document.querySelectorAll(`[data-nav="${page}"]`).forEach(x=>x.classList.add("is-active"));
 };
-export const ensureAppShell=({page,title="",kicker="",actionsHtml="",role="soporte"}={})=>{const shell=$("#appShell");if(!shell)return;const rk=roleKey(role),mountedHeader=shell.querySelector("#appHeader"),mountedPanel=shell.querySelector("#appPanel"),roleChanged=shell.dataset.appRole&&shell.dataset.appRole!==rk;if(mountedHeader&&mountedPanel&&!roleChanged){setAppRole(rk);bindGlobalSearch();initAppHeader(page);return}shell.dataset.appRole=rk;shell.innerHTML=`${appHeaderHtml(rk,page,{title,kicker,actionsHtml})}${panelHtml()}`;initAppHeader(page);initAppPanel();setAppRole(rk);bindGlobalSearch()};
+export const ensureAppShell=({page,title="",kicker="",actionsHtml="",role="soporte"}={})=>{const shell=$("#appShell");if(!shell)return;const rk=roleKey(role),mountedHeader=shell.querySelector("#appHeader"),mountedPanel=shell.querySelector("#appPanel"),roleChanged=shell.dataset.appRole&&shell.dataset.appRole!==rk;if(mountedHeader&&mountedPanel&&!roleChanged){setAppRole(rk);bindGlobalSearch();initAppHeader(page);return}shell.dataset.appRole=rk;shell.innerHTML=`${appHeaderHtml(rk,page,{title,kicker,actionsHtml})}${panelHtml()}`;initAppHeader(page);initAppPanel();setAppRole(rk);bindGlobalSearch();setRailOpenCount()};
 export const autoAppShell=()=>{const b=document.body;if(!b||b.dataset.shell!=="app"||!$("#appShell")||$("#appHeader"))return;const page=b.dataset.page||"dashboard";ensureAppShell({page,title:pageTitleMap[page]||page||"Panel",role:b.dataset.role||"soporte"})};
 
 
 const APP_PANEL_MAP={
-  oportunidades:{title:"Ventas",sub:"Oportunidades",html:`<div class="panel-card"><div class="panel-kv"><div class="panel-k">Matriz de oportunidades</div><div class="panel-v">Cruce comercial entre sistemas actuales, faltantes y próxima acción.</div></div></div>`},
-  renovaciones:{title:"Ventas",sub:"Renovaciones",html:`<div class="panel-card"><div class="panel-kv"><div class="panel-k">Renovaciones</div><div class="panel-v">Seguimiento comercial y operativo para cartera por vencer o vencida.</div></div></div>`},
   admin_tools:{title:"Admin",sub:"Herramientas",html:`<div class="panel-card"><div class="panel-kv"><div class="panel-k">Admin</div><div class="panel-v">Vista reservada para herramientas administrativas.</div></div></div>`},
   recent_clients:{title:"Clientes recientes",sub:"Últimos clientes vistos",html:`<div class="panel-card"><div class="panel-kv"><div class="panel-k">Clientes recientes</div><div class="panel-v" id="recentClientsBody">Aún no hay clientes recientes.</div></div></div>`},
   shortcuts:{title:"Atajos de teclado",sub:"Accesos rápidos globales",html:`<div class="panel-card"><div class="panel-kv"><div class="panel-k">Atajos</div><div class="panel-v">/ → Buscar<br>i d → Ir a inicio<br>i t → Ir a tickets<br>n t → Nuevo ticket<br>esc → Cerrar panel o modal<br>? → Ver esta ayuda</div></div></div>`}
 };
 export const pushRecentClient=client=>{try{if(!client?.id||!client?.nombre)return;const key="tc_recent_clients",cur=JSON.parse(localStorage.getItem(key)||"[]"),next=[{id:String(client.id),nombre:String(client.nombre)} ,...cur.filter(x=>String(x.id)!==String(client.id))].slice(0,8);localStorage.setItem(key,JSON.stringify(next))}catch{}};
 export const readRecentClients=()=>{try{return JSON.parse(localStorage.getItem("tc_recent_clients")||"[]")}catch{return[]}};
-export const setRailOpenCount=count=>{$$("#railOpenCount,#railOpenCountMob").forEach(el=>el.textContent=String(count??0))};
+export const setRailOpenCount=count=>{let n=count==null?NaN:Number(count);if(!Number.isFinite(n)){try{n=Number(sessionStorage.getItem("tc_canonical_ticket_count"))}catch{n=NaN}}else try{sessionStorage.setItem("tc_canonical_ticket_count",String(n))}catch{};$$("#railOpenCount,#railOpenCountMob").forEach(el=>{if(Number.isFinite(n)&&n>=0){el.textContent=String(n);el.hidden=false}else{el.textContent="—";el.hidden=true}})};
 export const setBreadcrumb=(items=[])=>{const el=$(".crumbs");if(!el||!items.length)return;el.innerHTML=items.map((x,i)=>x.href?`<a href="${esc(x.href)}">${esc(x.label)}</a>`:`<span>${esc(x.label)}</span>`).join("<span>/</span>")};
 export const openAppPanel=({title="Panel",sub="Vista interna",html=""}={})=>{const p=$("#appPanel"),b=$("#appPanelBackdrop");if(!p)return;$("#appPanelTitle")&&($("#appPanelTitle").textContent=title);$("#appPanelSub")&&($("#appPanelSub").textContent=sub);$("#appPanelBody")&&($("#appPanelBody").innerHTML=html);p.setAttribute("aria-hidden","false");p.classList.add("open");if(window.innerWidth<=980)b?.classList.add("open");else b?.classList.remove("open")};
 export const closeAppPanel=()=>{const p=$("#appPanel");p?.classList.remove("open");p?.setAttribute("aria-hidden","true");$("#appPanelBackdrop")?.classList.remove("open")};
@@ -166,4 +156,4 @@ export const ticketPriorityCls=v=>{const x=norm(v);return x==="urgente"?"bad":x=
 
 export const telHref=v=>{const d=String(v||"").replace(/\D+/g,"");return d?`tel:${d}`:"#"};
 export const mailHref=v=>String(v||"").trim()?`mailto:${String(v).trim()}`:"#";
-export const ago=v=>{if(!v)return"—";const s=Math.floor((Date.now()-new Date(v).getTime())/1000);if(s<60)return`hace ${s}s`;if(s<3600)return`hace ${Math.floor(s/60)}m`;if(s<86400)return`hace ${Math.floor(s/3600)}h`;return`hace ${Math.floor(s/86400)}d`};
+export const ago=v=>{if(!v)return"—";const ms=new Date(v).getTime();if(!Number.isFinite(ms))return"Fecha no disponible";const s=Math.floor((Date.now()-ms)/1000);if(s<0)return s>=-60?"ahora":new Date(ms).toLocaleString("es-MX");if(s<60)return"ahora";if(s<3600)return`hace ${Math.floor(s/60)}m`;if(s<86400)return`hace ${Math.floor(s/3600)}h`;return`hace ${Math.floor(s/86400)}d`};
