@@ -1,5 +1,5 @@
 .soporte-page{display:grid;gap:14px}
-.hero-support{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(240px,.8fr);gap:16px;align-items:center}
+.hero-support{display:block;align-items:center}
 .hero-support h1{margin:8px 0 0;font-size:clamp(28px,4vw,44px);line-height:1.02;letter-spacing:-.04em;font-weight:950;max-width:11ch}
 .hero-support .mut{max-width:60ch;line-height:1.6;color:color-mix(in srgb,var(--muted) 92%,transparent)}
 .hero-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-content:flex-start;opacity:.92}
@@ -38,6 +38,8 @@
 #spFilesMeta .item{padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 96%,transparent),color-mix(in srgb,var(--panel-2) 98%,transparent))}
 #spFilesMeta .item-meta{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 .hero-support .chips .tag{font-weight:800}
+.support-hints{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;color:var(--muted);font-size:13px;font-weight:750}
+.support-hints span{cursor:default}.support-hints i{font-style:normal;opacity:.5}
 /* B17C43G-R2: el título pertenece siempre al hero */
 .sp-mobile-form-heading-host{
   display:block;
