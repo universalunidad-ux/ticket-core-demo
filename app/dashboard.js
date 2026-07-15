@@ -16,8 +16,8 @@
      (solo admin, nunca como KPI roto).
    ============================================================================ */
 import { supabase, esc } from "./supabase.js";
-import { mountNav } from "./shared/nav-interna.js";
-import { ticketStateLabel, ticketStateCls, ago } from "./global.js";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260715-01";
+import { ticketStateLabel, ticketStateCls, ago, prettyBytes, setRailOpenCount } from "./global.js?v=frontend-final-20260715-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 
 const $ = (q, c = document) => c.querySelector(q);
@@ -122,7 +122,7 @@ const renderRail = (keys, M, skel = false) => {
 async function loadMetrics() {
   const keys = CTX.isAdmin ? ADMIN_RAIL : SOPORTE_RAIL;
   const cached = mcacheGet(CTX.rol);
-  if (cached) { renderRail(keys, cached); renderMiCarga(cached); perfPrimaryDone(); return cached; }
+  if (cached) { renderRail(keys, cached); renderMiCarga(cached);setRailOpenCount(CTX.isAdmin?[cached.abiertos,cached.proceso,cached.esperando,cached.resueltos].reduce((a,v)=>a+(Number(v)||0),0):(Number(cached.misAbiertos)||0)+(Number(cached.misCerrables)||0)); perfPrimaryDone(); return cached; }
   renderRail(keys, null, true);
 
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -159,6 +159,7 @@ async function loadMetrics() {
   const M = Object.fromEntries(names.map((k, i) => [k, settled[i].status === "fulfilled" ? settled[i].value : null]));
   renderRail(keys, M);
   renderMiCarga(M);
+  setRailOpenCount(CTX.isAdmin?[M.abiertos,M.proceso,M.esperando,M.resueltos].reduce((a,v)=>a+(Number(v)||0),0):(Number(M.misAbiertos)||0)+(Number(M.misCerrables)||0));
   mcacheSet(CTX.rol, M);
   perfPrimaryDone();
   return M;
@@ -212,18 +213,27 @@ async function loadActividad() {
 
 /* ---------- Supervisión pendiente (misma recarga central, sin polling adicional) ---------- */
 async function loadSupervision(){
+  if(!CTX.isAdmin){$("#dashSupervision")?.classList.add("hidden");return}
   const box=$("#dashSupervisionList");
   if(!box)return;
   try{
     perfCountRequest();
-    let q=supabase.from("tickets").select("id,folio,titulo,tipo,requiere_supervision_en,asignado_a,prioridad").eq("requiere_supervision",true).order("requiere_supervision_en",{ascending:false}).limit(8);
+    let q=supabase.from("tickets").select("id,folio,titulo,tipo,cliente_id,requiere_supervision_en,asignado_a,prioridad").eq("requiere_supervision",true).order("requiere_supervision_en",{ascending:false}).limit(8);
     if(!CTX.isAdmin&&CTX.me)q=q.eq("asignado_a",CTX.me);
     const{data,error}=await q;
     if(error)throw error;
-    const rows=data||[],ids=[...new Set(rows.map(x=>x.asignado_a).filter(Boolean))];
-    let agentes={};
-    if(ids.length){perfCountRequest();const r=await supabase.from("perfiles").select("id,nombre").in("id",ids);if(!r.error)agentes=Object.fromEntries((r.data||[]).map(p=>[p.id,p.nombre||"Agente"]));}
-    box.innerHTML=rows.length?rows.map(x=>`<a class="dash-supervision-row" href="ticket.html?id=${encodeURIComponent(x.id)}"><span class="dash-supervision-main"><b>${esc(x.folio||"—")}</b><span>${esc(x.titulo||"Sin título")}</span></span><span class="dash-supervision-meta"><span>${esc(x.tipo||"soporte")}</span><span>${esc(agentes[x.asignado_a]||"Sin asignar")}</span>${x.prioridad?`<span class="tag">${esc(x.prioridad)}</span>`:""}<span>${esc(ago(x.requiere_supervision_en))}</span></span></a>`).join(""):'<div class="empty-state">No hay tickets que requieran supervisión.</div>';
+    const rows=data||[],ticketIds=rows.map(x=>x.id),profileIds=[...new Set(rows.map(x=>x.asignado_a).filter(Boolean))],clientIds=[...new Set(rows.map(x=>x.cliente_id).filter(Boolean))];
+    let agentes={},clientes={},events=[];
+    if(ticketIds.length){perfCountRequest();const r=await supabase.from("ticket_eventos").select("id,ticket_id,created_at,created_by,texto,meta").in("ticket_id",ticketIds).order("created_at",{ascending:false}).limit(48);if(!r.error)events=(r.data||[]).filter(x=>x.meta?.requires_admin_review);profileIds.push(...events.map(x=>x.created_by).filter(Boolean));}
+    const uniqueProfiles=[...new Set(profileIds)];
+    if(uniqueProfiles.length){perfCountRequest();const r=await supabase.from("perfiles").select("id,nombre").in("id",uniqueProfiles);if(!r.error)agentes=Object.fromEntries((r.data||[]).map(p=>[p.id,p.nombre||"Agente"]));}
+    if(clientIds.length){perfCountRequest();const r=await supabase.from("clientes").select("id,nombre").in("id",clientIds);if(!r.error)clientes=Object.fromEntries((r.data||[]).map(c=>[c.id,c.nombre||"Cliente"]));}
+    const latest={};events.forEach(e=>{if(!latest[e.ticket_id])latest[e.ticket_id]=e});
+    const typeLabel=e=>e?.meta?.content_type==="image"?"Imagen":e?.meta?.content_type==="file"?"Archivo":"Texto";
+    const headline=e=>e?.meta?.content_type==="image"?"Imagen enviada a supervisión":e?.meta?.content_type==="file"?"Archivo enviado a supervisión":"Mensaje enviado a supervisión";
+    const imageRows=[];
+    box.innerHTML=rows.length?rows.map((x,i)=>{const e=latest[x.id],file=e?.meta?.ref_archivo_meta||{},isImage=e?.meta?.content_type==="image",path=isImage?String(file.storage_path||""):"",messagePreview=e?.meta?.content_type==="text"?String(e?.meta?.comentario||e?.texto||"").replace(/\s+/g," ").trim().slice(0,220):"";if(path)imageRows.push({i,path});return`<article class="dash-supervision-card"><div class="dash-supervision-thumb${isImage?" is-image":""}" data-supervision-thumb="${i}" aria-label="${esc(typeLabel(e))}">${isImage?"▧":e?.meta?.content_type==="file"?"▣":"T"}</div><div class="dash-supervision-main"><div class="dash-supervision-title"><b>${esc(headline(e))}</b><span class="tag info">${esc(typeLabel(e))}</span></div><a href="ticket.html?id=${encodeURIComponent(x.id)}">${esc(x.folio||"—")} · ${esc(x.titulo||"Sin título")}</a><span>${esc(clientes[x.cliente_id]||"Cliente permitido por RLS")} · ${esc(agentes[e?.created_by]||agentes[x.asignado_a]||"Agente")}</span>${messagePreview?`<span>${esc(messagePreview)}</span>`:""}${file.nombre_archivo?`<span>${esc(file.nombre_archivo)}${file.tamano_bytes?` · ${esc(prettyBytes(file.tamano_bytes))}`:""}</span>`:""}</div><div class="dash-supervision-meta"><span>${esc(ago(e?.created_at||x.requiere_supervision_en))}</span><span>${esc(agentes[x.asignado_a]||"Sin responsable")}</span><a class="mini btn-ghost" href="ticket.html?id=${encodeURIComponent(x.id)}">Abrir ticket</a></div></article>`}).join(""):'<div class="empty-state">No hay tickets que requieran supervisión.</div>';
+    imageRows.forEach(async item=>{try{const{data:signed,error:signedErr}=await supabase.storage.from("soporte_adjuntos").createSignedUrl(item.path,90);if(signedErr||!signed?.signedUrl)return;const host=box.querySelector(`[data-supervision-thumb="${item.i}"]`);if(!host)return;const img=document.createElement("img");img.alt="Miniatura segura del adjunto";img.loading="lazy";img.src=signed.signedUrl;img.addEventListener("error",()=>img.remove(),{once:true});host.textContent="";host.appendChild(img);setTimeout(()=>{img.removeAttribute("src");img.remove()},85000)}catch{}});
   }catch(err){box.innerHTML='<div class="empty-state">No se pudo cargar la cola de supervisión.</div>';console.error("SUPERVISION_DASHBOARD_LOAD_ERROR",err?.message||"query_failed")}
 }
 
@@ -275,7 +285,7 @@ function openAdmin(tab, push = true) {
   sec?.classList.remove("hidden");
   tab = ["avisos", "personalizacion", "reglas", "bitacora"].includes(tab) ? tab : "avisos";
   ADM.current = tab;
-  document.querySelectorAll("#admTabs .adm-tab").forEach(b => b.classList.toggle("is-active", b.dataset.adm === tab));
+  document.querySelectorAll("#admTabs .adm-tab").forEach(b => {const active=b.dataset.adm===tab;b.classList.toggle("is-active",active);b.setAttribute("aria-selected",String(active));b.tabIndex=active?0:-1});
   document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.admPanel !== tab));
   if (!ADM.mounted[tab]) {
     ADM.mounted[tab] = true;
@@ -287,10 +297,11 @@ function openAdmin(tab, push = true) {
     ({ avisos: mountAvisos, personalizacion: mountConfig, reglas: mountReglas, bitacora: mountBitacora }[tab])(host);
   }
   if (push && location.hash !== admHash(tab)) history.replaceState(null, "", admHash(tab));
-  sec?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function bindAdmin() {
+  if (document.documentElement.dataset.adminTabsBound === "1") return;
+  document.documentElement.dataset.adminTabsBound = "1";
   $("#admTabs")?.addEventListener("click", e => {
     const b = e.target.closest(".adm-tab");
     if (b) openAdmin(b.dataset.adm);
@@ -468,6 +479,11 @@ async function mountConfig(host) {
   CFGMOD = CFGMOD || await import("./config-loader.js");
   const disponible = await CFGMOD.probeSiteConfig(); /* 1 request máx. por sesión */
   const cfg = CFGMOD.cfg, defaults = CFGMOD.configDefaults();
+  if (!disponible) {
+    host.innerHTML = `<div class="sc-disabled-note"><b>Personalización pendiente de activación</b><span>Los textos públicos continúan usando valores locales seguros. No hay acciones de guardado disponibles hasta completar la activación administrativa.</span></div><button class="mini btn-ghost" id="scShowCurrent" type="button" aria-expanded="false">Ver valores actuales</button><div id="scCurrentValues" class="sc-preview hidden">${CFG_GROUPS.map(g=>`<section class="sc-mock"><b>${esc(g.titulo)}</b>${g.keys.map(k=>`<p><span class="mut">${esc(k.label)}:</span> ${esc(cfg(k.clave,"")||defaults[k.clave]||"—")}</p>`).join("")}</section>`).join("")}</div><details><summary>Detalle técnico</summary><p class="mut">Requiere desplegar la migración revisable de site_config con RLS, grants y bitácora.</p></details>`;
+    $("#scShowCurrent")?.addEventListener("click",e=>{const box=$("#scCurrentValues"),open=box?.classList.contains("hidden");box?.classList.toggle("hidden",!open);e.currentTarget.setAttribute("aria-expanded",String(!!open));e.currentTarget.textContent=open?"Ocultar valores actuales":"Ver valores actuales"});
+    return;
+  }
 
   const fieldHtml = (k) => {
     const val = cfg(k.clave, "");
@@ -611,6 +627,7 @@ const COND = [
 ];
 let AGENTES = [];
 let RG_ROWS = [];
+let RG_EDIT_ID = null;
 const rgToast = (txt, cls = "") => { const s = $("#rgMsg"); if (s) { s.textContent = txt; s.className = `mut ${cls}`.trim(); } };
 
 async function rgLoad() {
@@ -619,8 +636,9 @@ async function rgLoad() {
   perfCountRequest();
   const { data, error } = await supabase.from("reglas_asignacion")
     .select("id,nombre,prioridad,tipo_condicion,valor,agente_id,activo")
+    .is("eliminado_en", null)
     .order("prioridad", { ascending: true }).limit(100);
-  if (error) { cont.innerHTML = `<div class="empty-state">${esc(errText(error, "leer las reglas"))} <button class="mini btn-ghost" id="rgRetry" type="button">Reintentar</button></div>`; $("#rgRetry")?.addEventListener("click", rgLoad); return; }
+  if (error) { document.documentElement.dataset.assignmentRulesDeployRequired="1";cont.innerHTML = `<div class="empty-state"><b>Las reglas requieren una actualización administrativa del backend.</b><span class="mut">La asignación automática no está conectada. La vista previa permanece como simulación local y no modifica tickets.</span></div>`;document.querySelectorAll("#rgCrear,[data-rg-move],[data-rg-edit],[data-rg-toggle],[data-rg-del]").forEach(b=>b.disabled=true);return; }
   RG_ROWS = data || [];
   rgRender();
 }
@@ -637,6 +655,7 @@ function rgRender() {
       <div class="av-item-meta">
         <button class="mini btn-ghost" type="button" data-rg-move="${r.id}" data-dir="-1" ${i === 0 ? "disabled" : ""}>▲ Subir</button>
         <button class="mini btn-ghost" type="button" data-rg-move="${r.id}" data-dir="1" ${i === RG_ROWS.length - 1 ? "disabled" : ""}>▼ Bajar</button>
+        <button class="mini btn-ghost" type="button" data-rg-edit="${r.id}">Editar</button>
         <button class="mini btn-ghost" type="button" data-rg-toggle="${r.id}" data-on="${r.activo ? 1 : 0}">${r.activo ? "Desactivar" : "Activar"}</button>
         <button class="mini btn-ghost" type="button" data-rg-del="${r.id}">Eliminar</button>
       </div>
@@ -677,7 +696,7 @@ async function mountReglas(host) {
         <div class="field" id="rgValorField"><label class="lbl" for="rgValor">Valor a comparar</label><input class="input" id="rgValor" maxlength="80" placeholder="Ej. overlock"></div>
         <div class="field"><label class="lbl" for="rgAgente">Asignar a</label><select class="select" id="rgAgente">${ags}</select></div>
         <div class="field"><label class="lbl" for="rgPrioridad">Prioridad (menor = primero)</label><input class="input" id="rgPrioridad" type="number" value="100" min="1"></div>
-        <div class="actions"><button class="btn btn-brand" type="button" id="rgCrear">Crear regla</button></div>
+        <div class="actions"><button class="btn btn-brand" type="button" id="rgCrear">Crear regla</button><button class="btn btn-ghost hidden" type="button" id="rgCancelar">Cancelar edición</button></div>
         <div class="mut" id="rgMsg">Se advertirá si la regla se solapa con otra existente.</div>
         <div class="rg-test">
           <div class="lbl">Vista previa de reglas</div>
@@ -693,8 +712,17 @@ async function mountReglas(host) {
       <div class="av-preview-wrap"><div class="lbl">Reglas existentes</div><div id="rgLista" class="av-lista"><div class="dash-skel"></div></div></div>
     </div>`;
   const toggleValor = () => $("#rgValorField")?.classList.toggle("hidden", $("#rgTipo")?.value === "cliente_nuevo");
+  const resetForm = () => {
+    RG_EDIT_ID = null;
+    $("#rgNombre").value = ""; $("#rgValor").value = ""; $("#rgPrioridad").value = "100";
+    $("#rgTipo").value = "tipo_maquina";
+    $("#rgCrear").textContent = "Crear regla";
+    $("#rgCancelar").classList.add("hidden");
+    toggleValor();
+  };
   $("#rgTipo")?.addEventListener("change", toggleValor);
   $("#rgSimBtn")?.addEventListener("click", rgSimula);
+  $("#rgCancelar")?.addEventListener("click", resetForm);
   $("#rgCrear")?.addEventListener("click", async () => {
     if (busy.has("rgNew")) return;
     const nombre = ($("#rgNombre")?.value || "").trim();
@@ -705,15 +733,18 @@ async function mountReglas(host) {
     if (!nombre) return rgToast("Ponle un nombre a la regla.", "bad");
     if (!agente_id) return rgToast("Elige a quién se asigna.", "bad");
     if (tipo !== "cliente_nuevo" && !valor) return rgToast("Escribe el valor a comparar.", "bad");
-    const dup = RG_ROWS.find(r => r.tipo_condicion === tipo && String(r.valor || "").toLowerCase() === valor.toLowerCase());
+    const dup = RG_ROWS.find(r => r.id !== RG_EDIT_ID && r.tipo_condicion === tipo && String(r.valor || "").toLowerCase() === valor.toLowerCase());
     if (dup && !confirm(`Ya existe la regla “${dup.nombre}” con el mismo criterio y valor (prioridad #${dup.prioridad}). ¿Crear de todas formas?`)) return;
     busy.add("rgNew"); $("#rgCrear").disabled = true;
     rgToast("Guardando…");
     try {
-      const { error } = await supabase.from("reglas_asignacion").insert({ nombre, tipo_condicion: tipo, valor: tipo === "cliente_nuevo" ? null : valor, agente_id, prioridad, activo: true });
-      if (error) return rgToast(errText(error, "guardar la regla"), "bad");
-      rgToast("Regla creada.", "ok");
-      $("#rgNombre").value = ""; $("#rgValor").value = "";
+      const payload = { nombre, tipo_condicion: tipo, valor: tipo === "cliente_nuevo" ? null : valor, agente_id, prioridad, actualizado_por: CTX.me };
+      const result = RG_EDIT_ID
+        ? await supabase.from("reglas_asignacion").update(payload).eq("id", RG_EDIT_ID).is("eliminado_en", null)
+        : await supabase.from("reglas_asignacion").insert({ ...payload, activo: true, creado_por: CTX.me });
+      if (result.error) return rgToast(errText(result.error, "guardar la regla"), "bad");
+      rgToast(RG_EDIT_ID ? "Regla actualizada y auditada." : "Regla creada y auditada.", "ok");
+      resetForm();
       rgLoad();
     } finally { busy.delete("rgNew"); $("#rgCrear").disabled = false; }
   });
@@ -727,24 +758,38 @@ async function mountReglas(host) {
       try {
         const a = RG_ROWS[i], b = RG_ROWS[j];
         /* intercambio de prioridades: dos updates puntuales, sin drag inseguro */
-        const r1 = await supabase.from("reglas_asignacion").update({ prioridad: b.prioridad }).eq("id", a.id);
-        const r2 = await supabase.from("reglas_asignacion").update({ prioridad: a.prioridad }).eq("id", b.id);
+        const r1 = await supabase.from("reglas_asignacion").update({ prioridad: b.prioridad, actualizado_por: CTX.me }).eq("id", a.id).is("eliminado_en", null);
+        const r2 = await supabase.from("reglas_asignacion").update({ prioridad: a.prioridad, actualizado_por: CTX.me }).eq("id", b.id).is("eliminado_en", null);
         if (r1.error || r2.error) rgToast(errText(r1.error || r2.error, "reordenar"), "bad");
         rgLoad();
       } finally { busy.delete("rgMv"); }
       return;
     }
+    const edit = e.target.closest("[data-rg-edit]");
+    if (edit) {
+      const row = RG_ROWS.find(r => String(r.id) === edit.dataset.rgEdit);
+      if (!row) return;
+      RG_EDIT_ID = row.id;
+      $("#rgNombre").value = row.nombre || ""; $("#rgTipo").value = row.tipo_condicion;
+      $("#rgValor").value = row.valor || ""; $("#rgAgente").value = row.agente_id || "";
+      $("#rgPrioridad").value = String(row.prioridad || 100);
+      $("#rgCrear").textContent = "Guardar cambios"; $("#rgCancelar").classList.remove("hidden");
+      toggleValor(); $("#rgNombre").focus();
+      return;
+    }
     const tg = e.target.closest("[data-rg-toggle]");
     if (tg) {
-      const { error } = await supabase.from("reglas_asignacion").update({ activo: tg.dataset.on !== "1" }).eq("id", tg.dataset.rgToggle);
+      const { error } = await supabase.from("reglas_asignacion").update({ activo: tg.dataset.on !== "1", actualizado_por: CTX.me }).eq("id", tg.dataset.rgToggle).is("eliminado_en", null);
       if (error) return rgToast(errText(error, "actualizar la regla"), "bad");
       return rgLoad();
     }
     const del = e.target.closest("[data-rg-del]");
     if (del) {
-      if (!confirm("¿Eliminar esta regla de forma permanente?")) return;
-      const { error } = await supabase.from("reglas_asignacion").delete().eq("id", del.dataset.rgDel);
+      if (!confirm("¿Retirar esta regla? Se conservará su historial administrativo.")) return;
+      const { error } = await supabase.from("reglas_asignacion").update({ activo: false, eliminado_en: new Date().toISOString(), eliminado_por: CTX.me, actualizado_por: CTX.me }).eq("id", del.dataset.rgDel).is("eliminado_en", null);
       if (error) return rgToast(errText(error, "eliminar la regla"), "bad");
+      rgToast("Regla retirada; su historial permanece en auditoría.", "ok");
+      if (RG_EDIT_ID === del.dataset.rgDel) resetForm();
       return rgLoad();
     }
   });
@@ -752,16 +797,70 @@ async function mountReglas(host) {
   rgLoad();
 }
 
-/* ---------- Bitácora (solo admin, lazy, lectura ligera) ---------- */
+/* ---------- Bitácora (solo admin, lazy, paginada y sin payloads sensibles) ---------- */
 async function mountBitacora(host) {
-  host.innerHTML = '<div class="dash-skel"></div>';
-  perfCountRequest();
-  const { data, error } = await supabase.from("bitacora").select("accion,tipo,fecha").order("fecha", { ascending: false }).limit(25);
-  if (error) { host.innerHTML = `<div class="empty-state">${esc(errText(error, "leer la bitácora"))}</div>`; return; }
-  host.innerHTML = `<p class="mut">Últimos 25 eventos administrativos y operativos registrados.</p>
-    <div class="adm-log" style="margin-top:10px">${(data || []).length
-      ? data.map(b => `<div class="adm-log-row"><span>${esc(b.accion || "evento")}${b.tipo ? ` <span class="mut">· ${esc(b.tipo)}</span>` : ""}</span><span class="mut">${esc(ago(b.fecha))}</span></div>`).join("")
-      : '<div class="empty-state">Sin eventos en bitácora.</div>'}</div>`;
+  const PAGE = 10;
+  let page = 0;
+  host.innerHTML = `<div class="section-head"><div><h3>Historial de actividad</h3><p class="mut">Actividad administrativa y operativa relevante de la mesa de soporte.</p></div></div>
+    <div class="adm-log-filters" style="margin-top:10px">
+      <input class="input" id="logSearch" type="search" placeholder="Buscar acción, actor o entidad">
+      <select class="select" id="logType"><option value="">Todos los tipos</option><option value="nota_interna">Nota interna</option><option value="sistema">Sistema</option></select>
+      <select class="select" id="logResult"><option value="">Todos los resultados</option><option value="ok">Correctos</option><option value="error">Con error</option></select>
+    </div>
+    <div class="adm-log" id="logRows" style="margin-top:10px"><div class="dash-skel"></div></div>
+    <div class="actions"><button class="mini btn-ghost" id="logPrev" type="button">Anterior</button><span class="mut" id="logPage">Página 1</span><button class="mini btn-ghost" id="logNext" type="button">Siguiente</button></div>`;
+
+  const safeDetail = detail => {
+    const d = detail && typeof detail === "object" ? detail : {};
+    const allowed = ["clave", "folio", "ticket_id", "cliente_id", "documento_id", "nombre", "resultado", "estado"];
+    return allowed.flatMap(k => {
+      const v = d[k];
+      if (v == null || typeof v === "object") return [];
+      const txt = String(v).replace(/https?:\/\/\S+/gi, "[enlace protegido]").slice(0, 90);
+      return txt ? [`${k}: ${txt}`] : [];
+    }).slice(0, 3).join(" · ");
+  };
+  const friendlyAction = value => ({portal_respondio:"El cliente respondió",portal_abierto:"El cliente abrió el seguimiento",ticket_asignado:"Ticket asignado",ticket_reasignado:"Ticket reasignado",supervision_solicitada:"Se solicitó supervisión",ticket_supervision_escalada:"Se solicitó supervisión",estado_actualizado:"Estado actualizado",ticket_seguimiento:"Seguimiento del ticket",ticket_solucion:"Solución registrada",ticket_creado:"Ticket creado",ticket_creado_desde_soporte_publico:"Solicitud de soporte creada",contacto_consolidado:"Contacto consolidado"}[String(value||"")]||"Actividad registrada");
+  const absoluteDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}):"Fecha no disponible"};
+  const load = async () => {
+    const rowsHost = $("#logRows");
+    rowsHost.innerHTML = '<div class="dash-skel"></div>';
+    perfCountRequest();
+    let q = supabase.from("bitacora").select("id,usuario_id,accion,tipo,fecha,detalle")
+      .order("fecha", { ascending: false }).range(page * PAGE, page * PAGE + PAGE);
+    const type = $("#logType")?.value || "";
+    if (type) q = q.eq("tipo", type);
+    const { data, error } = await q;
+    if (error) { rowsHost.innerHTML = `<div class="empty-state">${esc(errText(error, "leer la bitácora"))}</div>`; return; }
+    const raw = data || [];
+    const ids = [...new Set(raw.map(x => x.usuario_id).filter(Boolean))];
+    let actors = {};
+    if (ids.length) {
+      const p = await supabase.from("perfiles").select("id,nombre").in("id", ids);
+      if (!p.error) actors = Object.fromEntries((p.data || []).map(x => [x.id, x.nombre || "Usuario"]));
+    }
+    const needle = ($("#logSearch")?.value || "").trim().toLowerCase();
+    const resultFilter = $("#logResult")?.value || "";
+    const filtered = raw.slice(0, PAGE).filter(b => {
+      const summary = safeDetail(b.detalle);
+      const result = /error|fall|rechaz/i.test(`${b.accion} ${b.detalle?.resultado || ""}`) ? "error" : "ok";
+      const haystack = `${b.accion} ${b.tipo} ${actors[b.usuario_id] || "Sistema"} ${summary}`.toLowerCase();
+      return (!needle || haystack.includes(needle)) && (!resultFilter || result === resultFilter);
+    });
+    rowsHost.innerHTML = filtered.length ? filtered.map(b => {
+      const summary = safeDetail(b.detalle);
+      const failed = /error|fall|rechaz/i.test(`${b.accion} ${b.detalle?.resultado || ""}`);
+      const folio=b.detalle?.folio,ticketId=b.detalle?.ticket_id,actor=actors[b.usuario_id]||"Automatización del sistema";
+      return `<article class="adm-log-row"><span><b>${esc(friendlyAction(b.accion))}</b> <span class="tag ${failed ? "bad" : "ok"}">${failed ? "Error" : "Correcto"}</span>${folio&&ticketId?`<a class="adm-log-ticket" href="ticket.html?id=${encodeURIComponent(ticketId)}">${esc(folio)}</a>`:""}${summary ? `<small class="mut">${esc(summary.replace(/ticket_id:[^·]+·?/i,"").trim())}</small>` : ""}<details><summary>Ver detalle</summary><small class="mut">Código: ${esc(b.accion||"evento")}</small></details></span><span class="mut">${esc(actor)}<br><time datetime="${esc(b.fecha||"")}">${esc(absoluteDate(b.fecha))}</time> · ${esc(ago(b.fecha))}</span></article>`;
+    }).join("") : '<div class="empty-state">No hay eventos que coincidan con estos filtros.</div>';
+    $("#logPage").textContent = `Página ${page + 1}`;
+    $("#logPrev").disabled = page === 0;
+    $("#logNext").disabled = raw.length <= PAGE;
+  };
+  $("#logPrev")?.addEventListener("click", () => { if (page) { page--; load(); } });
+  $("#logNext")?.addEventListener("click", () => { page++; load(); });
+  ["logSearch", "logType", "logResult"].forEach(id => $("#" + id)?.addEventListener(id === "logSearch" ? "input" : "change", () => { page = 0; load(); }));
+  load();
 }
 
 /* ============================================================================
@@ -774,19 +873,29 @@ async function init() {
   CTX.isAdmin = ["admin", "jefe", "owner", "administrador"].includes(ctx.rol);
   CTX.me = ctx.perfil?.id || ctx.user?.id || null;
   CTX.nombre = ctx.perfil?.nombre || "";
+  document.body.dataset.accessRole=CTX.isAdmin?"admin":"soporte";
+  document.body.dataset.surface=CTX.isAdmin?"admin":"support";
 
   const badge = $("#dashRoleBadge");
   if (badge) badge.textContent = CTX.isAdmin ? "Administrador" : "Soporte";
   const scope = $("#dashScope");
-  if (scope) scope.textContent = CTX.isAdmin ? "Toda la operación" : "Mis casos asignados";
+  if (scope) {
+    scope.hidden = CTX.isAdmin;
+    scope.textContent = CTX.isAdmin ? "" : "Mis casos asignados";
+  }
   if (!CTX.isAdmin) {
-    const t1 = $("#dashTitle"); if (t1) t1.textContent = `Tu mesa de soporte${CTX.nombre ? ", " + String(CTX.nombre).split(" ")[0] : ""}`;
+    const rawFirst = String(CTX.nombre || "").trim().split(/\s+/)[0] || "";
+    const firstName = rawFirst && !rawFirst.includes("@") ? rawFirst : "Soporte";
+    const t1 = $("#dashTitle"); if (t1) t1.textContent = `Tu mesa de soporte, ${firstName}`;
     const l1 = $("#dashLead"); if (l1) l1.textContent = "Atiende tus casos asignados, responde a tiempo y vigila tus compromisos de servicio.";
     const act = $("#dashActTitle"); if (act) act.textContent = "Mi actividad reciente";
     document.querySelectorAll(".dash-admin-only").forEach(el => el.classList.add("hidden"));
   } else {
+    const t1 = $("#dashTitle"); if (t1) t1.textContent = "Mesa de soporte Janome";
+    const l1 = $("#dashLead"); if (l1) l1.textContent = "Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.";
     $("#dashAdmin")?.classList.remove("hidden");
     $("#dashAgents")?.classList.remove("hidden");
+    $("#dashSupervision")?.classList.remove("hidden");
     $("#dashAgentGrid")?.addEventListener("click",e=>{const b=e.target.closest("[data-agent-row]");if(b)openAgent(AGENT_ROWS[Number(b.dataset.agentRow)])});
     const closeAgent=()=>{$("#dashAgentModal").hidden=true};
     $("#dashAgentClose")?.addEventListener("click",closeAgent);
@@ -797,7 +906,7 @@ async function init() {
   /* Progresivo: KPIs primero; actividad y adaptador de vistas después. */
   await loadMetrics();
   perfPageReady();
-  Promise.allSettled([loadActividad(), loadAgentSummary(), loadSupervision()]).then(perfSecondaryDone);
+  Promise.allSettled([loadActividad(), loadAgentSummary(), CTX.isAdmin?loadSupervision():Promise.resolve()]).then(perfSecondaryDone);
 }
 
 document.addEventListener("DOMContentLoaded", init);

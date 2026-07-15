@@ -4,13 +4,13 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Cliente | Ticket Core Janome</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="stylesheet" href="global.css"><link rel="stylesheet" href="cliente.css?v=b19d-1">
+<link rel="stylesheet" href="global.css?v=frontend-final-20260715-01"><link rel="stylesheet" href="cliente.css?v=frontend-final-20260715-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B19A: sin ?id= esta página redirige a clientes.html.
      B19D: carga progresiva (identidad → tab activa → lazy por pestaña). -->
 </head>
-<body data-surface="admin" data-page="cliente">
-<header class="topbar" id="navInterna"></header>
+<body data-surface="admin" data-shell="app" data-page="cliente">
+<div id="appShell"></div>
 <main class="wrap">
   <section class="panel cf-head" id="cfHead">
     <div class="cf-id"><div class="cf-avatar" id="cfAvatar">—</div>
@@ -34,7 +34,7 @@
   </nav>
   <section class="panel" id="cfBody"><div class="cf-skel"></div><div class="cf-skel"></div><div class="cf-skel"></div></section>
 </main>
-<script src="supabase.config.public.js"></script>
-<script type="module" src="cliente.js?v=b19d-1"></script>
+<script src="supabase.config.public.js?v=frontend-final-20260715-01"></script>
+<script type="module" src="cliente.js?v=frontend-final-20260715-01"></script>
 </body>
 </html>

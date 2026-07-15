@@ -1,28 +1,34 @@
 /* B19A — topbar interna compartida (clientes, cliente, consolidación, alta interna).
    Sesión obligatoria (guardSession) + rol desde perfiles. No se muestra en páginas públicas.
    Nota: la seguridad real vive en RLS/Edge; ocultar links es solo UX (documentado en B19A). */
-import{supabase as s,guardSession,getProfile,logout,esc}from"../supabase.js";
-const LINKS=[
-  {href:"dashboard.html",label:"Dashboard",roles:["admin","soporte"]},
-  {href:"tickets.html",label:"Tickets",roles:["admin","soporte"]},
-  {href:"clientes.html",label:"Clientes",roles:["admin","soporte"]},
-  {href:"consolidacion-clientes.html",label:"Consolidación",roles:["admin","soporte"]},
-  {href:"dashboard.html#admin",label:"Administración",roles:["admin"]}
-];
+import{supabase as s,guardSession,getProfile}from"../supabase.js";
+import{ensureAppShell,registerGlobalSearchProvider}from"../global.js?v=frontend-final-20260715-01";
+const cleanSearchTerm=value=>String(value||"").normalize("NFKC").replace(/[^\p{L}\p{N}\s-]/gu," ").replace(/\s+/g," ").trim().slice(0,80);
+const signalQuery=(query,signal)=>typeof query?.abortSignal==="function"?query.abortSignal(signal):query;
+export function registerInternalSearchProvider({sb=s,user,rol="soporte"}={}){
+  const isAdmin=["admin","owner","administrador"].includes(String(rol||"").toLowerCase());
+  const userId=user?.id||"";
+  let supportClientIdsPromise=null;
+  const supportClientIds=()=>supportClientIdsPromise||(supportClientIdsPromise=s.from("tickets").select("cliente_id").eq("asignado_a",userId).not("cliente_id","is",null).limit(500).then(({data,error})=>{if(error)throw error;return[...new Set((data||[]).map(x=>x.cliente_id).filter(Boolean))]}));
+  registerGlobalSearchProvider({id:"internal-role-scoped",async search(raw,{signal}={}){
+    const term=cleanSearchTerm(raw);if(term.length<2)return[];
+    let tickets=s.from("tickets").select("id,folio,titulo,estado,empresa_capturada,cliente_id").or(`folio.ilike.%${term}%,titulo.ilike.%${term}%,empresa_capturada.ilike.%${term}%`).order("fecha_actualizacion",{ascending:false}).limit(8);
+    if(!isAdmin)tickets=tickets.eq("asignado_a",userId);
+    let clients=s.from("clientes").select("id,nombre").ilike("nombre",`%${term}%`).order("nombre",{ascending:true}).limit(6);
+    if(!isAdmin){const ids=await supportClientIds();if(signal?.aborted)return[];if(!ids.length)clients=null;else clients=clients.in("id",ids)}
+    const [tk,cl]=await Promise.all([signalQuery(tickets,signal),clients?signalQuery(clients,signal):Promise.resolve({data:[],error:null})]);
+    if(tk.error||cl.error)throw tk.error||cl.error;
+    return[
+      ...(tk.data||[]).map(t=>({k:`t_${t.id}`,type:"ticket",group:"Tickets",label:t.folio?`${t.folio} · ${t.titulo||"Ticket"}`:t.titulo||"Ticket",sub:`${t.empresa_capturada||"Sin cliente"} · ${t.estado||"abierto"}`,href:`ticket.html?id=${encodeURIComponent(t.id)}`})),
+      ...(cl.data||[]).map(c=>({k:`c_${c.id}`,type:"cliente",group:"Clientes",label:c.nombre||"Sin nombre",sub:"Cliente",href:`cliente.html?id=${encodeURIComponent(c.id)}`}))
+    ];
+  }});
+}
 export async function mountNav(active){
   const auth=await guardSession();if(!auth)return null;
   const perfil=await getProfile();
   const rol=(perfil?.rol||"soporte").toLowerCase();
-  const el=document.getElementById("navInterna");
-  if(el){el.innerHTML=`<div class="topbar-inner">
-    <a class="brand" href="dashboard.html"><span class="brand-dot"></span><span>Ticket Core · Janome</span></a>
-    <div class="top-actions">
-      ${LINKS.filter(l=>l.roles.includes(rol)).map(l=>`<a class="mini btn-ghost${l.href.startsWith(active)?" is-active":""}" href="${l.href}">${esc(l.label)}</a>`).join("")}
-      <button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
-      <button class="mini" id="navLogout" type="button">Salir</button>
-    </div></div>`;
-    const logoutBtn=document.getElementById("navLogout");
-    if(logoutBtn)logoutBtn.onclick=async()=>{if(logoutBtn.dataset.busy==="1")return;logoutBtn.dataset.busy="1";logoutBtn.disabled=true;try{await logout("index.html")}catch(err){delete logoutBtn.dataset.busy;logoutBtn.disabled=false;console.error("NAV_LOGOUT_ERROR",err?.message||"logout_failed")}};
-  }
+  ensureAppShell({page:active,role:rol});
+  registerInternalSearchProvider({sb:s,user:auth.user,rol});
   return{auth,perfil,rol,user:auth.user,sb:s};
 }

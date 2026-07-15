@@ -786,6 +786,12 @@ function normalizeEnterCopy(){
     return s.length > max ? s.slice(0, max - 1) + "…" : s;
   }
 
+  function tcJanomeSupervisionSafeText(v, max=220){
+    return tcJanomeChatUxText(String(v || "")
+      .replace(/https?:\/\/\S+/gi, "[enlace omitido]")
+      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, "[referencia omitida]"), max);
+  }
+
   function tcJanomeChatUxToast(text, kind="ok"){
     if(typeof window.toast === "function") return window.toast(text, kind);
     const el = document.createElement("div");
@@ -959,6 +965,9 @@ function normalizeEnterCopy(){
     const ticketId = new URL(location.href).searchParams.get("id");
     if(!ticketId) throw new Error("No hay ticket_id en la URL.");
 
+    const stage=(name,detail={})=>{try{performance.mark(`admin-${name.toLowerCase()}`);console.info(`ADMIN_STAGE=${name}`,detail)}catch(e){}};
+    stage("VALIDATION",{ticket_id:ticketId});
+
     const kind = String(payload?.kind || "chat").toLowerCase();
     const refEventoId = payload?.ref_evento_id || payload?.preview?.ref_evento_id || payload?.preview?.event_id || null;
     const refArchivoId = payload?.ref_archivo_id || payload?.file?.ref_archivo_id || payload?.file?.archivo_id || null;
@@ -969,6 +978,8 @@ function normalizeEnterCopy(){
       : ["message","mensaje","note","nota"].includes(kind)&&uuid(refEventoId)
         ? "message_forwarded_to_admin"
         : "chat_forwarded_to_admin";
+    const fileLike=payload?.file||payload?.preview||{};
+    const content_type=kind==="image"||String(fileLike?.typeLabel||"").toLowerCase()==="imagen"||String(fileLike?.mime_type||"").toLowerCase().startsWith("image/")?"image":accion==="file_forwarded_to_admin"?"file":"text";
 
     const cleanComment = tcJanomeChatUxText(comment || "", 900);
     let comentario = cleanComment;
@@ -995,9 +1006,11 @@ function normalizeEnterCopy(){
       comentario,
       ref_evento_id: refEventoId || null,
       ref_archivo_id: refArchivoId || null,
+      content_type,
       idempotency_key
     };
 
+    stage("EDGE_REQUEST",{action:accion,content_type});
     const { data, error } = await client.functions.invoke("ticket-escalar-admin", { body });
     if(error){
       throw new Error(error.message || "No se pudo enviar a supervisión.");
@@ -1005,8 +1018,9 @@ function normalizeEnterCopy(){
     if(data?.error){
       throw new Error(data.error);
     }
+    stage("EVENT_ACK",{evento_id:data?.evento_id||null,idempotency_key});
 
-    return { data, accion, idempotency_key };
+    return { data, accion, content_type, idempotency_key };
   }
 
   async function tcJanomeSendAdminNote(payload, comment){
@@ -1041,7 +1055,7 @@ function normalizeEnterCopy(){
         <div class="tc-supervisor-error" id="tcSupervisorError" hidden></div>
         <div class="tc-supervisor-actions">
           <button type="button" class="btn btn-ghost" id="tcSupervisorCancel">Cancelar</button>
-          <button type="button" class="btn btn-brand tc-supervisor-send" id="tcSupervisorSend">Enviar a supervisión</button>
+          <button type="button" class="btn btn-brand tc-supervisor-send" id="tcSupervisorSend">Enviar a Administración</button>
         </div>
       </div>
     `;
@@ -1151,32 +1165,47 @@ function normalizeEnterCopy(){
       if(sendBtn){
         sendBtn.disabled = true;
         sendBtn.dataset.tcOldText = sendBtn.textContent || "";
-        sendBtn.textContent = "Enviando…";
+        sendBtn.textContent = "Enviando a Administración";
+        sendBtn.classList.add("is-sending");
+        sendBtn.setAttribute("aria-busy","true");
+        sendBtn.setAttribute("aria-label","Enviando a Administración…");
       }
+      tcJanomeChatUxToast("Enviando a Administración…", "");
 
       const res = await tcJanomeSendAdminNote(payload, text);
 
       tcJanomeCloseSupervisorModal();
-      tcJanomeChatUxToast("Enviado a supervisión real.", "ok");
+      tcJanomeChatUxToast("Enviado a Administración", "ok");
+
+      const title=res?.content_type==="image"?"Imagen enviada a supervisión":res?.content_type==="file"?"Archivo enviado a supervisión":"Mensaje enviado a supervisión";
+      const persistedText=`${title}.\nComentario para admin: ${text}`;
 
       window.dispatchEvent(new CustomEvent("tc:admin-escalated", {
         detail: {
           ticket_id: new URL(location.href).searchParams.get("id"),
           accion: res?.accion || null,
+          content_type:res?.content_type||"text",
+          evento_id:res?.data?.evento_id||null,
+          created_at:res?.data?.requiere_supervision_en||new Date().toISOString(),
+          persisted_text:persistedText,
           idempotency_key: res?.idempotency_key || null
         }
       }));
+      console.info("ADMIN_STAGE=LOCAL_RENDER",{evento_id:res?.data?.evento_id||null});
     }catch(err){
       console.error("TC_ADMIN_ESCALATE_ERROR", err);
-      const errMsg=err?.message || "No se pudo enviar a supervisión.";
+      const errMsg=err?.message || "No se pudo enviar a Administración";
       const errBox=overlay.querySelector("#tcSupervisorError");
       if(errBox){errBox.textContent=errMsg;errBox.hidden=false;}
-      tcJanomeChatUxToast(errMsg, "bad");
+      tcJanomeChatUxToast("No se pudo enviar a Administración", "bad");
       overlay.querySelector("#tcSupervisorText")?.focus();
     }finally{
       if(sendBtn){
         sendBtn.disabled = false;
-        sendBtn.textContent = sendBtn.dataset.tcOldText || "Enviar a supervisión";
+        sendBtn.classList.remove("is-sending");
+        sendBtn.removeAttribute("aria-busy");
+        sendBtn.removeAttribute("aria-label");
+        sendBtn.textContent = sendBtn.dataset.tcOldText || "Enviar a Administración";
         delete sendBtn.dataset.tcOldText;
       }
     }
@@ -1507,7 +1536,7 @@ function normalizeEnterCopy(){
         /* B17C20_SUPERVISION_FORWARD_PREVIEW:
            Mantiene el comentario a admin, pero también muestra la previsualización
            del mensaje/archivo reenviado cuando el texto persistido trae quote "↪". */
-        const supComment = tcJanomeChatUxText(data.comment || "", 220);
+        const supComment = tcJanomeSupervisionSafeText(data.comment || "", 220);
 
         let supForwardMeta = "";
         let supForwardPreview = "";
@@ -1518,8 +1547,8 @@ function normalizeEnterCopy(){
           const quoteBlock = qMatch ? String(qMatch[1] || "").trim() : "";
           if(quoteBlock){
             const qLines = quoteBlock.split("\n").map(x => x.trim()).filter(Boolean);
-            supForwardMeta = tcJanomeChatUxText(qLines.shift() || "", 140);
-            supForwardPreview = tcJanomeChatUxText(qLines.join(" ") || "", 220);
+            supForwardMeta = tcJanomeSupervisionSafeText(qLines.shift() || "", 140);
+            supForwardPreview = tcJanomeSupervisionSafeText(qLines.join(" ") || "", 220);
           }
         }catch(e){}
 
@@ -1534,13 +1563,7 @@ function normalizeEnterCopy(){
           </div>
         ` : "";
 
-        el.innerHTML = `
-          <div class="tc-supervision-card">
-            <div class="tc-supervision-title">${tcJanomeChatUxEsc(data.title || "Mensaje enviado a supervisión")}</div>
-            ${supPreviewHtml}
-            ${supComment ? `<div class="tc-supervision-comment">${tcJanomeChatUxEsc(supComment)}</div>` : ""}
-          </div>
-        `;
+        el.innerHTML = `<div class="tc-supervision-card"><div class="tc-supervision-title">${tcJanomeChatUxEsc(data.title || "Mensaje enviado a supervisión")}</div>${supPreviewHtml}${supComment?`<div class="tc-supervision-comment">${tcJanomeChatUxEsc(supComment)}</div>`:""}</div>`;
         el.dataset.tcSupervisorHumanized = "1";
       }
 
@@ -1730,7 +1753,8 @@ function normalizeEnterCopy(){
     if(!/(Se envió este chat a admin|Se reenvió este mensaje a admin|Se reenvió este archivo a admin|Comentario para admin:|supervisi[oó]n)/i.test(txt)) return null;
 
     let title = "Mensaje enviado a supervisión";
-    if(/archivo|imagen|adjunto|foto|video|pdf/i.test(txt)) title = "Archivo enviado a supervisión";
+    if(/imagen|foto|image\//i.test(txt)) title = "Imagen enviada a supervisión";
+    else if(/archivo|adjunto|video|pdf/i.test(txt)) title = "Archivo enviado a supervisión";
 
     let comment = "";
     const m = txt.match(/Comentario para admin:\s*([\s\S]*)$/i);
@@ -2159,23 +2183,8 @@ function normalizeEnterCopy(){
 
   function tcJanomeB17C28CompactSupervisionCards(){
     document.querySelectorAll(".log-msg.tc-msg-supervision").forEach(msg => {
-      msg.dataset.tcSupervisorHumanized = "";
       const title = msg.querySelector(".tc-supervision-title");
       if(title && !title.textContent.trim()) title.textContent = "Mensaje enviado a supervisión";
-
-      const fwd = msg.querySelector(".tc-supervision-forward-preview");
-      if(fwd) fwd.remove();
-
-      const txt = msg.querySelector(".tc-supervision-comment,.log-text");
-      if(txt){
-        txt.textContent = String(txt.textContent || "")
-          .replace(/^Se envió este chat a admin para seguimiento del caso\.?/i,"")
-          .replace(/^Comentario para admin:\s*/i,"")
-          .replace(/Reenvío este mensaje a supervisión para comentarios\.?/gi,"")
-          .replace(/Reenvío este archivo a supervisión para comentarios\.?/gi,"")
-          .replace(/\s+/g," ")
-          .trim();
-      }
     });
   }
 

@@ -1,5 +1,5 @@
 .soporte-page{display:grid;gap:14px}
-.hero-support{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(240px,.8fr);gap:16px;align-items:center}
+.hero-support{display:block;align-items:center}
 .hero-support h1{margin:8px 0 0;font-size:clamp(28px,4vw,44px);line-height:1.02;letter-spacing:-.04em;font-weight:950;max-width:11ch}
 .hero-support .mut{max-width:60ch;line-height:1.6;color:color-mix(in srgb,var(--muted) 92%,transparent)}
 .hero-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-content:flex-start;opacity:.92}
@@ -8,6 +8,10 @@
 .support-form::after{content:"";display:block;height:1px;background:transparent}
 .support-side{display:grid;gap:12px;position:sticky;top:72px}/* B17C43C: recibo fijo al hacer scroll; el formulario es lo que se desplaza */
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+#spIdentityFields .field{display:grid;grid-template-rows:auto 47px auto;align-content:start;gap:7px}
+#spIdentityFields .field>.input,#spIdentityFields .jn-phone{width:100%;height:47px;min-height:47px;box-sizing:border-box}
+#spIdentityFields .jn-phone-input{width:100%;height:45px;min-height:45px;box-sizing:border-box}
+#spIdentityFields .lbl{height:auto;min-height:17px;line-height:17px}
 .field{display:grid;gap:7px;min-width:0}
 .field.span-2{grid-column:1/-1}
 .lbl{font-size:11.5px;font-weight:800;letter-spacing:.06em;color:color-mix(in srgb,var(--muted) 92%,transparent);text-transform:uppercase}
@@ -38,6 +42,8 @@
 #spFilesMeta .item{padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 96%,transparent),color-mix(in srgb,var(--panel-2) 98%,transparent))}
 #spFilesMeta .item-meta{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 .hero-support .chips .tag{font-weight:800}
+.support-hints{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;color:var(--muted);font-size:13px;font-weight:750}
+.support-hints span{cursor:default}.support-hints i{font-style:normal;opacity:.5}
 /* B17C43G-R2: el título pertenece siempre al hero */
 .sp-mobile-form-heading-host{
   display:block;
@@ -393,4 +399,29 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
   body[data-surface="client"] .jn-combo-panel{
     max-height:48vh !important;
   }
+}
+/* Validación accesible de identidad pública. */
+.sp-field-error{min-height:18px;margin-top:5px;color:var(--danger);font-size:12px;font-weight:700;line-height:1.35}
+#spEmail:invalid:not(:placeholder-shown),#spPhone:invalid:not(:placeholder-shown){border-color:color-mix(in srgb,var(--danger) 55%,var(--line))}
+
+/* WHATSAPP-CONSENT-05 */
+.hero-support-main{display:flex;align-items:center;justify-content:center;gap:18px;min-width:0;width:100%}
+.hero-support-main h1{flex:0 0 auto;max-width:none;white-space:nowrap;margin:0}
+.hero-support-main .support-hints{margin:0;flex-wrap:nowrap;white-space:nowrap}
+.support-hints span,.support-hints i{cursor:default;box-shadow:none}
+#spIdentityFields .field:has(#spWhatsRow:not(.hidden)){grid-template-rows:auto auto auto}
+#spIdentityFields .jn-phone:has(#spWhatsRow:not(.hidden)){height:auto;min-height:47px}
+#spWhatsRow.hidden{display:none!important}
+.sp-consent{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px 10px;align-items:start;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--panel-2) 72%,var(--panel));font-size:13px;line-height:1.45}
+.sp-consent>input{width:18px;height:18px;margin:1px 0 0}
+.sp-consent>label{min-width:0}
+.sp-consent a{font-weight:800;text-underline-offset:2px}
+.sp-consent .sp-field-error{grid-column:2;min-height:0;margin:0}
+.support-legal-strip{margin:0;padding:8px 3px 2px;border-top:1px solid var(--line);font-size:12px;line-height:1.25}
+.support-legal-strip nav{gap:6px}
+@media(max-width:760px){
+  .hero-support-main{align-items:flex-start;justify-content:flex-start;gap:7px;flex-direction:column}
+  .hero-support-main h1{white-space:normal}
+  .hero-support-main .support-hints{width:100%;gap:7px;font-size:12px;overflow:hidden}
+  .support-legal-strip{align-items:flex-start;gap:4px;padding-inline:4px}
 }

@@ -1,4 +1,4 @@
-import { supabase as s } from "./supabase.js";
+import { supabase as s, getProfile } from "./supabase.js";
 
 const $ = (q, ctx=document) => ctx.querySelector(q);
 const $$ = (q, ctx=document) => [...ctx.querySelectorAll(q)];
@@ -19,6 +19,9 @@ let AGENTS = [];
 let CURRENT_USER_ID = "";
 let CURRENT_TICKET = null;
 let ASSIGN_BUSY = false;
+let CURRENT_ROLE = "";
+
+export const canAssignTicket = (role = CURRENT_ROLE) => ["admin", "owner", "administrador"].includes(String(role || "").toLowerCase());
 
 function agentLabel(a){
   return a?.nombre || a?.correo || a?.auth_email || (a?.id ? String(a.id).slice(0,8) : "Agente");
@@ -85,6 +88,7 @@ function toast(text){
 }
 
 async function loadAgents(){
+  if(!canAssignTicket()) return;
   const user = await s.auth.getUser().catch(() => ({ data:{ user:null } }));
   CURRENT_USER_ID = user?.data?.user?.id || "";
 
@@ -133,6 +137,10 @@ function findMount(){
 }
 
 function renderAssignBox(){
+  if(!canAssignTicket()){
+    $("#tcTicketAssignBox")?.remove();
+    return;
+  }
   mountStyles();
 
   let box = $("#tcTicketAssignBox");
@@ -170,6 +178,11 @@ function renderAssignBox(){
 }
 
 async function onAssignChange(e){
+  if(!canAssignTicket()){
+    e?.preventDefault?.();
+    $("#tcTicketAssignBox")?.remove();
+    return false;
+  }
   if(ASSIGN_BUSY){renderAssignBox();return}
   const next = e.target.value || null;
   const now = new Date().toISOString();
@@ -205,6 +218,12 @@ async function onAssignChange(e){
 
 async function boot(){
   if(!ID) return;
+  const profile = await getProfile().catch(() => null);
+  CURRENT_ROLE = String(profile?.rol || "").toLowerCase();
+  if(!canAssignTicket()){
+    $("#tcTicketAssignBox")?.remove();
+    return;
+  }
   await loadAgents();
   await loadTicket();
   renderAssignBox();

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Dashboard | Ticket Core Janome</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="dashboard.css?v=b19d-1">
+<link rel="stylesheet" href="global.css?v=frontend-final-20260715-01">
+<link rel="stylesheet" href="dashboard.css?v=frontend-final-20260715-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B19D: se retiraron tickets.css/estado.css/soporte.css/janome.css. soporte.css
      aplicaba html,body{overflow:hidden} en desktop (patrón de la página pública
@@ -14,19 +14,19 @@
      también se retiró: global.js (importado por dashboard.js) ya gestiona el tema;
      tener ambos duplicaba el listener del toggle. -->
 </head>
-<body data-surface="admin" data-page="dashboard">
-<header class="topbar" id="navInterna"></header>
+<body data-surface="admin" data-shell="app" data-page="dashboard">
+<div id="appShell"></div>
 
 <main class="wrap">
   <!-- Hero compacto: rol + contexto + máximo 2 acciones. Sin KPIs ni navegación. -->
   <section class="panel dash-hero">
     <div>
       <div class="section-kicker">Operación de soporte</div>
-      <h1 id="dashTitle">Mesa de soporte Janome</h1>
-      <p class="mut" id="dashLead">Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.</p>
+      <h1 id="dashTitle" aria-live="polite">Preparando tu mesa de soporte…</h1>
+      <p class="mut" id="dashLead">Cargando tu contexto de trabajo.</p>
       <div class="dash-hero-meta">
         <span class="tag ok" id="dashRoleBadge">Cargando…</span>
-        <span class="tag" id="dashScope">Toda la operación</span>
+        <span class="tag" id="dashScope" hidden></span>
       </div>
     </div>
     <div class="dash-hero-actions">
@@ -55,7 +55,7 @@
     </article>
   </section>
 
-  <section class="panel dash-supervision" id="dashSupervision" style="margin-top:12px">
+  <section class="panel dash-supervision dash-admin-only hidden" id="dashSupervision" style="margin-top:12px">
     <div class="section-head"><div><div class="section-kicker">Administración</div><h2>Requieren supervisión</h2></div></div>
     <div class="dash-supervision-list" id="dashSupervisionList"><div class="dash-skel"></div></div>
   </section>
@@ -78,17 +78,17 @@
     <div class="section-head">
       <div><div class="section-kicker">Administración</div><h2>Configuración de la mesa</h2></div>
     </div>
-    <nav class="adm-tabs" id="admTabs" aria-label="Secciones de administración">
-      <button class="adm-tab" data-adm="avisos" type="button">Avisos del sitio</button>
-      <button class="adm-tab" data-adm="personalizacion" type="button">Personalización</button>
-      <button class="adm-tab" data-adm="reglas" type="button">Reglas de asignación</button>
-      <button class="adm-tab" data-adm="bitacora" type="button">Bitácora</button>
+    <nav class="adm-tabs" id="admTabs" role="tablist" aria-label="Secciones de administración">
+      <button class="adm-tab" data-adm="avisos" id="admTabAvisos" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Avisos del sitio</button>
+      <button class="adm-tab" data-adm="personalizacion" id="admTabPersonalizacion" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Personalización</button>
+      <button class="adm-tab" data-adm="reglas" id="admTabReglas" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Reglas de asignación</button>
+      <button class="adm-tab" data-adm="bitacora" id="admTabBitacora" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Bitácora</button>
     </nav>
-    <div class="adm-panel" id="admPanel"><div class="mut">Elige una sección. Cada sección carga sus datos solo al abrirla.</div></div>
+    <div class="adm-panel" id="admPanel" role="tabpanel"><div class="mut">Elige una sección. Cada sección carga sus datos solo al abrirla.</div></div>
   </section>
 </main>
 
-<script src="supabase.config.public.js"></script>
-<script type="module" src="dashboard.js?v=b19d-1"></script>
+<script src="supabase.config.public.js?v=frontend-final-20260715-01"></script>
+<script type="module" src="dashboard.js?v=frontend-final-20260715-01"></script>
 </body>
 </html>

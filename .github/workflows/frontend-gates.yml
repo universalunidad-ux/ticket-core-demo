@@ -1,0 +1,30 @@
+name: Frontend gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Validate final Pages artifact
+        run: node tools/frontend-gates.mjs .
+      - name: Scan forbidden secrets and local config
+        run: bash tools/secret-gate.sh .
+      - name: Reject real-looking PII fixtures
+        run: node tools/pii-gate.mjs .
+      - name: Keep company optional in public support
+        run: node tools/support-company-gate.mjs .
+      - name: Block stored XSS in ticket renderers
+        run: node tools/xss-gate.mjs .
+      - name: Reject whitespace and conflict-marker errors
+        run: git diff --check HEAD^ HEAD

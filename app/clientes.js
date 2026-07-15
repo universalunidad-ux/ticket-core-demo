@@ -9,10 +9,10 @@
      de cliente — eso sería clientes.agente_responsable_id, contrato futuro).
    - Vista tabla/cards + filtros + búsqueda con estado en URL.
    ============================================================================ */
-import { mountNav } from "./shared/nav-interna.js";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260715-01";
 import { readQS, writeQS } from "./shared/query-state.js";
-import { fmtFecha } from "./shared/formatters.js";
-import { esc, debounce } from "./global.js";
+import { fmtFecha } from "./shared/formatters.js?v=frontend-final-20260715-01";
+import { esc, debounce } from "./global.js?v=frontend-final-20260715-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
 
