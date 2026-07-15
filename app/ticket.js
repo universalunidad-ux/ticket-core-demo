@@ -450,18 +450,19 @@ const signedEvidenceUrl=async(f,variant="original")=>{
   }
 };
 /* B17C42_IMG_RECOVERY: re-firma <img> con signed URL expirada (miniaturas del hilo y quotes @thumb) */
-const tcPathFromSignedUrl=u=>{try{const m=String(u||"").match(/\/object\/sign\/soporte_adjuntos\/([^?]+)/);return m?decodeURIComponent(m[1]):""}catch{return""}};
+const tcPathFromSignedUrl=u=>{try{const m=String(u||"").match(/\/(?:object|render\/image)\/sign\/soporte_adjuntos\/([^?]+)/);return m?decodeURIComponent(m[1]):""}catch{return""}};
+const tcMarkImageUnavailable=img=>{if(!img?.parentElement)return;const box=document.createElement("span");box.className="tc-image-unavailable";box.setAttribute("role","img");box.setAttribute("aria-label","Imagen no disponible");box.innerHTML="<b>Imagen no disponible</b><small>El archivo no pudo cargarse.</small>";img.replaceWith(box)};
 if(!window.__tcImgRecoveryBound){
   window.__tcImgRecoveryBound=true;
   document.addEventListener("error",e=>{
     const img=e.target;
     if(!(img instanceof HTMLImageElement))return;
-    if(img.dataset.tcResigned==="1")return;
     if(!img.closest("#logArea,.ev-body,.tc-reply-context-thumb,.tc-msg-quote"))return;
+    if(img.dataset.tcResigned==="1")return tcMarkImageUnavailable(img);
     const path=tcPathFromSignedUrl(img.currentSrc||img.src);
-    if(!path)return;
+    if(!path)return tcMarkImageUnavailable(img);
     img.dataset.tcResigned="1";
-    signedEvidenceUrl({storage_path:path},"original").then(u=>{if(u&&u!==img.src)img.src=u}).catch(()=>{});
+    signedEvidenceUrl({storage_path:path},"original").then(u=>{if(u&&u!==img.src){img.addEventListener("error",()=>tcMarkImageUnavailable(img),{once:true});img.src=u}else tcMarkImageUnavailable(img)}).catch(()=>tcMarkImageUnavailable(img));
   },true);
 }
 const isImgF=f=>/^image\//.test(f?.type||"")||/\.(jpe?g|png|webp|heic)$/i.test(f?.name||"");
@@ -723,6 +724,7 @@ const hydrateThreadFileThumbs=async()=>{
     }
     const u=await signedEvidenceUrl(f,"thumb");
     if(!u){
+      node.innerHTML='<span class="tc-image-unavailable" role="img" aria-label="Imagen no disponible"><b>Imagen no disponible</b><small>El archivo no pudo cargarse.</small></span>';
       node.dataset.ready="1";
       continue;
     }
@@ -730,6 +732,7 @@ const hydrateThreadFileThumbs=async()=>{
       ? `<img class="thread-file-thumb-img" src="${escHtml(u)}" alt="">`
       : `<video class="thread-file-thumb-img" src="${escHtml(u)}" muted playsinline></video>`;
     node.dataset.ready="1";
+    const media=node.querySelector("img");if(media)media.addEventListener("error",()=>tcMarkImageUnavailable(media),{once:true});
   }
 };
 
@@ -878,7 +881,7 @@ const _rpLbl={cliente:"Cliente",soporte:"Soporte",sistema:"Sistema"};
 const evNorm=ev.map(x=>{const m=x?.meta;if(m&&m.reply_to&&typeof x.texto==="string"&&!x.texto.startsWith("\u21aa ")){return{...x,texto:`\u21aa ${_rpLbl[String(m.reply_author||"").toLowerCase()]||"Mensaje"}\n${String(m.reply_preview||"").slice(0,160)}\n\n${x.texto}`}}return x});
 LOGS=evNorm.length?evNorm:legacy;HEAT.rows=Array.isArray(heatRows?.data)?heatRows.data:[];
 const canonFiles=normalizeFiles(newArchRows?.data),legacyFiles=normalizeFiles(legacyArchRows?.data),ticketFiles=normalizeFiles(T?.adjuntos),timelineFiles=normalizeFiles((Array.isArray(T?.timeline_publica)?T.timeline_publica:[]).flatMap(x=>Array.isArray(x?.adjuntos)?x.adjuntos:[]));FILES=[...canonFiles,...ticketFiles,...timelineFiles,...legacyFiles].filter((x,i,a)=>a.findIndex(y=>fileUniqKey(y)===fileUniqKey(x))===i);try{const huerf=FILES.filter(f=>!safeUrl(f.url)&&!f.storage_path);if(huerf.length)console.warn("B17C42_ADJUNTOS_SIN_URL_NI_PATH",huerf.map(f=>({nombre:f.nombre,origen:f.origen,fecha:f.fecha})))}catch{}$("#tkDataMode")&&($("#tkDataMode").textContent=ev.length||canonFiles.length||timelineFiles.length?"new":"legacy")};
-const hydrateTicketUi=async()=>{/* B17C42_PERF: cargas independientes en paralelo (antes 8 round-trips secuenciales) */const t0=performance.now();setRailOpenCount(1);if(C?.id&&C?.nombre)pushRecentClient({id:C.id,nombre:C.nombre});setGlobalSearchData({clientes:C?[C]:[],tickets:T?[{...T,clientes:C||null}]:[]});setBreadcrumb([{label:"Panel",href:"dashboard.html"},{label:"Tickets",href:"tickets.html"},{label:T?.titulo||"Caso"}]);loadTicketMute();const[linked,portalMeta,notif,,systems,accesses]=await Promise.all([loadLinkedContact(),loadPortalMeta(),ST.notif?Promise.resolve(ST.notif):loadNotifPrefs(),loadClientContacts(),loadClientSystems(),loadClientAccesses(),loadQuickReplies(),loadRenewalChip()]);ST.linkedContact=linked;ST.portalMeta=portalMeta;ST.notif=notif;CLIENT_SYSTEMS=systems;CLIENT_ACCESSES=accesses;console.info("B17C42_HYDRATE_MS",Math.round(performance.now()-t0));withLogScrollPreserved(()=>render());applyQuickBoot();if(!ST.lastNotifSig)evaluateInternalNotif()};
+const hydrateTicketUi=async()=>{/* B17C42_PERF: cargas independientes en paralelo (antes 8 round-trips secuenciales) */const t0=performance.now();setRailOpenCount();if(C?.id&&C?.nombre)pushRecentClient({id:C.id,nombre:C.nombre});setGlobalSearchData({clientes:C?[C]:[],tickets:T?[{...T,clientes:C||null}]:[]});setBreadcrumb([{label:"Panel",href:"dashboard.html"},{label:"Tickets",href:"tickets.html"},{label:T?.titulo||"Caso"}]);loadTicketMute();const[linked,portalMeta,notif,,systems,accesses]=await Promise.all([loadLinkedContact(),loadPortalMeta(),ST.notif?Promise.resolve(ST.notif):loadNotifPrefs(),loadClientContacts(),loadClientSystems(),loadClientAccesses(),loadQuickReplies(),loadRenewalChip()]);ST.linkedContact=linked;ST.portalMeta=portalMeta;ST.notif=notif;CLIENT_SYSTEMS=systems;CLIENT_ACCESSES=accesses;console.info("B17C42_HYDRATE_MS",Math.round(performance.now()-t0));withLogScrollPreserved(()=>render());applyQuickBoot();if(!ST.lastNotifSig)evaluateInternalNotif()};
 
 const load=async()=>{const auth=await guardSession();if(!auth)return;const profile=(await s.from("perfiles").select("*").limit(1).maybeSingle()).data||{rol:"soporte"};ST.profile=profile||null;ensureAppShell({page:"ticket",title:"",kicker:"",role:profile?.rol||"soporte",actionsHtml:""});setAppRole(profile.rol||"soporte");if(!ID){toast("Falta ID del ticket","bad");setTimeout(()=>location.href="tickets.html",900);return}const tk=await loadTicketCore();if(!tk){toast("Ticket no encontrado","bad");setTimeout(()=>location.href="tickets.html",900);return}T=tk;await loadTicketContext();await hydrateTicketUi()};
 const refreshTicketAfterWrite=async()=>{const prevClientId=T?.cliente_id||null;const tk=await loadTicketCore();if(!tk)return;T=tk;await loadTicketContext();ST.linkedContact=await loadLinkedContact();ST.portalMeta=await loadPortalMeta();if((T?.cliente_id||null)!==prevClientId){await loadClientContacts();CLIENT_SYSTEMS=await loadClientSystems()}withLogScrollPreserved(()=>render());const renewal=await loadRenewalChip(); renderComposerMode();renderLogFilesMeta();applyNotifUi();if(!ST.lastNotifSig)ST.lastNotifSig=notifSig()};

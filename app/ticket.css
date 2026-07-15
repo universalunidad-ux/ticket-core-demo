@@ -2914,3 +2914,4 @@ body[data-page="ticket"] #tcReplyContext.has-thumb .tc-reply-context-thumb img{
 /* /B17C38_FABLE_SPECIAL_BUBBLES_SINGLE_SOURCE */
 
 /* B17C9_CLOSE_CONFIRM_MODAL END */
+.tc-image-unavailable{display:grid;place-content:center;gap:3px;width:100%;min-height:96px;padding:12px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 86%,var(--bg));color:var(--muted);text-align:center}.tc-image-unavailable b{color:var(--text);font-size:13px}.tc-image-unavailable small{font-size:11px}
