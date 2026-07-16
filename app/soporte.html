@@ -4,27 +4,23 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Soporte Janome | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css?v=frontend-final-20260715-01"><link rel="stylesheet" href="soporte.css?v=frontend-final-20260715-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260715-01">
+<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="soporte.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
 
 </head>
 <body data-surface="client">
 <!-- B17C43C: header público Janome con logo real y número real. -->
 <header class="jn-topbar"><div class="jn-topbar-inner">
   <a class="jn-back-pill" id="supportBack" href="dashboard.html" hidden>← Volver</a>
-  <a class="jn-brand" href="soporte.html" aria-label="Janome Mesa de atención"><img class="jn-brand-img" src="../IMG/janome.jpg" alt="Janome"><span class="jn-brand-sub">MESA DE ATENCIÓN</span></a>
+  <a class="jn-brand" href="soporte.html" aria-label="Janome Servicio al cliente"><img class="jn-brand-img" src="../IMG/janome.jpg" alt="Janome"><span class="jn-brand-sub">SERVICIO AL CLIENTE</span></a>
   <div class="jn-top-actions">
     <a class="jn-wa-pill" id="jnWaPill" href="https://wa.me/525568437918" target="_blank" rel="noopener"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>55 6843 7918</span></a>
     <button class="mini jn-theme-btn" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
   </div>
 </div></header>
 
-<section class="wrap" id="supportNoticeWrap" hidden>
-  <div class="support-global-notice" id="supportGlobalNotice"></div>
-</section>
-
 <main class="wrap soporte-page">
 <!-- B17C43G-R2: copy público fijo de soporte Janome. -->
-<section class="panel hero-support"><div class="hero-support-main"><h1>Estamos para ayudarte</h1><div class="support-hints" aria-label="Consejos para tu solicitud"><span>Fácil y rápido</span><i aria-hidden="true">•</i><span>Indica tu modelo</span><i aria-hidden="true">•</i><span>Una foto ayuda</span></div></div></section>
+<section class="panel hero-support"><div class="hero-support-main"><h1>Estamos para ayudarte</h1><div class="support-hints" aria-label="Consejos para tu solicitud"><span>Fácil y rápido</span><i aria-hidden="true">•</i><span>Indica tu modelo</span><i aria-hidden="true">•</i><span>Una foto ayuda</span></div></div><div class="hero-support-aside" id="supportNoticeSlot" hidden><div class="support-global-notice" id="supportGlobalNotice"></div></div></section>
 
 <section class="support-layout">
 <form class="panel support-form" id="supportForm" novalidate>
@@ -55,25 +51,23 @@
 </div>
 
 <div class="form-grid">
-  <div class="field span-2"><label class="lbl" for="spSystemSearch">Producto <span class="req">*</span></label><div class="jn-combo" id="spEquipoCombo"></div><select class="select" id="spSystem" hidden><option value="">Selecciona tu producto</option></select><input class="input hidden" id="spOtroModelo" placeholder="Escribe el nombre o modelo de tu producto"><div class="mut">Escribe tu modelo o el tipo (ej. “3008”, “overlock”, “bordadora”) y elígelo de la lista.</div></div>
+  <div class="field span-2"><label class="lbl" for="spSystemSearch">Producto <span class="req">*</span></label><div class="jn-combo" id="spEquipoCombo"></div><select class="select" id="spSystem" hidden><option value="">Selecciona tu producto</option></select><input class="input hidden" id="spOtroModelo" placeholder="Escribe el nombre o modelo de tu producto"></div>
 
   <div class="field span-2"><label class="lbl" for="spTitle">¿Qué está pasando? <span class="req">*</span></label><input class="input" id="spTitle" maxlength="120" autocapitalize="sentences" spellcheck="true" placeholder="Resúmelo en una línea (ej. se rompe el hilo)"></div>
   <div class="field span-2"><label class="lbl" for="spDesc">Cuéntanos con detalle <span class="req">*</span></label><textarea class="area" id="spDesc" maxlength="3000" autocapitalize="sentences" spellcheck="true" placeholder="¿Qué hacías cuando pasó? ¿Qué tela e hilo usabas? ¿Ya intentaste re-enhebrar o cambiar la aguja?"></textarea><div class="panel inset hidden" id="spFaqBox"><div class="row-head"><h3 id="spFaqTitle">Sugerencia rápida</h3></div><div class="mut" id="spFaqText">—</div><div class="actions"><a class="btn btn-ghost" id="spFaqLink" href="#" target="_blank" rel="noopener">Ver ayuda</a><button class="btn" type="button" id="spFaqUse">Ya lo hice</button></div></div></div>
 </div>
 
-<div class="section-head compact"><div><h3>Sube tu evidencia</h3></div></div>
 <div class="upload-grid">
-  <div class="field span-2"><label class="lbl" for="spFiles">Fotos, PDF o video</label>
+  <div class="field span-2"><label class="lbl" for="spFiles">Sube tu evidencia</label>
   <!-- B17C43B: input nativo oculto + botón pill. accept incluye .pdf; en móvil el
        navegador ofrece cámara/galería/archivos con este mismo input. -->
   <input class="sr-only" id="spFiles" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,.m4v,.pdf">
   <div class="sp-files-row"><button class="btn btn-ghost sp-files-btn" type="button" id="spFilesBtn">📎 Elegir archivos</button><span id="spFilesLabel" class="sp-files-label">Sin archivos seleccionados</span></div>
-  <div class="mut sp-files-hint">Puedes mandar imagen (máx. 3), video (máx. 1 min 30 s) y PDF.<br>Una buena iluminación ayuda.</div>
+  <div class="mut sp-files-hint">Imagen (máx. 3), vídeo (máx. 1 m 30s) o PDF.<br>Una buena iluminación ayuda.</div>
   </div>
 </div>
 
-<div class="section-head compact sp-send-head"><div><h3>Envía tu caso de soporte</h3></div></div>
-<div class="sp-hp" aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><label>No llenar este campo<input id="spWebsite" name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+<div class="sp-hp" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap"><label>No llenar este campo<input id="spWebsite" name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
 <input type="hidden" id="spClienteIdConfirmado" value="">
 <input type="hidden" id="spContactoIdConfirmado" value="">
 <input type="hidden" id="spEmpresaConfirmada" value="0">
@@ -119,9 +113,9 @@
 
 </main>
 
-<script src="supabase.config.public.js?v=frontend-final-20260715-01"></script>
-<script type="module" src="soporte.js?v=frontend-final-20260715-01"></script>
-<script src="client-mobile-trim.js?v=frontend-final-20260715-01"></script>
+<script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
+<script type="module" src="soporte.js?v=frontend-final-20260716-01"></script>
+<script src="client-mobile-trim.js?v=frontend-final-20260716-01"></script>
 <!-- B17C43: client-form-compact.js eliminado — sacaba Nombre/Correo/Teléfono/Empresa del form-grid
      y los metía en .tcContactGrid (1 columna en desktop, 2x2 forzado en móvil). El 2x2 desktop
      ahora lo da .form-grid nativo. -->

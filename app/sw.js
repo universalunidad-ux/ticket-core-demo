@@ -1,20 +1,20 @@
-const RELEASE="frontend-final-20260715-01";
+const RELEASE="frontend-final-20260716-01";
 const STATIC_CACHE=`ticket-core-static-${RELEASE}`;
 const PAGE_CACHE=`ticket-core-pages-${RELEASE}`;
 const OWN_CACHE=/^(?:ticket-core-(?:static|pages)-|(?:static|pages)-tc-)/;
 const PAGE_SHELLS=["./","./index.html","./dashboard.html","./tickets.html","./ticket.html","./clientes.html","./cliente.html","./consolidacion-clientes.html","./alta-cliente.html","./soporte.html","./estado.html"];
 const STATIC_ASSETS=[
-  "./global.css?v=frontend-final-20260715-01","./global.js?v=frontend-final-20260715-01",
-  "./dashboard.css?v=frontend-final-20260715-01","./dashboard.js?v=frontend-final-20260715-01",
-  "./tickets.css?v=frontend-final-20260715-01","./tickets.js?v=frontend-final-20260715-01",
-  "./ticket.css?v=frontend-final-20260715-01","./ticket.js?v=frontend-final-20260715-01",
-  "./ticket-composer-polish.js?v=frontend-final-20260715-01","./ticket-assignment.js?v=frontend-final-20260715-01",
-  "./clientes.css?v=frontend-final-20260715-01","./clientes.js?v=frontend-final-20260715-01",
-  "./cliente.css?v=frontend-final-20260715-01","./cliente.js?v=frontend-final-20260715-01",
-  "./consolidacion-clientes.css?v=frontend-final-20260715-01","./consolidacion-clientes.js?v=frontend-final-20260715-01",
-  "./alta-cliente.css?v=frontend-final-20260715-01","./alta-cliente.js?v=frontend-final-20260715-01",
-  "./soporte.css?v=frontend-final-20260715-01","./soporte.js?v=frontend-final-20260715-01",
-  "./estado.css?v=frontend-final-20260715-01","./estado.js?v=frontend-final-20260715-01"
+  "./global.css?v=frontend-final-20260716-01","./global.js?v=frontend-final-20260716-01",
+  "./dashboard.css?v=frontend-final-20260716-01","./dashboard.js?v=frontend-final-20260716-01",
+  "./tickets.css?v=frontend-final-20260716-01","./tickets.js?v=frontend-final-20260716-01",
+  "./ticket.css?v=frontend-final-20260716-01","./ticket.js?v=frontend-final-20260716-01",
+  "./ticket-composer-polish.js?v=frontend-final-20260716-01","./ticket-assignment.js?v=frontend-final-20260716-01",
+  "./clientes.css?v=frontend-final-20260716-01","./clientes.js?v=frontend-final-20260716-01",
+  "./cliente.css?v=frontend-final-20260716-01","./cliente.js?v=frontend-final-20260716-01",
+  "./consolidacion-clientes.css?v=frontend-final-20260716-01","./consolidacion-clientes.js?v=frontend-final-20260716-01",
+  "./alta-cliente.css?v=frontend-final-20260716-01","./alta-cliente.js?v=frontend-final-20260716-01",
+  "./soporte.css?v=frontend-final-20260716-01","./soporte.js?v=frontend-final-20260716-01",
+  "./estado.css?v=frontend-final-20260716-01","./estado.js?v=frontend-final-20260716-01"
 ];
 const cacheAllAvailable=async(cacheName,urls)=>{const cache=await caches.open(cacheName);await Promise.all(urls.map(async url=>{try{await cache.add(new Request(url,{cache:"reload"}))}catch(err){console.warn("SW_SKIP",url,err)}}))};
 self.addEventListener("install",event=>event.waitUntil((async()=>{await Promise.all([cacheAllAvailable(PAGE_CACHE,PAGE_SHELLS),cacheAllAvailable(STATIC_CACHE,STATIC_ASSETS)]);await self.skipWaiting()})()));

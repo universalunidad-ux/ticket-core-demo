@@ -9,7 +9,7 @@
    Estado de pestaña activa en el hash (#tab=tickets) para conservar contexto.
    Sin ?id= redirige a clientes.html (el menú "Clientes" apunta al listado).
    ============================================================================ */
-import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260715-01";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
 import { loadIdentidad, loadEquipos, loadTickets, loadBitacora, loadSugeridos } from "./cliente.core.js";
 import * as UI from "./cliente.ui.js";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";

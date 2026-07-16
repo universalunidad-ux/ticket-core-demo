@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Seguimiento de ticket | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="stylesheet" href="global.css?v=frontend-final-20260715-01">
-<link rel="stylesheet" href="estado.css?v=frontend-final-20260715-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260715-01">
+<link rel="stylesheet" href="global.css?v=frontend-final-20260716-01">
+<link rel="stylesheet" href="estado.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B17C45: theme.js removido — global.js (importado por estado.js) ya ejecuta
      initTheme()+initThemeToggle(); tener ambos duplicaba el listener y cada
@@ -15,7 +15,7 @@
 <body data-surface="client">
 <!-- B17C44: header público Janome, mismo patrón que soporte.html (sin links internos). -->
 <header class="jn-topbar"><div class="jn-topbar-inner">
-  <a class="jn-brand" href="soporte.html" aria-label="Janome Mesa de atención"><img class="jn-brand-img" src="../IMG/janome.jpg" alt="Janome"><span class="jn-brand-sub">MESA DE ATENCIÓN</span></a>
+  <a class="jn-brand" href="soporte.html" aria-label="Janome Servicio al cliente"><img class="jn-brand-img" src="../IMG/janome.jpg" alt="Janome"><span class="jn-brand-sub">SERVICIO AL CLIENTE</span></a>
   <div class="jn-top-actions">
     <button class="mini st-notify-btn" id="stChatNotifyBtn" type="button" aria-label="Abrir notificaciones" aria-controls="stNotifyPanel" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="st-notify-count hidden" id="stNotifyCount" aria-hidden="true"></span></button>
     <a class="jn-wa-pill" href="https://wa.me/525568437918" target="_blank" rel="noopener"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>55 6843 7918</span></a>
@@ -24,36 +24,22 @@
 </div></header>
 
 <section class="st-notify-panel hidden" id="stNotifyPanel" aria-hidden="true" aria-labelledby="stNotifyTitle">
-  <div class="st-notify-head"><div><div class="section-kicker">Seguimiento</div><h2 id="stNotifyTitle">Notificaciones</h2></div><button class="chat-icon-btn" id="stNotifyClose" type="button" aria-label="Cerrar notificaciones">×</button></div>
+  <div class="st-notify-head"><h2 class="st-notify-title" id="stNotifyTitle">Notificaciones</h2><button class="chat-icon-btn" id="stNotifyClose" type="button" aria-label="Cerrar notificaciones">×</button></div>
   <div class="st-notify-status" id="stNotifyStatus" role="status">Cargando movimientos disponibles…</div>
   <div class="st-notify-list" id="stNotifyList"></div>
   <button class="btn btn-ghost st-browser-notify" id="stBrowserNotifyBtn" type="button">Activar avisos del navegador</button>
-  <p class="st-notify-note">Los avisos del navegador se activan sólo con tu permiso. Este panel muestra únicamente movimientos públicos disponibles en este enlace.</p>
+  <p class="st-notify-note">Se activan solo con tu permiso.</p>
 </section>
 
 <main class="wrap estado-page">
-  <!-- TC-WINDOWS-FINAL-01: hero compacto, una fila en escritorio. -->
-  <section class="estado-hero">
-    <div class="estado-hero-left">
-      <div class="estado-hero-title" id="stHeroTitle">Seguimiento de tu caso</div>
-      <span class="estado-status-pill" id="stHeroStatus">Cargando…</span>
-    </div>
-    <div class="estado-next hidden" id="stNextStepBox">
-      <div class="estado-next-v" id="stNextStep">Estamos revisando tu caso.</div>
-      <div class="estado-next-actions hidden" id="stResolvedActions">
-        <button class="btn btn-brand" id="stStillPendingBtn" type="button">Sigue pendiente</button>
-        <button class="btn btn-ghost" id="stOpenChatBtn3" type="button">Abrir conversación</button>
-      </div>
-    </div>
-  </section>
-
   <section class="estado-grid">
     <section class="estado-main">
-      <article class="estado-card">
-        <div class="section-head">
-          <div class="estado-summary-head">
-            <div class="section-kicker">Resumen</div>
+      <article class="estado-card estado-summary-card">
+        <div class="estado-summary-head">
+          <div class="section-kicker">Seguimiento de tu caso</div>
+          <div class="estado-summary-title">
             <h2 id="stTitle">—</h2>
+            <span class="estado-status-pill" id="stHeroStatus">Cargando…</span>
           </div>
         </div>
         <div class="estado-kpis">
@@ -61,15 +47,18 @@
           <div class="estado-kpi"><div class="k">Producto</div><div class="v" id="stProduct">—</div></div>
           <div class="estado-kpi"><div class="k">Fecha de creación</div><div class="v" id="stCreated">—</div></div>
         </div>
+        <div class="estado-next-actions hidden" id="stResolvedActions">
+          <button class="btn btn-brand" id="stStillPendingBtn" type="button">Sigue pendiente</button>
+          <button class="btn btn-ghost" id="stOpenChatBtn3" type="button">Abrir conversación</button>
+        </div>
       </article>
 
       <article class="estado-card">
         <div class="section-head">
           <div>
             <div class="section-kicker">Progreso del caso</div>
-            <h3>Así va tu solicitud</h3>
           </div>
-          <button class="help-dot" id="stHelpBtn" type="button" aria-label="Ver interpretación rápida">?</button>
+          <button class="help-dot" id="stHelpBtn" type="button" aria-label="Ver interpretación rápida" aria-expanded="false" aria-controls="stHelpPop">?</button>
         </div>
         <div class="estado-timeline" id="stTimeline"><div class="empty-state">Sin movimientos aún.</div></div>
       </article>
@@ -80,9 +69,9 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">Responder</div>
-            <h3>Envía lo que te pedimos para avanzar</h3>
           </div>
         </div>
+        <p class="mut estado-reply-limit">Puedes enviar hasta 2 mensajes seguidos. Después, espera la respuesta de Servicio al Cliente para continuar.</p>
         <div class="mut" id="stReplyStatus">Puedes responder desde la conversación del caso. No necesitas iniciar sesión.</div>
         <div class="estado-actions">
           <button class="btn btn-brand" id="stOpenChatBtn1" type="button">Abrir conversación</button>
@@ -129,9 +118,7 @@
 <section class="chat-pop hidden" id="stChatPop" aria-hidden="true">
   <div class="chat-pop-head">
     <div class="chat-pop-copy">
-      <div class="chat-pop-kicker">Seguimiento del ticket</div>
-      <div class="chat-pop-title">Conversación del caso</div>
-      <div class="chat-pop-sub" id="stChatSub">Cargando conversación…</div>
+      <div class="chat-pop-kicker">Historial del caso</div>
     </div>
     <div class="chat-pop-actions">
       <button class="chat-icon-btn" id="stChatHelpToggle" type="button" aria-label="Ver ayuda para responder" aria-expanded="false" aria-controls="stChatReplyHelp">?</button>
@@ -139,10 +126,10 @@
     </div>
   </div>
 
-  <div class="chat-reply-help hidden" id="stChatReplyHelp">
+  <div class="chat-reply-help hidden" id="stChatReplyHelp" role="region" aria-label="Ayuda para responder">
+    <span>Puedes escribir aquí si tienes un dato nuevo, evidencia adicional o una aclaración útil para soporte. Máximo 2 mensajes seguidos del cliente.</span>
     <strong>Hasta 3 fotos y 1 PDF (máx. 20 MB por archivo).</strong>
     <span class="chat-video-future" aria-disabled="true">Video: próximamente</span>
-    <span>Puedes escribir aquí si tienes un dato nuevo, evidencia adicional o una aclaración útil para soporte. Máximo 2 mensajes seguidos del cliente.</span>
   </div>
 
   <div class="chat-tabs">
@@ -169,31 +156,31 @@
       <div class="chat-quote-copy"><div class="chat-quote-meta">Respondiendo a <span id="stReplyQuoteMeta">—</span></div><div class="chat-quote-prev" id="stReplyQuotePrev"></div></div>
       <button class="chat-pick-rm" id="stReplyQuoteX" type="button" aria-label="Cancelar cita">×</button>
     </div>
-    <textarea class="area chat-compose-area" id="stReplyTextPop" placeholder="Escribe tu respuesta aquí..." aria-label="Tu respuesta"></textarea>
     <input class="sr-only" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
     <div class="chat-file-chips hidden" id="stFileChips"></div>
-    <div class="chat-compose-row">
-      <button class="btn btn-ghost chat-attach-btn" id="stAttachBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.5 11.5-8.1 8.1a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 1 1-2.8-2.8l8.2-8.2"/></svg><span>Adjuntar</span></button>
-      <button class="btn btn-brand chat-send-btn" id="stReplySendPop" type="button">Enviar respuesta</button>
+    <!-- B17C46: cápsula única con paridad al compositor de ticket.html
+         (adjuntar izquierda · textarea · enviar derecha con IMG/enviar.png). -->
+    <div class="composer-input-wrap chat-compose-wrap">
+      <button class="mini btn-ghost chat-attach-btn" id="stAttachBtn" type="button" aria-label="Adjuntar archivo" title="Adjuntar archivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.5 11.5-8.1 8.1a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 1 1-2.8-2.8l8.2-8.2"/></svg></button>
+      <textarea class="area chat-area chat-compose-area" id="stReplyTextPop" placeholder="Escribe un mensaje" aria-label="Tu respuesta" rows="1"></textarea>
+      <button class="btn btn-brand chat-send-btn send-float-btn" id="stReplySendPop" type="button" aria-label="Enviar respuesta">➤</button>
     </div>
-    <div class="chat-compose-note" id="stReplyFilesMetaPop">Hasta 3 fotos y 1 PDF (máx. 20 MB por archivo).</div>
-    <div class="chat-compose-note chat-video-future" aria-disabled="true">Video: próximamente</div>
     <div class="chat-compose-note" id="stReplyStatusPop">Este bloque se activa solo cuando el ticket está esperando tu respuesta.</div>
   </div>
 </section>
 
-<div class="help-pop hidden" id="stHelpPop" aria-hidden="true">
+<div class="help-pop hidden" id="stHelpPop" aria-hidden="true" role="dialog" aria-labelledby="stHelpPopTitle">
   <div class="help-pop-head">
-    <div class="help-pop-title">Interpretación rápida</div>
+    <div class="help-pop-title" id="stHelpPopTitle">Interpretación rápida</div>
     <button class="chat-icon-btn" id="stHelpClose" type="button" aria-label="Cerrar ayuda">×</button>
   </div>
-  <ul class="mini-list">
-    <li><b>Recibido:</b> ya llegó a nuestra mesa.</li>
-    <li><b>En revisión:</b> estamos analizando el caso.</li>
-    <li><b>Esperando tu respuesta:</b> falta un dato o archivo para continuar.</li>
-    <li><b>Resuelto:</b> ya aplicamos una solución.</li>
-    <li><b>Cerrado:</b> el caso terminó.</li>
-  </ul>
+  <div class="help-states">
+    <div class="help-state"><span class="help-state-dot s-recibido" aria-hidden="true"></span><div class="help-state-copy"><b>Recibido</b><span>Ya llegó a nuestra mesa.</span></div></div>
+    <div class="help-state"><span class="help-state-dot s-revision" aria-hidden="true"></span><div class="help-state-copy"><b>En revisión</b><span>Estamos analizando el caso.</span></div></div>
+    <div class="help-state"><span class="help-state-dot s-espera" aria-hidden="true"></span><div class="help-state-copy"><b>Esperando tu respuesta</b><span>Falta un dato o archivo para continuar.</span></div></div>
+    <div class="help-state"><span class="help-state-dot s-resuelto" aria-hidden="true"></span><div class="help-state-copy"><b>Resuelto</b><span>Ya aplicamos una solución.</span></div></div>
+    <div class="help-state"><span class="help-state-dot s-cerrado" aria-hidden="true"></span><div class="help-state-copy"><b>Cerrado</b><span>El caso terminó.</span></div></div>
+  </div>
 </div>
 
 <!-- B17C45: visor público único de imágenes (carrusel). Un solo nodo, un solo estado. -->
@@ -217,12 +204,12 @@
 <audio id="stSoftPing" preload="auto"></audio>
 <audio id="stStrongPing" preload="auto"></audio>
 
-<script src="supabase.config.public.js?v=frontend-final-20260715-01"></script>
+<script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
 <!-- B19C: config-loader.js retirado. Era el origen del 404 a /rest/v1/site_config
      (la tabla no está expuesta aún). El único consumidor era un data-cfg cuyo texto
      ya vive inline como copy canónico local; al retirarlo esta página pública no
      ejecuta ninguna consulta REST adicional. Cuando site_config exista (DDL DRAFT
      B20A), reevaluar con capability check, nunca con carga incondicional. -->
-<script type="module" src="estado.js?v=frontend-final-20260715-01"></script>
+<script type="module" src="estado.js?v=frontend-final-20260716-01"></script>
 </body>
 </html>

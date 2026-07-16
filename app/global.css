@@ -155,3 +155,14 @@ input.btn-brand,
 .app-search-state{padding:14px 12px;color:var(--muted);font-size:12px;font-weight:750}
 @media(prefers-reduced-motion:reduce){.app-attention-dot{animation:none!important}}
 @media(max-width:1180px) and (min-width:981px){.app-search{width:190px}}
+/* B17C48: SHELL PÚBLICO — estado.html y soporte.html (data-surface=client).
+   El topbar conserva su fondo de ancho completo; solo el CONTENIDO interior
+   (inner del topbar y el main .wrap con resumen/progreso/lateral/chat o el
+   formulario/vista previa) se centra a ~80% en escritorio amplio. Owner único,
+   sin cuarta capa: reutiliza .wrap y .jn-topbar-inner ya existentes.
+   No usa 100vw en contenedores interiores; min(80vw,1680px) evita overflow. */
+body[data-surface=client]{--public-shell-width:min(80vw,1680px)}
+@media(min-width:1280px){
+  body[data-surface=client] .wrap,
+  body[data-surface=client] .jn-topbar-inner{width:var(--public-shell-width);max-width:none;margin-inline:auto}
+}

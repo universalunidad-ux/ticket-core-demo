@@ -14,8 +14,8 @@
    - sin PII en localStorage (no hay borrador persistente; documentado como
      deuda futura en FRONTEND_RESILIENCE_CONTRACT.md).
    ============================================================================ */
-import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260715-01";
-import { esc, toast, debounce } from "./global.js?v=frontend-final-20260715-01";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
+import { esc, toast, debounce } from "./global.js?v=frontend-final-20260716-01";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
 import { probeEdge, getCapability, noteEdgeResponse } from "./shared/capabilities.js";
 import { perfPrimaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";

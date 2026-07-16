@@ -6,6 +6,11 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-hero-left{display:flex;align-items:center;gap:10px;min-width:0}
 .estado-hero-title{color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.08em;line-height:1.2;text-transform:uppercase;white-space:nowrap}
 .estado-status-pill{display:inline-flex;align-items:center;min-height:30px;padding:5px 11px;border:1px solid color-mix(in srgb,var(--ok,#16a34a) 38%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--ok,#16a34a) 10%,var(--panel));color:var(--ok,#15803d);font-size:12px;font-weight:900;line-height:1;white-space:nowrap}
+.estado-status-pill.info{border-color:color-mix(in srgb,var(--info) 38%,var(--line));background:color-mix(in srgb,var(--info) 10%,var(--panel));color:var(--info)}
+.estado-status-pill.warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 12%,var(--panel));color:var(--warn)}
+.estado-status-pill.neutral{border-color:var(--line);background:color-mix(in srgb,var(--panel-2) 90%,transparent);color:var(--muted)}
+/* B17C46: pill dinámica del header retirada (HTML/JS/CSS). El estado vive en el
+   badge inline junto al título (SEGUIMIENTO DE TU CASO). */
 .estado-next{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;max-width:min(720px,62%);margin-inline-start:auto;padding:7px 12px;border:1px solid color-mix(in srgb,var(--ok,#16a34a) 30%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--ok,#16a34a) 7%,var(--panel))}
 .estado-next.hidden{display:none}
 .estado-next-v{color:var(--ok,#15803d);font-weight:900;line-height:1.35;white-space:nowrap}
@@ -17,8 +22,19 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-card{display:grid;gap:14px;padding:var(--st-card-pad);border:1px solid var(--line);border-radius:var(--st-rad);background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(var(--st-blur));box-shadow:var(--st-shadow-soft);min-width:0}
 .estado-card .section-head{display:flex;justify-content:space-between;gap:10px;align-items:start}
 .estado-card .section-head h2,.estado-card .section-head h3{margin:0;text-wrap:balance}
-.estado-summary-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
-.estado-summary-head h2{font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
+.estado-summary-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:6px 16px;min-width:0}
+.estado-summary-head .section-kicker{align-self:baseline}
+/* B17C46: título + badge en flujo inline robusto. El h2 es inline y el badge
+   inline-flex continúa tras el último carácter del título; si el título envuelve,
+   el badge baja con él dentro de la columna derecha (nunca inicia fila propia,
+   sin position:absolute ni márgenes negativos). */
+.estado-summary-title{min-width:0}
+.estado-summary-title h2{display:inline;margin:0;font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
+.estado-summary-title .estado-status-pill{margin-left:8px;vertical-align:middle}
+.estado-summary-card{gap:16px}
+.estado-summary-card .estado-next-actions.hidden{display:none}
+.estado-summary-card .estado-next-actions{display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:640px){.estado-summary-head{grid-template-columns:1fr;gap:4px}}
 .estado-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .estado-kpi{display:grid;gap:6px;align-content:start;min-width:0;padding:14px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--panel-2) 96%,transparent)}
 .estado-kpi .k{font-size:12px;opacity:.75}
@@ -29,6 +45,8 @@ body[data-surface="client"]{overflow-x:clip}
 .tl-item:not(:last-child)::after{content:"";position:absolute;left:24px;top:30px;bottom:-14px;width:2px;background:color-mix(in srgb,var(--line) 82%,transparent)}
 .tl-item.done::before{background:var(--ok,#22c55e)}
 .tl-item.active::before{background:var(--brand,#7c3aed);box-shadow:0 0 0 6px color-mix(in srgb,var(--brand) 18%,transparent)}
+@media(prefers-reduced-motion:no-preference){.tl-item.active::before{animation:tlActivePulse 2.1s ease-in-out infinite}}
+@keyframes tlActivePulse{0%,100%{box-shadow:0 0 0 5px color-mix(in srgb,var(--brand) 22%,transparent)}50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--brand) 6%,transparent)}}
 /* B17C44: distinguir visualmente etapas pendientes de actual/completadas */
 .tl-item:not(.done):not(.active){opacity:.62}
 .tl-item.active{border-color:color-mix(in srgb,var(--brand) 30%,var(--line));background:color-mix(in srgb,var(--brand) 6%,var(--panel-2))}
@@ -69,15 +87,15 @@ html[data-theme=dark] .chat-backdrop{background:rgba(2,6,23,.55)}
 .chat-backdrop.hidden{display:none}
 /* B17C45: drawer lateral derecho de altura completa (antes modal flotante).
    header y tabs fijos por grid; solo el historial hace scroll; compositor abajo. */
-.chat-pop{position:fixed;top:0;right:0;bottom:0;z-index:94;display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;width:min(560px,100vw);height:100dvh;border:1px solid var(--line);border-right:0;border-radius:24px 0 0 24px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 97%,transparent),color-mix(in srgb,var(--panel-2) 99%,transparent));backdrop-filter:blur(var(--st-blur));box-shadow:-24px 0 70px rgba(2,6,23,.28);overflow:hidden;animation:stDrawerIn .22s ease}
+.chat-pop{position:fixed;top:0;right:0;bottom:0;z-index:94;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;width:min(560px,100vw);height:100dvh;border:1px solid var(--line);border-right:0;border-radius:24px 0 0 24px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 97%,transparent),color-mix(in srgb,var(--panel-2) 99%,transparent));backdrop-filter:blur(var(--st-blur));box-shadow:-24px 0 70px rgba(2,6,23,.28);overflow:hidden;animation:stDrawerIn .22s ease}
 @keyframes stDrawerIn{from{transform:translateX(26px);opacity:.55}to{transform:translateX(0);opacity:1}}
 .chat-pop.hidden{display:none}
 /* body bloqueado + FAB oculto mientras el drawer está abierto */
 body.st-chat-open{overflow:hidden}
 body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
-.chat-pop-head{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:16px 16px 12px;border-bottom:1px solid var(--line)}
+.chat-pop-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 12px;border-bottom:1px solid var(--line)}
 .chat-pop-copy{display:grid;gap:4px;min-width:0}
-.chat-pop-kicker{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;opacity:.72}
+.chat-pop-kicker{font-size:13px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);opacity:1}
 .chat-pop-title{font-size:18px;font-weight:900;line-height:1.1}
 .chat-pop-sub{font-size:12px;opacity:.76;overflow-wrap:anywhere}
 .chat-pop-actions{display:flex;gap:8px}
@@ -102,11 +120,15 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .chat-msg.is-system.is-initial .chat-msg-author,.chat-msg.is-system.is-initial .chat-msg-text{color:inherit;font-weight:900;opacity:1}
 .chat-msg.is-system.is-initial .chat-msg-time{color:inherit;opacity:.72}
 .chat-msg.is-limit .chat-msg-author{display:inline-flex;width:max-content;padding:3px 9px;border-radius:999px;background:#2563eb;color:#fff;font-weight:900;opacity:1}
-.chat-msg-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chat-msg-head{display:flex;align-items:center;gap:10px}
 .chat-msg-author{font-size:12px;font-weight:900;opacity:.78}
-.chat-msg-time{font-size:11px;opacity:.7;white-space:nowrap}
+/* B17C48: la hora es el elemento más cercano al borde derecho de la burbuja.
+   El botón responder va ANTES de la hora (no la empuja al centro). La hora
+   (último hijo) queda pegada al padding derecho real vía margin-inline-start:auto. */
+.chat-msg-time{display:inline-flex;align-items:center;gap:6px;margin-inline-start:auto;font-size:11px;opacity:.7;white-space:nowrap}
+.chat-msg-time-t{flex:0 0 auto}
 .chat-msg-text{font-size:14px;line-height:1.55;overflow-wrap:anywhere;white-space:pre-line}
-.chat-reply-help{display:grid;gap:5px;margin:10px 16px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--brand) 6%,var(--panel));font-size:12px;line-height:1.4}
+.chat-reply-help{position:absolute;top:58px;left:16px;right:16px;z-index:7;display:grid;gap:6px;margin:0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--brand) 26%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);box-shadow:0 22px 54px rgba(2,6,23,.26);font-size:12px;line-height:1.45}
 .chat-reply-help.hidden{display:none}
 .chat-reply-help strong{font-weight:850}
 .chat-reply-help span{color:var(--muted)}
@@ -119,7 +141,7 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 /* B19B: cita clicable + botón responder + barra de cita en compositor */
 .chat-quote-link{cursor:pointer}
 .chat-quote-link:hover{border-left-color:var(--brand)}
-.chat-reply-btn{display:inline-grid;place-items:center;width:24px;height:24px;margin-left:6px;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:12px;cursor:pointer;opacity:0;transition:opacity .15s ease}
+.chat-reply-btn{display:inline-grid;place-items:center;width:24px;height:24px;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:12px;cursor:pointer;opacity:0;transition:opacity .15s ease}
 .chat-msg:hover .chat-reply-btn,.chat-reply-btn:focus-visible{opacity:1}
 .chat-reply-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--brand) 7%,transparent)}
 .chat-reply-bar.hidden{display:none}
@@ -190,10 +212,38 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .chat-compose-row .chat-send-btn{flex:1;min-height:44px}
 .chat-attach-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;white-space:nowrap}
 .chat-compose-note{font-size:12px;opacity:.76;overflow-wrap:anywhere}
+/* B17C46: compositor compacto en una sola cápsula, paridad con ticket.html
+   (.composer-input-wrap): adjuntar a la izquierda, textarea al centro y enviar
+   a la derecha con el mismo asset IMG/enviar.png. Sin botón verde ancho. */
+.chat-compose-wrap{position:relative;display:grid;align-items:center;min-height:50px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:19px;background:var(--panel);overflow:hidden}
+.chat-compose-wrap .chat-attach-btn,.chat-compose-wrap .chat-send-btn{position:absolute;top:50%;transform:translateY(-50%);border-radius:50%;padding:0}
+.chat-compose-wrap .chat-attach-btn{left:7px;width:36px;height:36px;min-width:36px;min-height:36px}
+.chat-compose-wrap .chat-send-btn{right:7px;width:38px;height:38px;min-width:38px;min-height:38px;font-size:0!important;display:grid;place-items:center;background-image:url("../IMG/enviar.png")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:21px 21px!important}
+.chat-compose-wrap .chat-compose-area{height:46px;min-height:46px;max-height:96px;padding:11px 54px 9px 52px;border:0;box-shadow:none;background:transparent;resize:none;overflow-y:auto;font-size:14px;line-height:1.32;border-radius:19px}
+.chat-compose-wrap .chat-attach-btn:focus-visible,.chat-compose-wrap .chat-send-btn:focus-visible{outline:3px solid color-mix(in srgb,var(--brand) 55%,transparent);outline-offset:2px}
+.chat-compose-wrap .chat-attach-btn:disabled,.chat-compose-wrap .chat-send-btn:disabled{opacity:.58;cursor:not-allowed}
+.chat-compose.is-disabled .chat-compose-wrap{opacity:.6}
+/* Panel de notificaciones: título único (kicker redundante retirado) */
+.st-notify-title{margin:0;font-size:18px;font-weight:900;align-self:center}
+/* Interpretación rápida: filas compactas en vez de lista HTML básica */
+.help-states{display:grid;gap:8px}
+.help-state{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel-2) 92%,transparent)}
+.help-state-dot{width:9px;height:9px;margin-top:5px;border-radius:50%;background:var(--muted)}
+.help-state-dot.s-recibido{background:var(--info,#2563eb)}
+.help-state-dot.s-revision{background:var(--warn,#d97706)}
+.help-state-dot.s-espera{background:var(--warn,#d97706)}
+.help-state-dot.s-resuelto{background:var(--ok,#16a34a)}
+.help-state-dot.s-cerrado{background:color-mix(in srgb,var(--muted) 80%,transparent)}
+.help-state-copy{display:grid;gap:1px;min-width:0}
+.help-state-copy b{font-size:13px;font-weight:850}
+.help-state-copy span{font-size:12px;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
 .chat-pop .btn-brand,.estado-reply .btn-brand{color:#fff}
 .chat-file-chips{display:flex;flex-wrap:wrap;gap:6px}
 .chat-file-chips.hidden{display:none}
-.chat-pick-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:6px 6px 6px 12px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--brand) 8%,transparent);font-size:12px;font-weight:700}
+.chat-pick-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:5px 6px 5px 6px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--brand) 8%,transparent);font-size:12px;font-weight:700}
+/* B17C47: miniatura del archivo seleccionado dentro del chip */
+.chat-pick-thumb{width:26px;height:26px;flex:0 0 auto;border-radius:7px;object-fit:cover;background:color-mix(in srgb,var(--panel-2) 90%,transparent)}
+.chat-pick-ic{display:inline-grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:7px;background:color-mix(in srgb,var(--brand) 14%,transparent);font-size:9px;font-weight:900;letter-spacing:.02em;color:var(--brand)}
 .chat-pick-name{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chat-pick-size{opacity:.7;font-weight:600;white-space:nowrap}
 .chat-pick-rm{display:inline-grid;place-items:center;width:22px;height:22px;border:0;border-radius:999px;background:color-mix(in srgb,var(--danger,#dc2626) 12%,transparent);color:var(--danger,#dc2626);font-weight:900;cursor:pointer;line-height:1}

@@ -1,6 +1,6 @@
 import{supabase as s,guardSession,msg}from"./supabase.js";
-import{$,$$,toast,debounce,show,hide,bindModal,norm,ensureAppShell,setAppRole,setRailOpenCount,setGlobalSearchData,setBreadcrumb,daysSince,ticketStateKey as baseTicketStateKey,ticketStateLabel,ticketPriorityCls}from"./global.js?v=frontend-final-20260715-01";
-import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260715-01";
+import{$,$$,toast,debounce,show,hide,bindModal,norm,ensureAppShell,setAppRole,setRailOpenCount,setGlobalSearchData,setBreadcrumb,daysSince,ticketStateKey as baseTicketStateKey,ticketStateLabel,ticketPriorityCls}from"./global.js?v=frontend-final-20260716-01";
+import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260716-01";
 
 window.s=s;
 let QR_SHARED_OK=false;

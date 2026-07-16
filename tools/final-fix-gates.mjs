@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {isInitialRequestReceivedEvent} from "../app/shared/status-event.js";
 
-const ROOT=process.cwd(),APP=path.join(ROOT,"app"),RELEASE="frontend-final-20260715-01",fail=[];
+const ROOT=process.cwd(),APP=path.join(ROOT,"app"),RELEASE="frontend-final-20260716-01",fail=[];
 const read=file=>fs.readFileSync(path.join(ROOT,file),"utf8");
 const files=(dir,exts)=>fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?files(path.join(dir,entry.name),exts):exts.some(ext=>entry.name.endsWith(ext))?[path.join(dir,entry.name)]:[]);
 const assert=(ok,msg)=>{if(!ok)fail.push(msg)};
