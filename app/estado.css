@@ -9,13 +9,8 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-status-pill.info{border-color:color-mix(in srgb,var(--info) 38%,var(--line));background:color-mix(in srgb,var(--info) 10%,var(--panel));color:var(--info)}
 .estado-status-pill.warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 12%,var(--panel));color:var(--warn)}
 .estado-status-pill.neutral{border-color:var(--line);background:color-mix(in srgb,var(--panel-2) 90%,transparent);color:var(--muted)}
-/* pill de estado en el header (mensaje del siguiente paso) */
-.estado-header-status{display:inline-flex;align-items:center;max-width:min(42vw,460px);min-height:30px;padding:5px 12px;border:1px solid color-mix(in srgb,var(--ok) 32%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--ok) 9%,var(--panel));color:var(--ok);font-size:12px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.estado-header-status.hidden{display:none}
-.estado-header-status.info{border-color:color-mix(in srgb,var(--info) 32%,var(--line));background:color-mix(in srgb,var(--info) 9%,var(--panel));color:var(--info)}
-.estado-header-status.warn{border-color:color-mix(in srgb,var(--warn) 36%,var(--line));background:color-mix(in srgb,var(--warn) 11%,var(--panel));color:var(--warn)}
-.estado-header-status.neutral{border-color:var(--line);background:color-mix(in srgb,var(--panel-2) 90%,transparent);color:var(--muted)}
-@media(max-width:900px){.estado-header-status{display:none}}
+/* B17C46: pill dinámica del header retirada (HTML/JS/CSS). El estado vive en el
+   badge inline junto al título (SEGUIMIENTO DE TU CASO). */
 .estado-next{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;max-width:min(720px,62%);margin-inline-start:auto;padding:7px 12px;border:1px solid color-mix(in srgb,var(--ok,#16a34a) 30%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--ok,#16a34a) 7%,var(--panel))}
 .estado-next.hidden{display:none}
 .estado-next-v{color:var(--ok,#15803d);font-weight:900;line-height:1.35;white-space:nowrap}
@@ -29,8 +24,13 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-card .section-head h2,.estado-card .section-head h3{margin:0;text-wrap:balance}
 .estado-summary-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:6px 16px;min-width:0}
 .estado-summary-head .section-kicker{align-self:baseline}
-.estado-summary-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
-.estado-summary-title h2{margin:0;font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
+/* B17C46: título + badge en flujo inline robusto. El h2 es inline y el badge
+   inline-flex continúa tras el último carácter del título; si el título envuelve,
+   el badge baja con él dentro de la columna derecha (nunca inicia fila propia,
+   sin position:absolute ni márgenes negativos). */
+.estado-summary-title{min-width:0}
+.estado-summary-title h2{display:inline;margin:0;font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
+.estado-summary-title .estado-status-pill{margin-left:8px;vertical-align:middle}
 .estado-summary-card{gap:16px}
 .estado-summary-card .estado-next-actions.hidden{display:none}
 .estado-summary-card .estado-next-actions{display:flex;gap:10px;flex-wrap:wrap}
@@ -208,6 +208,31 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .chat-compose-row .chat-send-btn{flex:1;min-height:44px}
 .chat-attach-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;white-space:nowrap}
 .chat-compose-note{font-size:12px;opacity:.76;overflow-wrap:anywhere}
+/* B17C46: compositor compacto en una sola cápsula, paridad con ticket.html
+   (.composer-input-wrap): adjuntar a la izquierda, textarea al centro y enviar
+   a la derecha con el mismo asset IMG/enviar.png. Sin botón verde ancho. */
+.chat-compose-wrap{position:relative;display:grid;align-items:center;min-height:50px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:19px;background:var(--panel);overflow:hidden}
+.chat-compose-wrap .chat-attach-btn,.chat-compose-wrap .chat-send-btn{position:absolute;top:50%;transform:translateY(-50%);border-radius:50%;padding:0}
+.chat-compose-wrap .chat-attach-btn{left:7px;width:36px;height:36px;min-width:36px;min-height:36px}
+.chat-compose-wrap .chat-send-btn{right:7px;width:38px;height:38px;min-width:38px;min-height:38px;font-size:0!important;display:grid;place-items:center;background-image:url("../IMG/enviar.png")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:21px 21px!important}
+.chat-compose-wrap .chat-compose-area{height:46px;min-height:46px;max-height:96px;padding:11px 54px 9px 52px;border:0;box-shadow:none;background:transparent;resize:none;overflow-y:auto;font-size:14px;line-height:1.32;border-radius:19px}
+.chat-compose-wrap .chat-attach-btn:focus-visible,.chat-compose-wrap .chat-send-btn:focus-visible{outline:3px solid color-mix(in srgb,var(--brand) 55%,transparent);outline-offset:2px}
+.chat-compose-wrap .chat-attach-btn:disabled,.chat-compose-wrap .chat-send-btn:disabled{opacity:.58;cursor:not-allowed}
+.chat-compose.is-disabled .chat-compose-wrap{opacity:.6}
+/* Panel de notificaciones: título único (kicker redundante retirado) */
+.st-notify-title{margin:0;font-size:18px;font-weight:900;align-self:center}
+/* Interpretación rápida: filas compactas en vez de lista HTML básica */
+.help-states{display:grid;gap:8px}
+.help-state{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel-2) 92%,transparent)}
+.help-state-dot{width:9px;height:9px;margin-top:5px;border-radius:50%;background:var(--muted)}
+.help-state-dot.s-recibido{background:var(--info,#2563eb)}
+.help-state-dot.s-revision{background:var(--warn,#d97706)}
+.help-state-dot.s-espera{background:var(--warn,#d97706)}
+.help-state-dot.s-resuelto{background:var(--ok,#16a34a)}
+.help-state-dot.s-cerrado{background:color-mix(in srgb,var(--muted) 80%,transparent)}
+.help-state-copy{display:grid;gap:1px;min-width:0}
+.help-state-copy b{font-size:13px;font-weight:850}
+.help-state-copy span{font-size:12px;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
 .chat-pop .btn-brand,.estado-reply .btn-brand{color:#fff}
 .chat-file-chips{display:flex;flex-wrap:wrap;gap:6px}
 .chat-file-chips.hidden{display:none}

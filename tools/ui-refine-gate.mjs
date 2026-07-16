@@ -27,6 +27,13 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   const n=(html.match(/id=["']supportGlobalNotice["']/g)||[]).length;
   n===1?ok("soporte: un solo #supportGlobalNotice (sin duplicado)"):bad("soporte: #supportGlobalNotice duplicado o ausente ("+n+")");
   has(js,/\$\(["']#supportNoticeSlot["']\)/,"soporte: renderNotice apunta al slot del hero");
+  // B17C46: contrato de publicación — un aviso inactivo/vencido/futuro no se renderiza
+  has(js,/const isPublishableNotice=/,"soporte: contrato isPublishableNotice para avisos");
+  has(js,/renderNotice\(isPublishableNotice\(data\)/,"soporte: renderNotice aplica el contrato de publicación");
+  has(js,/if\(n\.activo!==true\)return false/,"soporte: un aviso desactivado nunca es publicable");
+  // B17C46: subtítulo de marca
+  has(html,/jn-brand-sub">ATENCIÓN AL CLIENTE</,"soporte: subtítulo ATENCIÓN AL CLIENTE");
+  not(html,/jn-brand-sub">MESA DE ATENCIÓN</,"soporte: subtítulo antiguo MESA DE ATENCIÓN retirado");
 }
 
 // ---- ESTADO (Commit B) ----
@@ -36,21 +43,55 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   has(js,/import\{formatProductoPublic\}from"\.\/shared\/producto\.js/,"estado: usa el módulo central de producto");
   has(js,/formatProductoPublic\(t\?\.producto_modelo\)/,"estado: producto se presenta con formatProductoPublic");
   not(js,/const visibleProduct=/,"estado: helper viejo visibleProduct retirado (sin capa duplicada)");
-  // Hero retirado + pill al header
+  // B17C46: pill dinámica del header ELIMINADA (HTML/JS/CSS)
   not(html,/class="estado-hero"/,"estado: barra hero retirada");
-  has(html,/id="stHeaderStatus"/,"estado: pill de estado movida al header");
+  not(html,/id="stHeaderStatus"/,"estado: pill dinámica del header eliminada del HTML");
+  not(js,/stHeaderStatus/,"estado: sin referencias JS a la pill del header");
+  not(css,/\.estado-header-status\b/,"estado: estilos de la pill del header retirados");
+  not(js,/Estamos revisando tu caso y te avisaremos/,"estado: texto dinámico de la pill eliminado");
   not(html,/Así va tu solicitud/,"estado: subtítulo redundante de progreso retirado");
+  // B17C46: subtítulo de marca
+  has(html,/jn-brand-sub">ATENCIÓN AL CLIENTE</,"estado: subtítulo ATENCIÓN AL CLIENTE");
   // Resumen grid
   has(css,/\.estado-summary-head\{display:grid/,"estado: Resumen en grid de dos columnas");
+  // B17C46: título + badge en flujo inline (sin fila propia, sin absolute)
+  has(css,/\.estado-summary-title h2\{display:inline/,"estado: h2 del título en display:inline");
+  has(css,/\.estado-summary-title \.estado-status-pill\{[^}]*vertical-align/,"estado: badge inline continúa tras el título");
   // Progreso: solo el activo respira, con guard de reduced-motion
   has(css,/@media\(prefers-reduced-motion:no-preference\)\{\.tl-item\.active::before\{animation:tlActivePulse/,"estado: solo el punto activo anima (respeta reduced-motion)");
   // Cabecera del chat simplificada
   has(html,/chat-pop-kicker">Historial del caso/,"estado: cabecera del chat = Historial del caso");
   not(html,/chat-pop-title|id="stChatSub"/,"estado: cabecera del chat sin título/subtítulo redundantes");
-  // Ayuda del compositor sin duplicar bajo el chat
+  // B17C46: ayuda del chat — orden correcto, sin duplicar, con clic fuera
+  has(html,/id="stChatReplyHelp"[\s\S]{0,400}?Puedes escribir aquí[\s\S]{0,400}?Hasta 3 fotos y 1 PDF[\s\S]{0,200}?chat-video-future/,"estado: ayuda del chat en el orden correcto");
+  not(html,/id="stReplyFilesMetaPop"/,"estado: nota duplicada bajo el compositor eliminada");
+  const h3f=(html.match(/Hasta 3 fotos y 1 PDF/g)||[]).length;
+  h3f===1?ok("estado: 'Hasta 3 fotos y 1 PDF' aparece una sola vez"):bad("estado: ayuda de archivos duplicada/ausente ("+h3f+")");
+  has(js,/#stChatReplyHelp,#stChatHelpToggle/,"estado: ayuda del chat cierra por clic fuera (y no al hacer clic dentro)");
   const vf=(html.match(/chat-video-future/g)||[]).length;
   vf===1?ok("estado: 'Video: próximamente' aparece una sola vez (en el popover)"):bad("estado: 'Video: próximamente' duplicado/ausente ("+vf+")");
   has(css,/\.chat-reply-help\{position:absolute/,"estado: ayuda del chat es popover flotante (no empuja el flujo)");
+  // B17C46: compositor compacto integrado (paridad ticket.html), sin botón verde ancho
+  has(html,/composer-input-wrap chat-compose-wrap/,"estado: compositor en cápsula única");
+  not(html,/class="chat-compose-row"/,"estado: fila con botón verde ancho retirada");
+  has(html,/id="stReplySendPop"[^>]*aria-label="Enviar respuesta"/,"estado: botón enviar conserva aria-label");
+  has(css,/\.chat-compose-wrap \.chat-send-btn\{[^}]*enviar\.png/,"estado: botón enviar usa IMG/enviar.png (paridad ticket)");
+  // B17C46: límite de mensajes — copy breve, encabezado redundante fuera
+  has(html,/Puedes enviar hasta 2 mensajes seguidos/,"estado: copy de límite presente");
+  not(html,/Envía lo que te pedimos para avanzar/,"estado: encabezado redundante retirado");
+  // B17C46: 'Último mensaje del equipo' retirado (redundante con la conversación)
+  not(html,/id="stLastSupportCard"/,"estado: bloque 'Último mensaje del equipo' retirado");
+  not(js,/setLastSupport/,"estado: owner setLastSupport retirado");
+  // B17C46: interpretación rápida sin lista HTML básica
+  not(html,/id="stHelpPop"[\s\S]{0,300}?<ul class="mini-list"/,"estado: interpretación rápida sin <ul class=mini-list>");
+  has(html,/class="help-states"/,"estado: interpretación rápida en filas compactas");
+  // B17C46: panel de notificaciones — título único, sin parpadeo
+  has(html,/st-notify-title" id="stNotifyTitle">Notificaciones</,"estado: panel de notificaciones con título único");
+  has(js,/if\(!ST\.seenFirstLoad\)renderNotificationPanel\("loading"\)/,"estado: notificaciones no se limpian en polls silenciosos");
+  has(js,/ST\.notifyRenderSig/,"estado: notificaciones con guard de firma (sin parpadeo)");
+  // Idempotencia de binds (sin listeners duplicados)
+  has(js,/dataset\.estadoNotifyBound/,"estado: bind principal con guard de idempotencia");
+  has(js,/dataset\.stReplyHelpBound/,"estado: ayuda del chat con guard de idempotencia");
   // Notificaciones humanizadas
   has(js,/const fmtNotifTime=/,"estado: notificaciones con fecha/hora humanizada (Hoy/Ayer, sin segundos)");
 }

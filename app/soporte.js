@@ -173,7 +173,22 @@ const evalFaq=()=>{const txt=faqNeedle();if(txt.trim().length<18)return renderFa
 /* B17C43D: idempotente — no duplica el mismo texto aunque se dispare dos veces */
 const useFaq=()=>{if(!ST.faq)return;const target=$("#spDesc");if(!target)return;const txt=ST.faq.done||ST.faq.fill,cur=target.value?.trim()||"";if(!cur.includes(txt))target.value=`${cur}${cur?"\n\n":""}${txt}`;ST.faqDismissed.add(ST.faq.id);setStatus("Anotamos que ya lo intentaste. Agrega cualquier otro detalle.","ok");renderFaq(null);preview();target.focus()};
 
-const loadGlobalNotice=async()=>{try{const now=new Date().toISOString();const {data,error}=await supabase.from("avisos_globales").select("id,titulo,contenido,tipo,activo,mostrar_en_soporte,starts_at,ends_at,prioridad").eq("activo",true).eq("mostrar_en_soporte",true).or(`starts_at.is.null,starts_at.lte.${now}`).or(`ends_at.is.null,ends_at.gte.${now}`).order("prioridad",{ascending:true}).limit(1).maybeSingle();if(error)throw error;renderNotice(data||null)}catch(err){console.warn("SUPPORT_NOTICE_LOAD_ERROR",err);renderNotice(null)}};
+/* B17C46: contrato de publicación de avisos. La consulta ya filtra por activo,
+   mostrar_en_soporte y ventana de fechas; el cliente lo vuelve a validar (defensa
+   en profundidad) para que un aviso desactivado, vencido o futuro nunca se
+   renderice en el hero. No se oculta por CSS: se descarta el dato. */
+const isPublishableNotice=n=>{
+  if(!n||typeof n!=="object")return false;
+  if(n.activo!==true)return false;
+  if(n.mostrar_en_soporte!==true)return false;
+  const now=Date.now();
+  const s=n.starts_at?Date.parse(n.starts_at):NaN;
+  if(!Number.isNaN(s)&&s>now)return false;
+  const e=n.ends_at?Date.parse(n.ends_at):NaN;
+  if(!Number.isNaN(e)&&e<now)return false;
+  return true;
+};
+const loadGlobalNotice=async()=>{try{const now=new Date().toISOString();const {data,error}=await supabase.from("avisos_globales").select("id,titulo,contenido,tipo,activo,mostrar_en_soporte,starts_at,ends_at,prioridad").eq("activo",true).eq("mostrar_en_soporte",true).or(`starts_at.is.null,starts_at.lte.${now}`).or(`ends_at.is.null,ends_at.gte.${now}`).order("prioridad",{ascending:true}).limit(1).maybeSingle();if(error)throw error;renderNotice(isPublishableNotice(data)?data:null)}catch(err){console.warn("SUPPORT_NOTICE_LOAD_ERROR",err);renderNotice(null)}};
 
 const send=async e=>{
   e.preventDefault();
