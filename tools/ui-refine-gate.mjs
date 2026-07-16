@@ -32,8 +32,10 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   has(js,/renderNotice\(isPublishableNotice\(data\)/,"soporte: renderNotice aplica el contrato de publicación");
   has(js,/if\(n\.activo!==true\)return false/,"soporte: un aviso desactivado nunca es publicable");
   // B17C46: subtítulo de marca
-  has(html,/jn-brand-sub">ATENCIÓN AL CLIENTE</,"soporte: subtítulo ATENCIÓN AL CLIENTE");
-  not(html,/jn-brand-sub">MESA DE ATENCIÓN</,"soporte: subtítulo antiguo MESA DE ATENCIÓN retirado");
+  has(html,/jn-brand-sub">SERVICIO AL CLIENTE</,"soporte: subtítulo SERVICIO AL CLIENTE");
+  not(html,/jn-brand-sub">(?:MESA DE ATENCIÓN|ATENCIÓN AL CLIENTE)</,"soporte: subtítulos anteriores retirados");
+  // B17C46 addendum: scroll natural del documento conservado (sin app-shell)
+  not(css,/html,\s*body,\s*main\{[^}]*overflow:hidden/,"soporte: sin overflow:hidden en html/body/main");
 }
 
 // ---- ESTADO (Commit B) ----
@@ -51,7 +53,8 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   not(js,/Estamos revisando tu caso y te avisaremos/,"estado: texto dinámico de la pill eliminado");
   not(html,/Así va tu solicitud/,"estado: subtítulo redundante de progreso retirado");
   // B17C46: subtítulo de marca
-  has(html,/jn-brand-sub">ATENCIÓN AL CLIENTE</,"estado: subtítulo ATENCIÓN AL CLIENTE");
+  has(html,/jn-brand-sub">SERVICIO AL CLIENTE</,"estado: subtítulo SERVICIO AL CLIENTE");
+  not(html,/jn-brand-sub">(?:MESA DE ATENCIÓN|ATENCIÓN AL CLIENTE)</,"estado: subtítulos anteriores retirados");
   // Resumen grid
   has(css,/\.estado-summary-head\{display:grid/,"estado: Resumen en grid de dos columnas");
   // B17C46: título + badge en flujo inline (sin fila propia, sin absolute)
@@ -79,9 +82,15 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   // B17C46: límite de mensajes — copy breve, encabezado redundante fuera
   has(html,/Puedes enviar hasta 2 mensajes seguidos/,"estado: copy de límite presente");
   not(html,/Envía lo que te pedimos para avanzar/,"estado: encabezado redundante retirado");
-  // B17C46: 'Último mensaje del equipo' retirado (redundante con la conversación)
-  not(html,/id="stLastSupportCard"/,"estado: bloque 'Último mensaje del equipo' retirado");
-  not(js,/setLastSupport/,"estado: owner setLastSupport retirado");
+  // B17C46 addendum: 'Último mensaje del equipo' RESTAURADO — owner único, datos reales
+  has(html,/id="stLastSupportCard"/,"estado: bloque 'Último mensaje del equipo' presente");
+  has(html,/section-kicker">Último mensaje del equipo</,"estado: encabezado 'Último mensaje del equipo' presente");
+  has(js,/const setLastSupport=/,"estado: owner setLastSupport presente");
+  ((js.match(/const setLastSupport=/g)||[]).length===1)?ok("estado: setLastSupport es owner único (sin duplicar)"):bad("estado: setLastSupport duplicado");
+  has(js,/renderLoadedTicket=t=>[\s\S]*?setLastSupport\(t\)/,"estado: setLastSupport se invoca en el render");
+  has(js,/find\(x=>x\.autor==="soporte"\)/,"estado: último mensaje usa el último de soporte (no cliente)");
+  has(js,/stOpenChatBtn2"\)\?\.addEventListener\("click",openChat\)/,"estado: 'Abrir conversación' reutiliza openChat (sin listener nuevo)");
+  ((js.match(/stOpenChatBtn2"\)\?\.addEventListener/g)||[]).length===1)?ok("estado: sin listener duplicado en stOpenChatBtn2"):bad("estado: listener duplicado en stOpenChatBtn2");
   // B17C46: interpretación rápida sin lista HTML básica
   not(html,/id="stHelpPop"[\s\S]{0,300}?<ul class="mini-list"/,"estado: interpretación rápida sin <ul class=mini-list>");
   has(html,/class="help-states"/,"estado: interpretación rápida en filas compactas");
