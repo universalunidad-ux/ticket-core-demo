@@ -35,7 +35,7 @@ const validMail=v=>!emailError(v);
 const phoneError=v=>{const phone=normalizeMxPhone(v);if(!phone)return"Escribe tu teléfono.";if(phone.length!==10)return`El teléfono debe quedar en 10 dígitos; recibimos ${phone.length}.`;return""};
 const setContactError=(id,message)=>{const input=$(id==="email"?"#spEmail":"#spPhone"),box=$(id==="email"?"#spEmailError":"#spPhoneError");input?.setCustomValidity(message);if(box)box.textContent=message};
 const validateContactFields=()=>{const mail=emailError(trimVal("spEmail")),phone=phoneError(trimVal("spPhone"));setContactError("email",mail);setContactError("phone",phone);return mail||phone};
-const publicPayload=()=>({nombre:trimVal("spName"),empresa:trimVal("spCompany"),correo:trimVal("spEmail").toLowerCase(),telefono:normalizeMxPhone(trimVal("spPhone")),categoria:"soporte",sistema:sistemaLabel(),objetivo:trimVal("spGoal"),titulo:trimVal("spTitle"),descripcion:trimVal("spDesc"),impacto:$("#spImpact")?.value||"media",canal:($("#spWhats")?.checked?"whatsapp":"correo"),desde_cuando:trimVal("spSince"),afecta_a:$("#spAffected")?.value||"no_se",cambio_previo:$("#spLastChange")?.value||"",horario_disponible:[trimVal("spAvailabilityFrom")&&trimVal("spAvailabilityTo")?`${trimVal("spAvailabilityFrom")}–${trimVal("spAvailabilityTo")}`:"",trimVal("spAvailability")].filter(Boolean).join(" · "),horario_desde:trimVal("spAvailabilityFrom")||null,horario_hasta:trimVal("spAvailabilityTo")||null,horario_notas:trimVal("spAvailability")||null,contexto_extra:trimVal("spExtra"),remote_access:trimVal("spRemoteAccess"),cliente_id_confirmado:trimVal("spClienteIdConfirmado")||null,contacto_id_confirmado:trimVal("spContactoIdConfirmado")||null,cliente_id_sugerido:ST.match?.candidates?.[0]?.cliente_id||null,contacto_id_sugerido:ST.match?.candidates?.[0]?.contacto_sugerido?.id||null,match_nivel:ST.match?.candidates?.[0]?.level||null,match_score:ST.match?.candidates?.[0]?.score||null,empresa_confirmada:($("#spEmpresaConfirmada")?.value||"0")==="1",contacto_confirmado:($("#spContactoConfirmado")?.value||"0")==="1",contacto_es_nuevo:($("#spContactoEsNuevo")?.value||"0")==="1"});
+const publicPayload=()=>({nombre:trimVal("spName"),empresa:trimVal("spCompany")||null,correo:trimVal("spEmail").toLowerCase(),telefono:normalizeMxPhone(trimVal("spPhone")),categoria:"soporte",sistema:sistemaLabel(),objetivo:trimVal("spGoal"),titulo:trimVal("spTitle"),descripcion:trimVal("spDesc"),impacto:$("#spImpact")?.value||"media",canal:($("#spWhats")?.checked?"whatsapp":"correo"),desde_cuando:trimVal("spSince"),afecta_a:$("#spAffected")?.value||"no_se",cambio_previo:$("#spLastChange")?.value||"",horario_disponible:[trimVal("spAvailabilityFrom")&&trimVal("spAvailabilityTo")?`${trimVal("spAvailabilityFrom")}–${trimVal("spAvailabilityTo")}`:"",trimVal("spAvailability")].filter(Boolean).join(" · "),horario_desde:trimVal("spAvailabilityFrom")||null,horario_hasta:trimVal("spAvailabilityTo")||null,horario_notas:trimVal("spAvailability")||null,contexto_extra:trimVal("spExtra"),remote_access:trimVal("spRemoteAccess"),cliente_id_confirmado:trimVal("spClienteIdConfirmado")||null,contacto_id_confirmado:trimVal("spContactoIdConfirmado")||null,cliente_id_sugerido:ST.match?.candidates?.[0]?.cliente_id||null,contacto_id_sugerido:ST.match?.candidates?.[0]?.contacto_sugerido?.id||null,match_nivel:ST.match?.candidates?.[0]?.level||null,match_score:ST.match?.candidates?.[0]?.score||null,empresa_confirmada:($("#spEmpresaConfirmada")?.value||"0")==="1",contacto_confirmado:($("#spContactoConfirmado")?.value||"0")==="1",contacto_es_nuevo:($("#spContactoEsNuevo")?.value||"0")==="1"});
 
 /* B17C43C: validación que nombra el campo exacto (lista máx. 3 si faltan varios) */
 const validatePublicPayload=p=>{const contactError=validateContactFields();if(contactError)return contactError;const faltan=[];if(!p.nombre)faltan.push("tu nombre");if(!p.sistema)faltan.push("seleccionar producto");if(!p.titulo||p.titulo.trim().length<6)faltan.push("resumir qué está pasando");if(!p.descripcion||p.descripcion.trim().length<20)faltan.push("contarnos el detalle");if(faltan.length===1)return`Falta ${faltan[0]}.`;if(faltan.length>1)return`Falta: ${faltan.slice(0,3).join(", ")}${faltan.length>3?"…":""}.`;if(p.titulo.length>120)return"El título es demasiado largo.";if(p.descripcion.length>3000)return"La descripción es demasiado larga.";if((p.contexto_extra||"").length>3000)return"El contexto adicional es demasiado largo.";return""};
@@ -162,7 +162,7 @@ const validate=()=>validatePublicPayload(publicPayload())||validPublicFiles(ST.f
 const maybeWarnGlobalIssue=()=>{if(!ST.notice)return false;return confirm(`Hay un aviso general activo:\n\n${ST.notice.titulo}\n${ST.notice.contenido}\n\nSi tu caso corresponde a este aviso, quizá no necesites abrir un ticket nuevo.\n\n¿Aun así deseas enviarlo?`)===false};
 const AVISO_CLASE={info:"info",warning:"warn",success:"ok",danger:"danger",mantenimiento:"warn"};
 const AVISO_ICONO={info:"ℹ️",warning:"⏳",success:"✅",danger:"⚠️",mantenimiento:"🛠️"};
-const renderNotice=notice=>{const wrap=$("#supportNoticeWrap"),box=$("#supportGlobalNotice");if(!wrap||!box)return;ST.notice=notice||null;if(!notice){wrap.hidden=true;box.innerHTML="";return}const cls=AVISO_CLASE[notice.tipo]||"info",ic=AVISO_ICONO[notice.tipo]||"ℹ️";wrap.hidden=false;box.className=`support-global-notice ${cls}`;box.innerHTML=`<div class="notice-ic">${ic}</div><div class="notice-copy"><div class="notice-title">${esc(notice.titulo||"Aviso")}</div><div class="notice-text">${esc(notice.contenido||"")}</div></div>`};
+const renderNotice=notice=>{const wrap=$("#supportNoticeSlot"),box=$("#supportGlobalNotice");if(!wrap||!box)return;ST.notice=notice||null;if(!notice){wrap.hidden=true;box.innerHTML="";return}const cls=AVISO_CLASE[notice.tipo]||"info",ic=AVISO_ICONO[notice.tipo]||"ℹ️";wrap.hidden=false;box.className=`support-global-notice ${cls}`;box.innerHTML=`<div class="notice-ic">${ic}</div><div class="notice-copy"><div class="notice-title">${esc(notice.titulo||"Aviso")}</div><div class="notice-text">${esc(notice.contenido||"")}</div></div>`};
 /* B17C43C: cada FAQ trae texto "done" (Ya lo hice) en tono humano */
 const FAQS=[{id:"hilo",title:"Se enreda o se rompe el hilo",text:"La mayoría de estos casos se resuelven re-enhebrando: sube el prensatelas, retira el hilo, vuelve a enhebrar superior y bobina, y revisa que la bobina gire en el sentido correcto. Si persiste, podemos ayudarte.",link:"#",fill:"El hilo se enreda o se rompe. Ya intenté re-enhebrar superior y bobina con el prensatelas arriba.",done:"Ya re-enhebré hilo superior y bobina con el prensatelas arriba; el problema continúa."},{id:"aguja",title:"La aguja se rompe o se dobla",text:"Verifica que la aguja sea del tipo y calibre correctos para tu tela, que esté bien insertada (parte plana hacia atrás) y sin daño. Evita jalar la tela al coser.",link:"#",fill:"La aguja se rompe o se dobla. Confirmo tipo de aguja y tela usada.",done:"Ya revisé que la aguja sea del tipo correcto, esté bien insertada y sin daño; el problema continúa."},{id:"tension",title:"Puntada despareja o tensión",text:"Una puntada floja por abajo o arriba suele ser tensión o enhebrado. Vuelve a enhebrar y prueba con un retazo ajustando la tensión superior poco a poco.",link:"#",fill:"La puntada queda despareja / con mala tensión. Indico el tipo de tela y el ajuste de tensión que uso.",done:"Ya re-enhebré y probé ajustando la tensión superior con un retazo; la puntada sigue despareja."},{id:"enciende",title:"No enciende o el pedal no responde",text:"Revisa que el cable de corriente y el del pedal estén bien conectados, el interruptor encendido y, si aplica, el devanador desactivado. Indícanos qué pasa al pisar el pedal.",link:"#",fill:"La máquina no enciende o el pedal no responde. Ya revisé cables, interruptor y devanador.",done:"Ya revisé cable de corriente, pedal, interruptor y devanador; el problema continúa."}];
 const faqNeedle=()=>`${$("#spTitle")?.value||""} ${$("#spDesc")?.value||""} ${$("#spGoal")?.value||""} ${$("#spSystem")?.value||""}`.toLowerCase();
@@ -378,41 +378,10 @@ const bindB17C43B=()=>{
   addEventListener("beforeunload",saveDraft);
 };
 
-/* B17C43E-R:
-   En desktop, la rueda desplaza el formulario aunque el cursor esté sobre
-   el hero o la vista previa. El desplegable conserva su propio scroll. */
-/* B17C43F:
-   En móvil se mueve EL MISMO título al hero. No se clona ni duplica. */
-const bindSupportFormWheel=()=>{
-  if(document.documentElement.dataset.spFormWheelBound)return;
-  document.documentElement.dataset.spFormWheelBound="1";
+/* B17C43E-R2: hijack de rueda retirado. El scroll ahora es documento
+   natural (ver soporte.css); no se secuestra el wheel del hero/recibo. */
 
-  document.addEventListener("wheel",e=>{
-    if(!matchMedia("(min-width:1024px) and (min-height:640px)").matches)return;
-    if(e.defaultPrevented||e.ctrlKey)return;
-    if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;
-
-    const form=$("#supportForm");
-    if(!form)return;
-
-    /* Dentro del formulario se usa el scroll nativo. */
-    if(e.target?.closest?.("#supportForm"))return;
-
-    /* No secuestrar la lista desplazable del catálogo. */
-    if(e.target?.closest?.("#spEquipoCombo .jn-combo-panel"))return;
-
-    const max=Math.max(0,form.scrollHeight-form.clientHeight);
-    if(max<=1)return;
-
-    const next=Math.max(0,Math.min(max,form.scrollTop+e.deltaY));
-    if(next===form.scrollTop)return;
-
-    e.preventDefault();
-    form.scrollTop=next;
-  },{passive:false});
-};
-
-document.addEventListener("DOMContentLoaded",async()=>{mountSupportBack();const box=document.createElement("div");box.id="spFilesMeta";box.className="list";$("#spFiles")?.closest(".field")?.appendChild(box);const fst=document.createElement("div");fst.id="spFilesStatus";fst.className="sp-files-status mut";fst.hidden=true;$("#spFiles")?.closest(".field")?.appendChild(fst);poblarSelect($("#spSystem"));montarBuscadorEquipo($("#spSystem"),$("#spEquipoCombo"));bind();bindSupportFormWheel();$("#spSystem")?.addEventListener("change",preview);preview();renderFiles();renderFaq(null);evalFaq();syncUrgentUi();syncWhats();syncOtro();hydrateKnownIdentity();bindB17C43B();if(restoreDraft()){preview();evalFaq();setStatus("Restauramos tu borrador. Por seguridad, vuelve a seleccionar tus archivos si recargaste la página.","ok")}if(!TURNSTILE_ENABLED)$("#spTurnstileWrap")?.classList.add("hidden");await loadGlobalNotice()});
+document.addEventListener("DOMContentLoaded",async()=>{mountSupportBack();const box=document.createElement("div");box.id="spFilesMeta";box.className="list";$("#spFiles")?.closest(".field")?.appendChild(box);const fst=document.createElement("div");fst.id="spFilesStatus";fst.className="sp-files-status mut";fst.hidden=true;$("#spFiles")?.closest(".field")?.appendChild(fst);poblarSelect($("#spSystem"));montarBuscadorEquipo($("#spSystem"),$("#spEquipoCombo"));bind();$("#spSystem")?.addEventListener("change",preview);preview();renderFiles();renderFaq(null);evalFaq();syncUrgentUi();syncWhats();syncOtro();hydrateKnownIdentity();bindB17C43B();if(restoreDraft()){preview();evalFaq();setStatus("Restauramos tu borrador. Por seguridad, vuelve a seleccionar tus archivos si recargaste la página.","ok")}if(!TURNSTILE_ENABLED)$("#spTurnstileWrap")?.classList.add("hidden");await loadGlobalNotice()});
 window.onTurnstileSuccess=token=>{TURNSTILE_TOKEN=token||"";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="Validación correcta.");};
 window.onTurnstileExpired=()=>{TURNSTILE_TOKEN="";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="La validación expiró. Confírmela de nuevo.");};
 window.onTurnstileError=()=>{TURNSTILE_TOKEN="";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="No se pudo validar. Intente de nuevo.");};

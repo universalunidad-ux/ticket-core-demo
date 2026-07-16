@@ -59,7 +59,7 @@
   line-height:1.2
 }
 .support-form .section-head h2,.support-form .section-head h3{margin:0}
-@media(max-width:1100px){.support-layout,.hero-support{grid-template-columns:1fr}.support-side{position:static}.hero-badges{justify-content:flex-start}}
+@media(max-width:1100px){.support-layout,.hero-support{grid-template-columns:1fr}.support-side{position:static}.hero-badges{justify-content:flex-start}.hero-support{flex-direction:column;align-items:stretch}.hero-support-main{width:100%}.hero-support-aside{flex:1 1 auto;width:100%}.hero-support-aside .support-global-notice{max-height:none}}
 
 @media(max-width:760px){.form-grid,.upload-grid{grid-template-columns:1fr}.support-form .actions{display:grid;grid-template-columns:1fr}.support-form .actions .btn{width:100%;min-width:0}.hero-support h1{max-width:none}}
 
@@ -116,62 +116,12 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
 .sp-inline-success{margin-top:6px;font-size:13px;font-weight:800;color:var(--ok)}
 .sp-inline-success.hidden{display:none}
 
-/* ====== B17C43D — desktop: header/hero/recibo estables, formulario con
-   scroll interno; sin doble scroll ni rebote. Solo ≥1024px y alto suficiente. */
-@media(min-width:1024px) and (min-height:640px){
-  html,body{
-    height:100%;
-    overflow:hidden
-  }
-
-  body[data-surface="client"]{
-    height:100%;
-    overflow:hidden;
-    overscroll-behavior:none
-  }
-
-  main.soporte-page{
-    height:calc(100dvh - 58px);
-    min-height:0;
-    display:grid;
-    grid-template-rows:auto minmax(0,1fr) auto;
-    row-gap:0;
-    overflow:hidden
-  }
-
-  .hero-support{
-    margin-bottom:12px
-  }
-
-  .support-layout{
-    height:100%;
-    min-height:0;
-    margin:0;
-    overflow:hidden;
-    align-items:stretch
-  }
-
-  .support-form{
-    height:100%;
-    min-height:0;
-    overflow-y:auto;
-    overflow-x:hidden;
-    overscroll-behavior:contain;
-    padding-bottom:22px;
-    scrollbar-width:thin
-  }
-
-  .support-side{
-    position:static;
-    min-height:0;
-    overflow:visible;
-    align-self:start
-  }
-
-  .jn-footer{
-    margin-top:0;
-    padding:8px 4px 6px
-  }
+/* ====== UI-REFINE 20260715 — desktop: SCROLL DE DOCUMENTO NATURAL ======
+   Se retiró el app-shell (html/body/main overflow:hidden + altura fija)
+   que secuestraba el scroll y dejaba inaccesible el botón Enviar.
+   El recibo acompaña con position:sticky. Estable en zoom 100/125/150%. */
+@media(min-width:1101px){
+  .support-side{position:sticky;top:80px;align-self:start}
 }
 .sp-files-status{min-height:0;margin-top:4px;font-weight:700}
 .sp-files-status.ok{color:var(--ok)}
@@ -405,9 +355,13 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
 #spEmail:invalid:not(:placeholder-shown),#spPhone:invalid:not(:placeholder-shown){border-color:color-mix(in srgb,var(--danger) 55%,var(--line))}
 
 /* WHATSAPP-CONSENT-05 */
-.hero-support-main{display:flex;align-items:center;justify-content:center;gap:18px;min-width:0;width:100%}
-.hero-support-main h1{flex:0 0 auto;max-width:none;white-space:nowrap;margin:0}
-.hero-support-main .support-hints{margin:0;flex-wrap:nowrap;white-space:nowrap}
+.hero-support{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:nowrap}
+.hero-support-main{display:flex;align-items:baseline;justify-content:space-between;gap:18px;min-width:0;flex:1 1 auto}
+.hero-support-main h1{flex:0 0 auto;max-width:none;white-space:nowrap;margin:0;text-align:left}
+.hero-support-main .support-hints{margin:0 0 0 auto;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end}
+.hero-support-aside{flex:0 1 clamp(280px,42%,520px);min-width:0;display:block}
+.hero-support-aside[hidden]{display:none}
+.hero-support-aside .support-global-notice{margin:0;max-height:132px;overflow:auto}
 .support-hints span,.support-hints i{cursor:default;box-shadow:none}
 #spIdentityFields .field:has(#spWhatsRow:not(.hidden)){grid-template-rows:auto auto auto}
 #spIdentityFields .jn-phone:has(#spWhatsRow:not(.hidden)){height:auto;min-height:47px}
