@@ -120,9 +120,13 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .chat-msg.is-system.is-initial .chat-msg-author,.chat-msg.is-system.is-initial .chat-msg-text{color:inherit;font-weight:900;opacity:1}
 .chat-msg.is-system.is-initial .chat-msg-time{color:inherit;opacity:.72}
 .chat-msg.is-limit .chat-msg-author{display:inline-flex;width:max-content;padding:3px 9px;border-radius:999px;background:#2563eb;color:#fff;font-weight:900;opacity:1}
-.chat-msg-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chat-msg-head{display:flex;align-items:center;gap:10px}
 .chat-msg-author{font-size:12px;font-weight:900;opacity:.78}
-.chat-msg-time{font-size:11px;opacity:.7;white-space:nowrap}
+/* B17C48: la hora es el elemento más cercano al borde derecho de la burbuja.
+   El botón responder va ANTES de la hora (no la empuja al centro). La hora
+   (último hijo) queda pegada al padding derecho real vía margin-inline-start:auto. */
+.chat-msg-time{display:inline-flex;align-items:center;gap:6px;margin-inline-start:auto;font-size:11px;opacity:.7;white-space:nowrap}
+.chat-msg-time-t{flex:0 0 auto}
 .chat-msg-text{font-size:14px;line-height:1.55;overflow-wrap:anywhere;white-space:pre-line}
 .chat-reply-help{position:absolute;top:58px;left:16px;right:16px;z-index:7;display:grid;gap:6px;margin:0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--brand) 26%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);box-shadow:0 22px 54px rgba(2,6,23,.26);font-size:12px;line-height:1.45}
 .chat-reply-help.hidden{display:none}
@@ -137,7 +141,7 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 /* B19B: cita clicable + botón responder + barra de cita en compositor */
 .chat-quote-link{cursor:pointer}
 .chat-quote-link:hover{border-left-color:var(--brand)}
-.chat-reply-btn{display:inline-grid;place-items:center;width:24px;height:24px;margin-left:6px;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:12px;cursor:pointer;opacity:0;transition:opacity .15s ease}
+.chat-reply-btn{display:inline-grid;place-items:center;width:24px;height:24px;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:12px;cursor:pointer;opacity:0;transition:opacity .15s ease}
 .chat-msg:hover .chat-reply-btn,.chat-reply-btn:focus-visible{opacity:1}
 .chat-reply-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--brand) 7%,transparent)}
 .chat-reply-bar.hidden{display:none}

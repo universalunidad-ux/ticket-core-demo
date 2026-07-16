@@ -36,13 +36,20 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   not(html,/jn-brand-sub">(?:MESA DE ATENCIÓN|ATENCIÓN AL CLIENTE)</,"soporte: subtítulos anteriores retirados");
   // B17C46 addendum: scroll natural del documento conservado (sin app-shell)
   not(css,/html,\s*body,\s*main\{[^}]*overflow:hidden/,"soporte: sin overflow:hidden en html/body/main");
-  // B17C47: escritorio — SOLO el formulario se desplaza (Grid/Flex + min-height:0)
-  has(css,/@media\(min-width:1024px\)\{[\s\S]*?\.support-form\{[^}]*overflow-y:auto/,"soporte: desktop scroll interno solo en el formulario");
+  // B17C48: escritorio — la ZONA PRINCIPAL (ambas columnas) es el contenedor
+  // desplazable; rueda funciona en cualquier lado; vista previa sticky.
+  has(css,/@media\(min-width:1024px\)\{[\s\S]*?\.support-layout\{[^}]*overflow-y:auto/,"soporte: zona principal es el contenedor desplazable (rueda en cualquier lado)");
+  has(css,/@media\(min-width:1024px\)\{[\s\S]*?\.support-layout\{[^}]*scrollbar-gutter:stable/,"soporte: gutter estable en la zona desplazable");
   has(css,/@media\(min-width:1024px\)\{[\s\S]*?body\[data-surface="client"\]\{[^}]*height:100dvh/,"soporte: desktop usa altura de viewport (no altura mágica)");
-  has(css,/@media\(min-width:1024px\)\{[\s\S]*?\.support-side\{[^}]*position:static/,"soporte: columna derecha (recibo) sin scroll en desktop");
+  has(css,/@media\(min-width:1024px\)\{[\s\S]*?\.support-side\{[^}]*position:sticky/,"soporte: vista previa sticky (inmóvil) en desktop");
+  has(css,/html\{scrollbar-gutter:stable\}/,"soporte: html con gutter estable (móvil sin salto de ancho)");
   not(js,/addEventListener\(\s*["']wheel["']/,"soporte: sin listener de wheel (JS)");
+  not(css,/\.(?:soporte-page|support-layout|support-form|support-side|hero-support)[^{]*\{[^}]*100vw/,"soporte: contenedores de layout sin 100vw");
   // móvil/tablet conserva scroll natural del documento
   has(css,/@media \(max-width:1023px\)\{[\s\S]*?main\.soporte-page\{[^}]*overflow:visible/,"soporte: móvil/tablet conserva scroll natural del documento");
+  // B17C48: texto humano de recuperación de borrador
+  has(js,/Recuperamos tus datos\. Si habías adjuntado un archivo/,"soporte: copy humano de recuperación de borrador");
+  not(js,/Restauramos tu borrador\. Por seguridad/,"soporte: copy técnico anterior de borrador retirado");
   // botón Enviar DENTRO del contenedor desplazable (#supportForm)
   has(html,/id="supportForm"[\s\S]*id="spSendBtn"[\s\S]*<\/form>/,"soporte: botón Enviar dentro del formulario desplazable");
   // honeypot fuera de vista, no enfocable, función intacta
@@ -138,6 +145,20 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   has(js,/dataset\.stReplyHelpBound/,"estado: ayuda del chat con guard de idempotencia");
   // Notificaciones humanizadas
   has(js,/const fmtNotifTime=/,"estado: notificaciones con fecha/hora humanizada (Hoy/Ayer, sin segundos)");
+  // B17C48: metadata del mensaje — hora al extremo derecho, botón responder antes
+  has(js,/<div class="chat-msg-time">\$\{canReply/,"estado: botón responder va ANTES de la hora (no la empuja)");
+  has(js,/<span class="chat-msg-time-t">\$\{fmtT\(x\.fecha\)\}<\/span>/,"estado: la hora es el último elemento (pegada al borde)");
+  has(css,/\.chat-msg-time\{[^}]*margin-inline-start:auto/,"estado: la hora se alinea al extremo derecho (margin-inline-start:auto)");
+  not(css,/\.estado-(?:grid|page|summary-head|kpis|main|side)[^{]*\{[^}]*100vw/,"estado: contenedores de layout sin 100vw (overlays fixed exentos)");
+}
+
+// ---- SHELL PÚBLICO (estado + soporte, data-surface=client) ----
+{
+  const gcss=read("app/global.css");
+  has(gcss,/--public-shell-width:min\(80vw,1680px\)/,"shell: variable --public-shell-width definida (~80%)");
+  has(gcss,/body\[data-surface=client\] \.wrap,[\s\S]{0,120}?\.jn-topbar-inner\{[^}]*width:var\(--public-shell-width\)/,"shell: .wrap y topbar interior usan el shell (owner compartido)");
+  has(gcss,/@media\(min-width:1280px\)/,"shell: se centra a ~80% desde escritorio amplio");
+  not(gcss,/body\[data-surface=client\][^{]*\{[^}]*width:100vw/,"shell: sin width:100vw en el shell público");
 }
 
 // ---- TICKETS (Commit C) ----
