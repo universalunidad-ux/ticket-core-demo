@@ -236,7 +236,10 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
 .chat-pop .btn-brand,.estado-reply .btn-brand{color:#fff}
 .chat-file-chips{display:flex;flex-wrap:wrap;gap:6px}
 .chat-file-chips.hidden{display:none}
-.chat-pick-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:6px 6px 6px 12px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--brand) 8%,transparent);font-size:12px;font-weight:700}
+.chat-pick-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:5px 6px 5px 6px;border:1px solid color-mix(in srgb,var(--brand) 24%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--brand) 8%,transparent);font-size:12px;font-weight:700}
+/* B17C47: miniatura del archivo seleccionado dentro del chip */
+.chat-pick-thumb{width:26px;height:26px;flex:0 0 auto;border-radius:7px;object-fit:cover;background:color-mix(in srgb,var(--panel-2) 90%,transparent)}
+.chat-pick-ic{display:inline-grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:7px;background:color-mix(in srgb,var(--brand) 14%,transparent);font-size:9px;font-weight:900;letter-spacing:.02em;color:var(--brand)}
 .chat-pick-name{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chat-pick-size{opacity:.7;font-weight:600;white-space:nowrap}
 .chat-pick-rm{display:inline-grid;place-items:center;width:22px;height:22px;border:0;border-radius:999px;background:color-mix(in srgb,var(--danger,#dc2626) 12%,transparent);color:var(--danger,#dc2626);font-weight:900;cursor:pointer;line-height:1}

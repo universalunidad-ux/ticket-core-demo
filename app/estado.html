@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Seguimiento de ticket | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="stylesheet" href="global.css?v=frontend-final-20260715-01">
-<link rel="stylesheet" href="estado.css?v=frontend-final-20260715-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260715-01">
+<link rel="stylesheet" href="global.css?v=frontend-final-20260716-01">
+<link rel="stylesheet" href="estado.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B17C45: theme.js removido — global.js (importado por estado.js) ya ejecuta
      initTheme()+initThemeToggle(); tener ambos duplicaba el listener y cada
@@ -204,12 +204,12 @@
 <audio id="stSoftPing" preload="auto"></audio>
 <audio id="stStrongPing" preload="auto"></audio>
 
-<script src="supabase.config.public.js?v=frontend-final-20260715-01"></script>
+<script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
 <!-- B19C: config-loader.js retirado. Era el origen del 404 a /rest/v1/site_config
      (la tabla no está expuesta aún). El único consumidor era un data-cfg cuyo texto
      ya vive inline como copy canónico local; al retirarlo esta página pública no
      ejecuta ninguna consulta REST adicional. Cuando site_config exista (DDL DRAFT
      B20A), reevaluar con capability check, nunca con carga incondicional. -->
-<script type="module" src="estado.js?v=frontend-final-20260715-01"></script>
+<script type="module" src="estado.js?v=frontend-final-20260716-01"></script>
 </body>
 </html>

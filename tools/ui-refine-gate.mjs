@@ -36,6 +36,24 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   not(html,/jn-brand-sub">(?:MESA DE ATENCIÓN|ATENCIÓN AL CLIENTE)</,"soporte: subtítulos anteriores retirados");
   // B17C46 addendum: scroll natural del documento conservado (sin app-shell)
   not(css,/html,\s*body,\s*main\{[^}]*overflow:hidden/,"soporte: sin overflow:hidden en html/body/main");
+  // B17C47: escritorio — SOLO el formulario se desplaza (Grid/Flex + min-height:0)
+  has(css,/@media\(min-width:1024px\)\{[\s\S]*?\.support-form\{[^}]*overflow-y:auto/,"soporte: desktop scroll interno solo en el formulario");
+  has(css,/@media\(min-width:1024px\)\{[\s\S]*?body\[data-surface="client"\]\{[^}]*height:100dvh/,"soporte: desktop usa altura de viewport (no altura mágica)");
+  has(css,/@media\(min-width:1024px\)\{[\s\S]*?\.support-side\{[^}]*position:static/,"soporte: columna derecha (recibo) sin scroll en desktop");
+  not(js,/addEventListener\(\s*["']wheel["']/,"soporte: sin listener de wheel (JS)");
+  // móvil/tablet conserva scroll natural del documento
+  has(css,/@media \(max-width:1023px\)\{[\s\S]*?main\.soporte-page\{[^}]*overflow:visible/,"soporte: móvil/tablet conserva scroll natural del documento");
+  // botón Enviar DENTRO del contenedor desplazable (#supportForm)
+  has(html,/id="supportForm"[\s\S]*id="spSendBtn"[\s\S]*<\/form>/,"soporte: botón Enviar dentro del formulario desplazable");
+  // honeypot fuera de vista, no enfocable, función intacta
+  has(html,/class="sp-hp"[^>]*clip:rect/,"soporte: honeypot oculto por clip (sin overflow)");
+  has(html,/id="spWebsite"[^>]*tabindex="-1"/,"soporte: honeypot no enfocable (tabindex -1)");
+  // textos de evidencia
+  not(html,/<h3>Sube tu evidencia<\/h3>/,"soporte: encabezado h3 redundante 'Sube tu evidencia' retirado");
+  not(html,/<h3>Envía tu caso de soporte<\/h3>/,"soporte: encabezado 'Envía tu caso de soporte' retirado");
+  has(html,/for="spFiles">Sube tu evidencia</,"soporte: etiqueta del cargador = 'Sube tu evidencia'");
+  has(html,/Imagen \(máx\. 3\), vídeo \(máx\. 1 m 30s\) o PDF\./,"soporte: hint de evidencia actualizado");
+  not(html,/Escribe tu modelo o el tipo \(ej/,"soporte: hint redundante del combo de producto retirado");
 }
 
 // ---- ESTADO (Commit B) ----
@@ -79,6 +97,23 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   not(html,/class="chat-compose-row"/,"estado: fila con botón verde ancho retirada");
   has(html,/id="stReplySendPop"[^>]*aria-label="Enviar respuesta"/,"estado: botón enviar conserva aria-label");
   has(css,/\.chat-compose-wrap \.chat-send-btn\{[^}]*enviar\.png/,"estado: botón enviar usa IMG/enviar.png (paridad ticket)");
+  // B17C47: attach + textarea + send DENTRO de la misma cápsula, en orden
+  has(html,/chat-compose-wrap"[\s\S]{0,400}?id="stAttachBtn"[\s\S]{0,400}?id="stReplyTextPop"[\s\S]{0,400}?id="stReplySendPop"/,"estado: adjuntar, textarea y enviar en la misma cápsula");
+  fs.existsSync(path.join(root,"IMG/enviar.png"))?ok("estado: IMG/enviar.png existe"):bad("estado: IMG/enviar.png ausente");
+  // B17C47: sin ayuda larga permanente bajo el compositor (solo estado breve)
+  has(js,/\$\("#stReplyStatusPop"\)&&\(\$\("#stReplyStatusPop"\)\.textContent=shortMsg\)/,"estado: bajo el compositor solo estado breve (no ayuda larga)");
+  const helpLong=(html.match(/Puedes escribir aquí si tienes un dato nuevo/g)||[]).length;
+  helpLong===1?ok("estado: la ayuda larga aparece una sola vez (en el popover)"):bad("estado: ayuda larga duplicada/ausente ("+helpLong+")");
+  // B17C47: miniatura del archivo seleccionado en el chip
+  has(js,/chat-pick-thumb/,"estado: miniatura del archivo seleccionado en el chip");
+  // B17C47: guardas runtime — sin .textContent a nodo obligatorio sin verificar
+  not(js,/\$\("#stLastSupportText"\)\.textContent/,"estado: setLastSupport no accede a .textContent sin guard");
+  not(js,/stReplyFilesMetaPop/,"estado: sin referencias al nodo eliminado stReplyFilesMetaPop");
+  // B17C47: IDs requeridos por estado.js presentes en estado.html
+  for(const id of ["stChatCompose","stReplyTextPop","stAttachBtn","stReplySendPop","stReplyFilesPop","stFileChips","stReplyStatusPop","stChatReplyHelp","stChatHelpToggle","stHelpPop","stHelpBtn","stNotifyPanel","stLastSupportCard","stLastSupportText","stLastSupportMeta","stOpenChatBtn2"])
+    (new RegExp(`id="${id}"`).test(html))?ok(`estado: ID requerido presente #${id}`):bad(`estado: falta ID requerido por JS #${id}`);
+  // B17C47: versión de assets incrementada (rompe caché mezclada)
+  has(html,/estado\.js\?v=frontend-final-20260716-01/,"estado: versión de assets incrementada (20260716-01)");
   // B17C46: límite de mensajes — copy breve, encabezado redundante fuera
   has(html,/Puedes enviar hasta 2 mensajes seguidos/,"estado: copy de límite presente");
   not(html,/Envía lo que te pedimos para avanzar/,"estado: encabezado redundante retirado");
