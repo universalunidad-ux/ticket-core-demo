@@ -29,5 +29,31 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   has(js,/\$\(["']#supportNoticeSlot["']\)/,"soporte: renderNotice apunta al slot del hero");
 }
 
+// ---- ESTADO (Commit B) ----
+{
+  const html=read("app/estado.html"),js=read("app/estado.js"),css=read("app/estado.css");
+  // Producto: transformación central única "Categoría · modelo"
+  has(js,/import\{formatProductoPublic\}from"\.\/shared\/producto\.js/,"estado: usa el módulo central de producto");
+  has(js,/formatProductoPublic\(t\?\.producto_modelo\)/,"estado: producto se presenta con formatProductoPublic");
+  not(js,/const visibleProduct=/,"estado: helper viejo visibleProduct retirado (sin capa duplicada)");
+  // Hero retirado + pill al header
+  not(html,/class="estado-hero"/,"estado: barra hero retirada");
+  has(html,/id="stHeaderStatus"/,"estado: pill de estado movida al header");
+  not(html,/Así va tu solicitud/,"estado: subtítulo redundante de progreso retirado");
+  // Resumen grid
+  has(css,/\.estado-summary-head\{display:grid/,"estado: Resumen en grid de dos columnas");
+  // Progreso: solo el activo respira, con guard de reduced-motion
+  has(css,/@media\(prefers-reduced-motion:no-preference\)\{\.tl-item\.active::before\{animation:tlActivePulse/,"estado: solo el punto activo anima (respeta reduced-motion)");
+  // Cabecera del chat simplificada
+  has(html,/chat-pop-kicker">Historial del caso/,"estado: cabecera del chat = Historial del caso");
+  not(html,/chat-pop-title|id="stChatSub"/,"estado: cabecera del chat sin título/subtítulo redundantes");
+  // Ayuda del compositor sin duplicar bajo el chat
+  const vf=(html.match(/chat-video-future/g)||[]).length;
+  vf===1?ok("estado: 'Video: próximamente' aparece una sola vez (en el popover)"):bad("estado: 'Video: próximamente' duplicado/ausente ("+vf+")");
+  has(css,/\.chat-reply-help\{position:absolute/,"estado: ayuda del chat es popover flotante (no empuja el flujo)");
+  // Notificaciones humanizadas
+  has(js,/const fmtNotifTime=/,"estado: notificaciones con fecha/hora humanizada (Hoy/Ayer, sin segundos)");
+}
+
 if(fails){console.error(`UI_REFINE_GATE: FAIL — ${fails} comprobación(es)`);process.exit(1)}
 console.log("UI_REFINE_GATE: PASS");
