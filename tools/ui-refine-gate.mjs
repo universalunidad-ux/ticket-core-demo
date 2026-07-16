@@ -55,5 +55,14 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   has(js,/const fmtNotifTime=/,"estado: notificaciones con fecha/hora humanizada (Hoy/Ayer, sin segundos)");
 }
 
+// ---- TICKETS (Commit C) ----
+{
+  const css=read("app/tickets.css");
+  has(css,/\.tk-quick-db-pills \.mini\.btn-brand,\n[^\n]*\.tk-quick-chips \.mini\.btn-brand\{[\s\S]*?color:#fff!important/,"tickets: quick reply seleccionada usa texto blanco sobre relleno de marca (contraste)");
+  has(css,/\.tk-quick-db-pills \.mini\.btn-brand::before[\s\S]*?content:"\u2713"/,"tickets: selección marcada con ✓ (no depende solo del color)");
+  has(css,/\.tk-quick-chips \.mini:focus-visible[\s\S]*?outline:3px/,"tickets: quick reply tiene foco visible por teclado");
+  has(css,/\.tk-quick-chips \.mini:disabled\{opacity:\.55!important;cursor:not-allowed/,"tickets: estado disabled definido");
+}
+
 if(fails){console.error(`UI_REFINE_GATE: FAIL — ${fails} comprobación(es)`);process.exit(1)}
 console.log("UI_REFINE_GATE: PASS");

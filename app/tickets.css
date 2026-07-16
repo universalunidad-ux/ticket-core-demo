@@ -658,10 +658,38 @@ body[data-page="tickets"] .tk-quick-db-pills .mini{
   font-weight:900!important;
   white-space:nowrap!important;
 }
-body[data-page="tickets"] .tk-quick-db-pills .btn-brand{
-  border-color:color-mix(in srgb,var(--brand) 44%,var(--line))!important;
-  background:color-mix(in srgb,var(--brand) 10%,var(--panel))!important;
+/* UI-REFINE 20260715 — quick reply SELECCIONADA con contraste WCAG.
+   Owner real del bug: .mini (color:var(--text)) se declara después de .btn-brand
+   en global.css y ganaba, dejando texto oscuro sobre el relleno de marca (o
+   blanco sobre tinte claro). Se fija relleno sólido + texto blanco + marca ✓
+   (selección no dependiente sólo del color) para ambos grupos de pills. */
+body[data-page="tickets"] .tk-quick-db-pills .mini.btn-brand,
+body[data-page="tickets"] .tk-quick-chips .mini.btn-brand{
+  background:linear-gradient(135deg,var(--brand),var(--brand-2))!important;
+  border-color:transparent!important;
+  color:#fff!important;
+  font-weight:900!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--brand) 34%,transparent),0 3px 10px color-mix(in srgb,var(--brand) 26%,transparent)!important;
 }
+body[data-page="tickets"] .tk-quick-db-pills .mini.btn-brand::before,
+body[data-page="tickets"] .tk-quick-chips .mini.btn-brand::before{
+  content:"✓";
+  margin-right:6px;
+  font-weight:900;
+}
+body[data-page="tickets"] .tk-quick-db-pills .mini:hover,
+body[data-page="tickets"] .tk-quick-chips .mini:hover{
+  border-color:color-mix(in srgb,var(--brand) 40%,var(--line))!important;
+}
+body[data-page="tickets"] .tk-quick-db-pills .mini:focus-visible,
+body[data-page="tickets"] .tk-quick-chips .mini:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--brand) 55%,transparent)!important;
+  outline-offset:2px!important;
+}
+body[data-page="tickets"] .tk-quick-db-pills .mini.btn-brand:active,
+body[data-page="tickets"] .tk-quick-chips .mini.btn-brand:active{transform:translateY(1px)}
+body[data-page="tickets"] .tk-quick-db-pills .mini:disabled,
+body[data-page="tickets"] .tk-quick-chips .mini:disabled{opacity:.55!important;cursor:not-allowed!important}
 
 body[data-page="tickets"] #tkUrgentStale.is-active,
 body[data-page="tickets"] #tkFrBreach.is-active,
