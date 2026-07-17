@@ -14,8 +14,9 @@
 <main class="wrap">
   <section class="panel">
     <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Alta interna de cliente</h1></div><a class="btn btn-ghost" href="clientes.html">← Clientes</a></div>
-    <p class="mut">Captura proactiva de cliente + contacto + equipo. Antes de crear se buscan duplicados por correo, teléfono y nombre. La creación es transaccional en el servidor.</p>
-    <div class="ac-gate hidden" id="acGate"></div>
+    <p class="mut">Prepara un cliente, su contacto principal y un sistema Janome. La creación sólo puede completarse mediante una operación transaccional autorizada.</p>
+    <div class="ac-gate" id="acGate"><b>Verificando el contrato de alta…</b><span>El formulario no enviará datos hasta terminar esta comprobación.</span></div>
+    <div class="ac-contract-note"><b>Contrato actual</b><span>RFC y preferencia de WhatsApp no se capturan porque aún no existe un campo seguro confirmado en contactos. No se inventan columnas ni se guardan en notas.</span></div>
   </section>
   <form class="panel" id="acForm" novalidate>
     <div class="ac-section">
@@ -29,24 +30,24 @@
       <h2>Contacto principal</h2>
       <div class="mut">Será la persona a la que se dirijan los seguimientos.</div>
       <div class="form-grid ac-grid" style="margin-top:10px">
-        <div class="field" data-field="acContacto"><label class="lbl" for="acContacto">Nombre <span class="req">*</span></label><input class="input" id="acContacto" maxlength="80" autocomplete="off"><div class="ac-field-err" id="acContactoErr"></div></div>
+        <div class="field" data-field="acContacto"><label class="lbl" for="acContacto">Nombre <span class="req">*</span></label><input class="input" id="acContacto" maxlength="80" autocomplete="name"><div class="ac-field-err" id="acContactoErr"></div></div>
         <div class="field" data-field="acPuesto"><label class="lbl" for="acPuesto">Puesto</label><input class="input" id="acPuesto" maxlength="60" placeholder="Opcional"></div>
-        <div class="field" data-field="acCorreo"><label class="lbl" for="acCorreo">Correo <span class="req">*</span></label><input class="input" id="acCorreo" type="email" maxlength="120" inputmode="email" autocomplete="off"><div class="ac-field-err" id="acCorreoErr"></div></div>
-        <div class="field" data-field="acTelefono"><label class="lbl" for="acTelefono">Teléfono</label><input class="input" id="acTelefono" type="tel" inputmode="numeric" placeholder="10 dígitos"><div class="ac-field-err" id="acTelefonoErr"></div></div>
+        <div class="field" data-field="acCorreo"><label class="lbl" for="acCorreo">Correo <span class="req">*</span></label><input class="input" id="acCorreo" type="email" maxlength="120" inputmode="email" autocomplete="email"><div class="ac-field-err" id="acCorreoErr"></div></div>
+        <div class="field" data-field="acTelefono"><label class="lbl" for="acTelefono">Teléfono</label><input class="input" id="acTelefono" type="tel" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="10 dígitos o +52"><div class="ac-field-err" id="acTelefonoErr"></div><label class="ac-disabled-option"><input type="checkbox" disabled> WhatsApp pendiente de contrato seguro</label></div>
       </div>
     </div>
     <div class="ac-section">
-      <h2>Equipo Janome (opcional)</h2>
-      <div class="mut">Si el cliente ya tiene una máquina identificada, regístrala desde el inicio.</div>
+      <h2>Sistema Janome (opcional)</h2>
+      <div class="mut">El contrato actual admite un sistema inicial por alta. Más sistemas requieren una operación backend explícita.</div>
       <div class="form-grid ac-grid" style="margin-top:10px">
         <div class="field" data-field="acModelo"><label class="lbl" for="acModelo">Modelo</label><input class="input" id="acModelo" maxlength="80" placeholder="Ej. 3008, MC500E, overlock…"></div>
         <div class="field" data-field="acSerie"><label class="lbl" for="acSerie">Número de serie</label><input class="input" id="acSerie" maxlength="60" placeholder="Si se conoce"><div class="ac-field-err" id="acSerieErr"></div></div>
       </div>
     </div>
     <div class="field ac-section" data-field="acNotas"><label class="lbl" for="acNotas">Notas internas</label><textarea class="area" id="acNotas" maxlength="1000" placeholder="Contexto del alta (solo visible internamente)"></textarea></div>
-    <div class="panel inset hidden" id="acDupBox"><h3>Posibles duplicados</h3><div id="acDupList"></div><label class="lbl" style="margin-top:8px;text-transform:none;letter-spacing:0"><input type="checkbox" id="acDupOk"> Revisé los duplicados y confirmo que es un cliente distinto</label></div>
-    <div class="actions" style="margin-top:14px"><button class="btn btn-brand" id="acSubmit" type="submit">Crear cliente</button><button class="btn btn-ghost" id="acClear" type="button">Limpiar</button></div>
-    <div class="mut ac-status" id="acStatus" aria-live="polite">Completa los campos obligatorios.</div>
+    <div class="panel inset hidden" id="acDupBox" aria-live="polite"><h3>Revisión previa de duplicados</h3><div id="acDupList"></div><label class="lbl hidden" id="acDupConfirmWrap"><input type="checkbox" id="acDupOk"> Revisé las coincidencias y confirmo que es un cliente distinto</label></div>
+    <div class="actions" style="margin-top:14px"><button class="btn btn-brand" id="acSubmit" type="submit" disabled>Crear cliente</button><button class="btn btn-ghost" id="acClear" type="button">Limpiar</button></div>
+    <div class="mut ac-status" id="acStatus" role="status" aria-live="polite">Completa los campos obligatorios.</div>
   </form>
 </main>
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>

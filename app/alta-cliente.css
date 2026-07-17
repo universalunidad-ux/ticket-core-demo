@@ -5,6 +5,9 @@
 .ac-section:first-of-type{margin-top:8px;padding-top:0;border-top:0}
 .ac-section h2{font-size:15px;letter-spacing:-.01em}
 .ac-section .mut{font-size:12.5px;margin-top:2px}
+.ac-contract-note{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-left:3px solid var(--brand);background:color-mix(in srgb,var(--brand) 6%,transparent);border-radius:8px;font-size:12.5px}
+.ac-contract-note span{color:var(--muted);line-height:1.45}
+.ac-disabled-option{display:flex;gap:7px;align-items:center;margin-top:7px;color:var(--muted);font-size:12px}
 
 /* Validación por campo */
 .field.has-error .input,.field.has-error .select,.field.has-error .area{border-color:color-mix(in srgb,var(--danger) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 12%,transparent)}
@@ -14,7 +17,9 @@
 /* Duplicados */
 #acDupBox{margin-top:12px}
 .ac-dup{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 10px;border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));border-radius:12px;margin-top:6px;background:color-mix(in srgb,var(--warn) 6%,transparent)}
-.ac-dup span{overflow-wrap:anywhere}
+.ac-dup span{display:grid;gap:2px;overflow-wrap:anywhere}.ac-dup small{color:var(--muted)}
+.ac-dup-state{margin:7px 0;line-height:1.45}.ac-dup-state.bad{color:var(--danger)}.ac-dup-state.ok{color:var(--ok)}
+#acDupConfirmWrap{margin-top:10px;text-transform:none;letter-spacing:0}
 
 /* Capability gate / estado del envío */
 .ac-gate{display:grid;gap:6px;padding:12px 14px;border:1px dashed color-mix(in srgb,var(--warn) 45%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--warn) 6%,transparent);margin-top:12px}
