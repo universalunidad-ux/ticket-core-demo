@@ -176,6 +176,7 @@ body[data-surface=client] .jn-topbar{
   top:0;
   z-index:50;
   width:100%;
+  padding-top:env(safe-area-inset-top,0px);
   background:color-mix(in srgb,var(--panel) 88%,transparent);
   border-bottom:1px solid var(--line);
   backdrop-filter:blur(10px);
@@ -221,7 +222,8 @@ body[data-surface=client] .jn-brand-sub{
   font-weight:800;
   line-height:1.2;
   letter-spacing:.14em;
-  text-transform:uppercase
+  text-transform:uppercase;
+  white-space:nowrap
 }
 body[data-surface=client] .jn-top-actions{
   grid-area:actions;
@@ -298,14 +300,11 @@ body[data-surface=client] .jn-topbar :is(a,button):focus-visible{
     font-size:10px;
     line-height:1.2;
     letter-spacing:.1em;
-    white-space:normal
+    white-space:nowrap
   }
   body[data-surface=client] .jn-top-actions{gap:6px}
-}
-/* En móviles mínimos el control de tema conserva nombre accesible, pero su
-   texto se recorta visualmente para reservar tres objetivos táctiles de 44px. */
-@media(max-width:375px){
-  body[data-surface=client] .jn-topbar-inner{gap:6px}
+  /* La etiqueta sigue accesible, pero el control reserva siempre el mismo
+     ancho en todo el rango móvil pequeño para evitar saltos entre 375/390px. */
   body[data-surface=client] .jn-top-actions .jn-theme-btn{
     width:44px;
     min-width:44px;
