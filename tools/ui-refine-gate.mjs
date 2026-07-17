@@ -154,11 +154,28 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
 
 // ---- SHELL PÚBLICO (estado + soporte, data-surface=client) ----
 {
-  const gcss=read("app/global.css");
+  const gcss=read("app/global.css"),ecss=read("app/estado.css"),scss=read("app/soporte.css");
+  const estadoHtml=read("app/estado.html"),soporteHtml=read("app/soporte.html");
   has(gcss,/--public-shell-width:min\(80vw,1680px\)/,"shell: variable --public-shell-width definida (~80%)");
   has(gcss,/body\[data-surface=client\] \.wrap,[\s\S]{0,120}?\.jn-topbar-inner\{[^}]*width:var\(--public-shell-width\)/,"shell: .wrap y topbar interior usan el shell (owner compartido)");
   has(gcss,/@media\(min-width:1280px\)/,"shell: se centra a ~80% desde escritorio amplio");
   not(gcss,/body\[data-surface=client\][^{]*\{[^}]*width:100vw/,"shell: sin width:100vw en el shell público");
+  // PUBLIC-MOBILE-HEADER-20260717: owner compartido y layout determinista.
+  has(gcss,/PUBLIC-MOBILE-HEADER-20260717[\s\S]*?body\[data-surface=client\] \.jn-topbar-inner\{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:auto minmax\(0,1fr\) auto/,"header público: owner Grid compartido y determinista");
+  has(gcss,/\.jn-topbar-inner\{[^}]*min-width:0/,"header público: inner permite encogimiento controlado");
+  has(gcss,/\.jn-brand\{[^}]*min-width:0/,"header público: identidad aplica min-width:0");
+  has(gcss,/\.jn-top-actions\{[^}]*flex-wrap:nowrap/,"header público: acciones no dependen de flex-wrap accidental");
+  has(gcss,/safe-area-inset-left/,"header público: respeta safe area izquierda");
+  has(gcss,/safe-area-inset-right/,"header público: respeta safe area derecha");
+  has(gcss,/\.jn-top-actions \.mini,[\s\S]{0,100}?\.st-notify-btn\{[^}]*min-width:44px;[^}]*min-height:44px/,"header público: controles táctiles de al menos 44px");
+  has(gcss,/\.jn-top-actions \.jn-theme-btn\{[^}]*width:96px;[^}]*min-width:96px/,"header público: selector de tema reserva ancho estable");
+  has(gcss,/@media\(max-width:430px\)\{[\s\S]*?\.jn-brand\{[^}]*display:grid/,"header público: identidad apilada de forma controlada hasta 430px");
+  has(gcss,/@media\(max-width:375px\)\{[\s\S]*?\[data-theme-label\]\{[^}]*clip-path:inset\(50%\)/,"header público: tema compacto conserva nombre accesible en móvil mínimo");
+  not(`${ecss}\n${scss}`,/(?:^|\n)\.jn-(?:topbar|topbar-inner|brand|brand-img|brand-sub|top-actions|wa-pill)(?:\{|:)/,"header público: sin owners base duplicados por página");
+  not(`${gcss}\n${ecss}\n${scss}`,/\.jn-brand-sub[^,{]*\{[^}]*display\s*:\s*none/,"header público: subtítulo nunca se elimina con display:none");
+  not(gcss,/\.jn-topbar-inner\{[^}]*width:100vw/,"header público: inner sin width:100vw");
+  for(const [page,html] of [["estado",estadoHtml],["soporte",soporteHtml]])
+    has(html,/class="jn-wa-pill"[^>]*aria-label="WhatsApp 55 6843 7918"/,`${page}: WhatsApp conserva nombre accesible al ocultar el teléfono visual`);
 }
 
 // ---- TICKETS (Commit C) ----

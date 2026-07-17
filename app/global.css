@@ -166,3 +166,161 @@ body[data-surface=client]{--public-shell-width:min(80vw,1680px)}
   body[data-surface=client] .wrap,
   body[data-surface=client] .jn-topbar-inner{width:var(--public-shell-width);max-width:none;margin-inline:auto}
 }
+
+/* PUBLIC-MOBILE-HEADER-20260717 — owner único para estado.html y soporte.html.
+   Grid evita el wrap accidental entre identidad y acciones. La primera columna
+   queda reservada para el regreso opcional de Soporte; cuando está hidden (o no
+   existe en Estado) colapsa sin alterar la alineación compartida. */
+body[data-surface=client] .jn-topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  width:100%;
+  background:color-mix(in srgb,var(--panel) 88%,transparent);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px)
+}
+body[data-surface=client] .jn-topbar-inner{
+  width:100%;
+  max-width:1280px;
+  min-width:0;
+  margin-inline:auto;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  grid-template-areas:"back brand actions";
+  align-items:center;
+  gap:12px;
+  padding-block:10px;
+  padding-inline-start:calc(clamp(12px,2vw,18px) + env(safe-area-inset-left,0px));
+  padding-inline-end:calc(clamp(12px,2vw,18px) + env(safe-area-inset-right,0px))
+}
+body[data-surface=client] .jn-back-pill{grid-area:back;min-height:44px}
+body[data-surface=client] .jn-brand{
+  grid-area:brand;
+  justify-self:start;
+  min-width:0;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  border-radius:10px
+}
+body[data-surface=client] .jn-brand-img{
+  flex:0 0 auto;
+  width:auto;
+  height:32px;
+  max-width:100%;
+  border-radius:6px;
+  object-fit:contain
+}
+body[data-surface=client] .jn-brand-sub{
+  min-width:0;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:800;
+  line-height:1.2;
+  letter-spacing:.14em;
+  text-transform:uppercase
+}
+body[data-surface=client] .jn-top-actions{
+  grid-area:actions;
+  justify-self:end;
+  min-width:0;
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:8px
+}
+body[data-surface=client] .jn-top-actions>*{flex:0 0 auto}
+body[data-surface=client] .jn-top-actions .mini,
+body[data-surface=client] .jn-top-actions .st-notify-btn{
+  width:auto;
+  min-width:44px;
+  height:44px;
+  min-height:44px
+}
+body[data-surface=client] .jn-top-actions .st-notify-btn{width:44px;padding:0}
+body[data-surface=client] .jn-wa-pill{
+  min-width:44px;
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:7px 14px;
+  border-radius:999px;
+  background:#22c55e;
+  color:#fff;
+  font-size:13.5px;
+  font-weight:800;
+  text-decoration:none;
+  box-shadow:0 4px 12px rgba(34,197,94,.28)
+}
+body[data-surface=client] .jn-wa-pill:hover{background:#16a34a}
+body[data-surface=client] .jn-wa-pill img{display:block;filter:brightness(0) invert(1)}
+body[data-surface=client] .jn-top-actions .jn-theme-btn{
+  width:96px;
+  min-width:96px;
+  min-height:44px;
+  white-space:nowrap
+}
+body[data-surface=client] .jn-topbar :is(a,button):focus-visible{
+  outline:3px solid color-mix(in srgb,var(--brand) 55%,transparent);
+  outline-offset:2px
+}
+@media(min-width:1280px){
+  body[data-surface=client] .jn-topbar-inner{
+    width:var(--public-shell-width);
+    max-width:none
+  }
+}
+@media(max-width:599px){
+  body[data-surface=client] .jn-wa-pill{width:44px;padding:0}
+  body[data-surface=client] .jn-wa-pill span{display:none}
+}
+/* En el rango donde identidad + acciones ya no caben de forma honesta, la
+   marca adopta dos renglones controlados: logo arriba, subtítulo debajo. */
+@media(max-width:430px){
+  body[data-surface=client] .jn-topbar-inner{
+    align-items:start;
+    gap:8px;
+    padding-block:8px
+  }
+  body[data-surface=client] .jn-brand{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    align-content:start;
+    gap:2px
+  }
+  body[data-surface=client] .jn-brand-sub{
+    max-width:100%;
+    font-size:10px;
+    line-height:1.2;
+    letter-spacing:.1em;
+    white-space:normal
+  }
+  body[data-surface=client] .jn-top-actions{gap:6px}
+}
+/* En móviles mínimos el control de tema conserva nombre accesible, pero su
+   texto se recorta visualmente para reservar tres objetivos táctiles de 44px. */
+@media(max-width:375px){
+  body[data-surface=client] .jn-topbar-inner{gap:6px}
+  body[data-surface=client] .jn-top-actions .jn-theme-btn{
+    width:44px;
+    min-width:44px;
+    padding:0
+  }
+  body[data-surface=client] .jn-theme-btn [data-theme-label]{
+    position:absolute;
+    width:1px;
+    height:1px;
+    padding:0;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+    clip-path:inset(50%);
+    white-space:nowrap;
+    border:0
+  }
+}
