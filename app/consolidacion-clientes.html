@@ -13,7 +13,7 @@
 <div id="appShell"></div>
 <main class="wrap">
   <section class="panel">
-    <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Consolidación de clientes</h1></div><span class="tag warn" id="cqTotal">—</span></div>
+    <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Consolidación de clientes</h1></div><div class="cq-head-actions"><span class="tag warn" id="cqTotal">—</span><a class="mini btn-ghost cq-back" href="clientes.html" aria-label="Volver a Clientes" title="Volver a Clientes">‹</a></div></div>
     <p class="mut">Compara la identidad capturada con el candidato visible, selecciona el registro principal y revisa conflictos. El score sólo propone; nunca decide.</p>
     <div class="cq-gate" id="cqGate"><b>Modo análisis: consolidación deshabilitada</b><span>Falta una operación backend versionada que autorice admin, bloquee el ticket, revalide duplicados y versión esperada, aplique cliente/contacto/asociación/auditoría en una sola transacción idempotente y devuelva el resultado verificable. Un probe de existencia no satisface este contrato.</span></div>
     <div class="cl-toolbar cq-toolbar">
@@ -21,7 +21,7 @@
       <select class="select" id="cqOrden" aria-label="Orden"><option value="oldest">Más antiguos primero</option><option value="recent">Más recientes primero</option><option value="score">Mejor score primero</option></select>
     </div>
   </section>
-  <section class="panel"><div id="cqList"><div class="cl-skel"></div><div class="cl-skel"></div></div></section>
+  <section class="panel cq-queue"><div id="cqList"><div class="cl-skel"></div><div class="cl-skel"></div></div><footer class="cq-pager"><span class="mut" id="cqCount">Cargando pendientes…</span><div class="cq-pagination" id="cqPagination" aria-label="Paginación"></div></footer></section>
 </main>
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
 <script type="module" src="consolidacion-clientes.js?v=frontend-final-20260716-01"></script>
