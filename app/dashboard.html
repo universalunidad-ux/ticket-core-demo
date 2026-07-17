@@ -18,16 +18,15 @@
 <div id="appShell"></div>
 
 <main class="wrap">
-  <!-- Hero compacto: rol + contexto + máximo 2 acciones. Sin KPIs ni navegación. -->
+  <!-- Hero compacto: máximo 2 filas visuales (kicker+acciones / texto+badge de rol).
+       B20-FABLE-01: el rol vive INLINE dentro de #dashLead (owner: init() en
+       dashboard.js). Se eliminó .dash-hero-meta con #dashRoleBadge y #dashScope:
+       eran redundantes con el badge inline (owner retirado, no oculto con CSS). -->
   <section class="panel dash-hero">
-    <div>
-      <div class="section-kicker">Operación de soporte</div>
+    <div class="dash-hero-copy">
+      <div class="section-kicker" id="dashKicker">Mesa de soporte Janome</div>
       <h1 id="dashTitle" aria-live="polite">Preparando tu mesa de soporte…</h1>
-      <p class="mut" id="dashLead">Cargando tu contexto de trabajo.</p>
-      <div class="dash-hero-meta">
-        <span class="tag ok" id="dashRoleBadge">Cargando…</span>
-        <span class="tag" id="dashScope" hidden></span>
-      </div>
+      <p class="mut dash-hero-lead" id="dashLead">Cargando tu contexto de trabajo.</p>
     </div>
     <div class="dash-hero-actions">
       <a class="btn btn-brand" href="soporte.html?from=dashboard&amp;returnTo=dashboard.html">Nuevo ticket</a>
@@ -48,7 +47,7 @@
 
     <article class="panel" id="dashMiCarga">
       <div class="section-head">
-        <div><div class="section-kicker">Mi trabajo</div><h2>Mi carga</h2></div>
+        <div><div class="section-kicker">Mi trabajo</div><h2>Mis Tickets</h2></div>
       </div>
       <div class="dash-mini-kpis" id="dashMiKpis"></div>
       <div class="actions" style="margin-top:12px"><a class="btn btn-brand" href="tickets.html">Ir a mi bandeja</a></div>
