@@ -2935,3 +2935,15 @@ html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.sys,
 html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.sys *,
 html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.tc-close-system-event,
 html[data-theme="dark"] body[data-page="ticket"] #logArea .log-msg.tc-close-system-event *{color:#93c5fd!important}
+
+/* Retorno a la lista: icon-only, dentro del topbar existente y sin altura extra. */
+body[data-page="ticket"] #tkBackToTickets{
+  display:grid!important;
+  place-items:center!important;
+  color:var(--text)!important;
+  text-decoration:none!important;
+}
+body[data-page="ticket"] #tkBackToTickets:focus-visible{
+  outline:3px solid #0f766e!important;
+  outline-offset:2px!important;
+}
