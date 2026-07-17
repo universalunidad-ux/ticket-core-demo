@@ -323,7 +323,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   $("#clEquipmentList").addEventListener("click", event => { const option = event.target.closest("[data-equipment-kind]"); if (option) chooseEquipment(option); });
   $("#clPagination").addEventListener("click", event => { const button = event.target.closest("[data-page]"); if (!button || button.disabled) return; ST.page = Number(button.dataset.page); refresh(); });
-  const go = row => { if (row) location.href = `cliente.html?id=${encodeURIComponent(row.dataset.id)}`; };
+  const go = row => {
+    if (!row) return;
+    persist();
+    const returnTo = `clientes.html${location.search}`;
+    location.href = `cliente.html?id=${encodeURIComponent(row.dataset.id)}&return=${encodeURIComponent(returnTo)}`;
+  };
   $("#clList").addEventListener("click", event => go(event.target.closest?.(".cl-row"))); $("#clList").addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); go(event.target.closest?.(".cl-row")); } });
   document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#clFiltersPanel").hidden) { event.preventDefault(); closeFilters(); } });
   document.addEventListener("pointerdown", event => { if (!$("#clFiltersPanel").hidden && !event.target.closest(".cl-filter-wrap")) closeFilters({ focusTrigger: false }); });

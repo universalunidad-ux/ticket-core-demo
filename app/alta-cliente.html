@@ -13,7 +13,7 @@
 <div id="appShell"></div>
 <main class="wrap">
   <section class="panel">
-    <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Alta interna de cliente</h1></div><a class="btn btn-ghost" href="clientes.html">← Clientes</a></div>
+    <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Alta interna de cliente</h1></div><a class="mini btn-ghost ac-back" href="clientes.html" aria-label="Volver a Clientes" title="Volver a Clientes">‹</a></div>
     <p class="mut">Prepara un cliente, su contacto principal y un sistema Janome. La creación sólo puede completarse mediante una operación transaccional autorizada.</p>
     <div class="ac-gate" id="acGate"><b>Verificando el contrato de alta…</b><span>El formulario no enviará datos hasta terminar esta comprobación.</span></div>
     <div class="ac-contract-note"><b>Contrato actual</b><span>RFC y preferencia de WhatsApp no se capturan porque aún no existe un campo seguro confirmado en contactos. No se inventan columnas ni se guardan en notas.</span></div>
@@ -38,10 +38,17 @@
     </div>
     <div class="ac-section">
       <h2>Sistema Janome (opcional)</h2>
-      <div class="mut">El contrato actual admite un sistema inicial por alta. Más sistemas requieren una operación backend explícita.</div>
+      <div class="mut">El contrato actual admite un sistema inicial por alta. El modelo debe elegirse del catálogo vigente de máquinas Janome.</div>
       <div class="form-grid ac-grid" style="margin-top:10px">
-        <div class="field" data-field="acModelo"><label class="lbl" for="acModelo">Modelo</label><input class="input" id="acModelo" maxlength="80" placeholder="Ej. 3008, MC500E, overlock…"></div>
+        <div class="field ac-model-field" data-field="acModelo"><label class="lbl" for="acModelo">Modelo</label><input class="input" id="acModelo" maxlength="80" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="acModeloList" autocomplete="off" placeholder="Escribe para buscar una máquina"><input type="hidden" id="acModeloCatalogId"><div class="ac-model-list" id="acModeloList" role="listbox" hidden></div><div class="ac-field-err" id="acModeloErr"></div><div class="mut ac-model-help" id="acModeloHelp">Selecciona un producto real del catálogo; accesorios y captura libre están excluidos.</div></div>
         <div class="field" data-field="acSerie"><label class="lbl" for="acSerie">Número de serie</label><input class="input" id="acSerie" maxlength="60" placeholder="Si se conoce"><div class="ac-field-err" id="acSerieErr"></div></div>
+      </div>
+    </div>
+    <div class="ac-section ac-agent-block hidden" id="acAgentBlock">
+      <h2>Agente de soporte</h2>
+      <div class="form-grid ac-grid" style="margin-top:10px">
+        <div class="field"><label class="lbl" for="acAgent">Asignación inicial</label><select class="select" id="acAgent" disabled><option>Bloqueada hasta contar con contrato backend</option></select></div>
+        <div class="ac-agent-note"><b>No se enviará una asignación.</b><span>El endpoint debe aceptar y validar el agente, comprobar su rol y crear la relación en la misma transacción.</span></div>
       </div>
     </div>
     <div class="field ac-section" data-field="acNotas"><label class="lbl" for="acNotas">Notas internas</label><textarea class="area" id="acNotas" maxlength="1000" placeholder="Contexto del alta (solo visible internamente)"></textarea></div>

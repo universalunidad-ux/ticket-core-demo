@@ -9,12 +9,17 @@ import { esc, toast, debounce } from "./global.js?v=frontend-final-20260716-01";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
 import { probeEdge, noteEdgeResponse } from "./shared/capabilities.js";
 import { perfPrimaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
+import { JANOME_CATALOGO } from "./janome/janome_catalogo.js";
 
 const $ = q => document.querySelector(q);
 const EDGE = "crear-cliente-janome";
+const MACHINE_MODELS = JANOME_CATALOGO
+  .filter(group => String(group.grupo).startsWith("Máquinas — "))
+  .flatMap(group => group.productos.map(product => ({ id: String(product.id), name: product.nombre, group: group.grupo })));
+const MODEL_BY_ID = new Map(MACHINE_MODELS.map(model => [model.id, model]));
 const ST = {
   sb: null, isAdmin: false, dups: [], dupState: "idle", dupSeq: 0,
-  busy: false, cap: "checking", idempotencyKey: "", lastDupName: "",
+  busy: false, cap: "checking", idempotencyKey: "", lastDupName: "", modelIndex: -1,
 };
 
 const cleanText = value => String(value || "").replace(/\s+/g, " ").trim();
@@ -33,8 +38,49 @@ const FIELD_RULES = [
   { id: "acContacto", check: value => cleanText(value).length >= 2 ? "" : "Escribe el nombre del contacto principal." },
   { id: "acCorreo", check: value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanText(value).toLowerCase()) ? "" : "Escribe un correo válido (ej. nombre@dominio.com)." },
   { id: "acTelefono", check: value => { const phone = normalizePhone(value); return !phone || phone.length === 10 ? "" : "Usa 10 dígitos; también aceptamos el prefijo +52."; } },
+  { id: "acModelo", check: value => {
+    const typed = cleanText(value), selected = MODEL_BY_ID.get($("#acModeloCatalogId").value);
+    if (!typed) return "";
+    return selected && selected.name === typed ? "" : "Selecciona un modelo válido de las sugerencias del catálogo Janome.";
+  } },
   { id: "acSerie", check: value => !cleanText(value) || cleanText($("#acModelo").value) ? "" : "Para capturar una serie indica también el modelo." },
 ];
+
+const modelMatches = query => {
+  const term = normalize(query);
+  return MACHINE_MODELS.filter(model => !term || normalize(`${model.name} ${model.group}`).includes(term)).slice(0, 24);
+};
+
+function closeModelList() {
+  $("#acModeloList").hidden = true;
+  $("#acModelo").setAttribute("aria-expanded", "false");
+  $("#acModelo").removeAttribute("aria-activedescendant");
+}
+
+function renderModelSuggestions() {
+  const list = $("#acModeloList"), matches = modelMatches($("#acModelo").value);
+  ST.modelIndex = Math.min(ST.modelIndex, matches.length - 1);
+  list.innerHTML = matches.length ? matches.map((model, index) => `<button class="ac-model-option${index === ST.modelIndex ? " is-active" : ""}" id="acModelOption${index}" type="button" role="option" aria-selected="${index === ST.modelIndex}" data-model-id="${esc(model.id)}"><b>${esc(model.name)}</b><small>${esc(model.group)} · Producto válido</small></button>`).join("") : '<div class="ac-model-empty">Sin coincidencias entre las máquinas del catálogo vigente.</div>';
+  list.hidden = false;
+  $("#acModelo").setAttribute("aria-expanded", "true");
+  if (ST.modelIndex >= 0) $("#acModelo").setAttribute("aria-activedescendant", `acModelOption${ST.modelIndex}`);
+}
+
+function chooseModel(id) {
+  const model = MODEL_BY_ID.get(String(id));
+  if (!model) return;
+  $("#acModelo").value = model.name;
+  $("#acModeloCatalogId").value = model.id;
+  ST.modelIndex = -1;
+  setFieldError("acModelo", ""); setFieldError("acSerie", ""); closeModelList();
+  $("#acSerie").focus();
+}
+
+function initEquipmentCatalog() {
+  if (MACHINE_MODELS.length) return;
+  $("#acModelo").disabled = true; $("#acSerie").disabled = true;
+  $("#acModeloHelp").textContent = "El catálogo local de máquinas no está disponible. El alta continuará sin equipo; no se aceptará captura libre.";
+}
 
 function setFieldError(id, message) {
   const input = $("#" + id), wrap = document.querySelector(`[data-field="${id}"]`), error = $("#" + id + "Err");
@@ -238,6 +284,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ctx = await mountNav("alta-cliente");
   if (!ctx) return;
   ST.sb = ctx.sb; ST.isAdmin = String(ctx.rol || "").toLowerCase() === "admin"; ST.idempotencyKey = newIdempotencyKey();
+  if (ST.isAdmin) $("#acAgentBlock").classList.remove("hidden");
+  initEquipmentCatalog();
   perfPrimaryDone(); perfPageReady();
 
   const duplicateCheck = debounce(() => findDups(), 450);
@@ -247,13 +295,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     input?.addEventListener("input", () => setFieldError(rule.id, ""));
     input?.addEventListener("blur", () => { normalizeForm(); setFieldError(rule.id, rule.check(input.value)); });
   });
-  $("#acModelo").addEventListener("input", () => setFieldError("acSerie", ""));
+  $("#acModelo").addEventListener("focus", () => { if (MACHINE_MODELS.length) renderModelSuggestions(); });
+  $("#acModelo").addEventListener("input", () => {
+    $("#acModeloCatalogId").value = ""; ST.modelIndex = -1; setFieldError("acModelo", ""); setFieldError("acSerie", "");
+    if (MACHINE_MODELS.length) renderModelSuggestions();
+  });
+  $("#acModelo").addEventListener("keydown", event => {
+    const matches = modelMatches($("#acModelo").value);
+    if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+      event.preventDefault();
+      ST.modelIndex = event.key === "ArrowDown" ? Math.min(ST.modelIndex + 1, matches.length - 1) : Math.max(ST.modelIndex - 1, 0);
+      renderModelSuggestions();
+    } else if (event.key === "Enter" && matches.length) {
+      event.preventDefault(); chooseModel(matches[Math.max(0, ST.modelIndex)].id);
+    } else if (event.key === "Escape") { event.preventDefault(); closeModelList(); }
+  });
+  $("#acModeloList").addEventListener("click", event => { const option = event.target.closest("[data-model-id]"); if (option) chooseModel(option.dataset.modelId); });
   $("#acDupOk").addEventListener("change", () => { if ($("#acDupOk").checked) setStatus("Duplicados revisados. Ya puedes continuar."); });
   $("#acForm").addEventListener("submit", submit);
   $("#acClear").addEventListener("click", () => {
     if (ST.busy) return;
-    $("#acForm").reset(); ST.dups = []; ST.dupState = "idle"; ST.lastDupName = ""; ST.idempotencyKey = newIdempotencyKey();
+    $("#acForm").reset(); $("#acModeloCatalogId").value = ""; closeModelList(); ST.modelIndex = -1; ST.dups = []; ST.dupState = "idle"; ST.lastDupName = ""; ST.idempotencyKey = newIdempotencyKey();
     FIELD_RULES.forEach(rule => setFieldError(rule.id, "")); renderDups(); setStatus("Formulario limpio."); $("#acNombre").focus();
   });
+  document.addEventListener("pointerdown", event => { if (!event.target.closest(".ac-model-field")) closeModelList(); });
   checkGate();
 });

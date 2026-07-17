@@ -19,6 +19,16 @@ const $ = q => document.querySelector(q);
 const TABS = ["resumen", "contactos", "equipos", "tickets", "adjuntos", "bitacora", "consolidacion"];
 const ST = { sb: null, id: null, identidad: null, tab: "resumen", cache: {}, seq: {}, loading: {} };
 
+function clientListReturn() {
+  const requested = new URLSearchParams(location.search).get("return");
+  if (!requested) return "clientes.html";
+  try {
+    const url = new URL(requested, location.href);
+    if (url.origin !== location.origin || !url.pathname.endsWith("/clientes.html")) return "clientes.html";
+    return `clientes.html${url.search}`;
+  } catch { return "clientes.html"; }
+}
+
 /* Loaders por pestaña. adjuntos/consolidación reutilizan la cache de tickets. */
 const ticketsData = async () => {
   if (!ST.cache.tickets) { perfCountRequest(2); ST.cache.tickets = await loadTickets(ST.sb, ST.id); }
@@ -91,8 +101,10 @@ async function openTab(tab, push = true) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const returnTo = clientListReturn();
+  $("#cfBack").href = returnTo;
   const id = new URLSearchParams(location.search).get("id");
-  if (!id) { location.replace("clientes.html"); return; }
+  if (!id) { location.replace(returnTo); return; }
   const ctx = await mountNav("cliente");
   if (!ctx) return;
   ST.sb = ctx.sb; ST.id = id;
@@ -107,7 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const e = mapError(ex, notFound ? "CLIENT_NOT_FOUND" : "CLIENT_DETAIL_LOAD_FAILED");
     devLog("cliente", "identidad", e.code + ":" + e.kind);
     $("#cfNombre").textContent = notFound ? "Cliente no encontrado" : "No se pudo cargar la ficha";
-    $("#cfBody").innerHTML = `<div class="cf-empty"><div class="cf-empty-t">${notFound ? "Verifica el enlace o vuelve al listado" : "No se pudo consultar la información"}</div><div class="cf-empty-d">${notFound ? "El cliente pudo haberse consolidado con otro registro." : e.human}</div><div class="actions">${notFound ? "" : '<button class="btn btn-ghost" type="button" id="cfRetryAll">Reintentar</button>'}<a class="btn btn-ghost" href="clientes.html">Volver a clientes</a></div></div>`;
+    $("#cfBody").innerHTML = `<div class="cf-empty"><div class="cf-empty-t">${notFound ? "Verifica el enlace o vuelve al listado" : "No se pudo consultar la información"}</div><div class="cf-empty-d">${notFound ? "El cliente pudo haberse consolidado con otro registro." : e.human}</div><div class="actions">${notFound ? "" : '<button class="btn btn-ghost" type="button" id="cfRetryAll">Reintentar</button>'}<a class="btn btn-ghost" href="${returnTo}">Volver a clientes</a></div></div>`;
     document.getElementById("cfRetryAll")?.addEventListener("click", () => location.reload());
     return;
   }
