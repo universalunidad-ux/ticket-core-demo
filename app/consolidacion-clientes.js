@@ -1,199 +1,195 @@
-/* ============================================================================
-   B19D-cont — Cola de consolidación.
-   Lectura directa (RLS interna). Las acciones de escritura van SIEMPRE por la
-   Edge consolidar-cliente-ticket (transaccional, con rol y bitácora).
-   Blindaje:
-   - capability gate central (shared/capabilities.js): si la Edge no está
-     desplegada, los botones de acción quedan bloqueados con aviso honesto;
-   - comparación clara: datos capturados vs contacto principal del candidato;
-   - confirmación en acciones sensibles (asociar / mantener como nuevo);
-   - doble ejecución bloqueada (busy por tarjeta);
-   - respuestas obsoletas ignoradas (reqSeq);
-   - errores humanos (permiso / indisponible / red / timeout) sin literales
-     internos; códigos sanitizados dev-only;
-   - tras un fallo la UI no queda ambigua: la tarjeta vuelve a estado operable
-     y se ofrece reintentar.
-   ============================================================================ */
+/* ==========================================================================
+   CONSOLIDACIÓN — análisis y preview únicamente.
+   No existe en el repositorio una RPC/implementación transaccional versionada
+   que pueda autorizarse y probarse. Por eso este archivo no contiene fetch,
+   rpc, insert, update ni delete. CLIENT_RLS_BLOCKED=YES.
+   ========================================================================== */
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
-import { fmtFecha, estadoTag, matchTag } from "./shared/formatters.js?v=frontend-final-20260716-01";
-import { esc, toast } from "./global.js?v=frontend-final-20260716-01";
+import { readQS, writeQS } from "./shared/query-state.js";
+import { fmtFecha, estadoTag } from "./shared/formatters.js?v=frontend-final-20260716-01";
+import { esc } from "./global.js?v=frontend-final-20260716-01";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
-import { probeEdge, noteEdgeResponse } from "./shared/capabilities.js";
 import { perfPrimaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 
 const $ = q => document.querySelector(q);
-const ST = { sb: null, rows: [], clientes: {}, contactos: {}, agentes: {}, nivel: "", agente: "", orden: "antiguo", busy: false, reqSeq: 0, cap: "unknown" };
-const EDGE = "consolidar-cliente-ticket";
+const ST = {
+  sb: null, isAdmin: false, rows: [], clients: {}, choices: new Map(),
+  level: "", order: "oldest", loading: true, error: null, reqSeq: 0,
+};
 
-/* ---- capability gate ---- */
-async function checkGate() {
-  ST.cap = await probeEdge(EDGE);
-  const gate = $("#cqGate");
-  if (!gate) return;
-  if (ST.cap === "unavailable") {
-    gate.classList.remove("hidden");
-    gate.innerHTML = "<b>Las acciones de consolidación aún no están habilitadas en el servidor.</b><span>Puedes revisar la cola y abrir tickets/fichas, pero confirmar o descartar asociaciones quedará bloqueado hasta el despliegue (dependencia B19B). No se realizará ningún cambio.</span>";
-  } else if (ST.cap === "permission_denied") {
-    gate.classList.remove("hidden");
-    gate.innerHTML = "<b>No tienes permisos para ejecutar acciones de consolidación.</b><span>Contacta al administrador si crees que es un error.</span>";
-  } else {
-    gate.classList.add("hidden");
-  }
-  render();
+const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const equal = (a, b) => Boolean(normalize(a) && normalize(a) === normalize(b));
+const scorePercent = score => {
+  const number = Number(score);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.min(100, Math.round(number <= 1 ? number * 100 : number)));
+};
+const safeMatchTag = level => {
+  const value = normalize(level), allowed = ["alto", "medio", "bajo"].includes(value) ? value : "";
+  const tone = allowed === "alto" ? "ok" : allowed === "medio" ? "warn" : allowed === "bajo" ? "bad" : "";
+  return `<span class="tag ${tone}">${allowed || "sin candidato"}</span>`;
+};
+const choiceFor = ticket => {
+  if (!ST.choices.has(ticket.id)) ST.choices.set(ticket.id, { primary: ticket.cliente_id_sugerido && ST.clients[ticket.cliente_id_sugerido] ? "existing" : "new", confirmed: false });
+  return ST.choices.get(ticket.id);
+};
+
+function comparison(ticket) {
+  const candidate = ticket.cliente_id_sugerido ? ST.clients[ticket.cliente_id_sugerido] : null;
+  const rows = [
+    { label: "Cliente / empresa", captured: ticket.empresa_capturada, candidate: candidate?.nombre, state: equal(ticket.empresa_capturada, candidate?.nombre) ? "match" : candidate ? "different" : "unknown" },
+    { label: "Contacto", captured: ticket.nombre_capturado, candidate: null, state: "unknown", note: "Contacto candidato no consultado: contrato RLS bloqueado." },
+    { label: "Correo", captured: ticket.correo_capturado, candidate: null, state: "unknown", note: "Requiere comparación dentro de la transacción autorizada." },
+    { label: "Teléfono", captured: ticket.telefono_capturado, candidate: null, state: "unknown", note: "Requiere normalización y comparación dentro de la transacción." },
+  ];
+  return { candidate, rows };
 }
 
-/* ---- carga de la cola ---- */
-const load = async () => {
-  const seq = ++ST.reqSeq;
+function scoreExplanation(ticket, rows) {
+  const score = scorePercent(ticket.match_score);
+  const matches = rows.filter(row => row.state === "match").map(row => row.label);
+  const differences = rows.filter(row => row.state === "different").map(row => row.label);
+  const unknown = rows.filter(row => row.state === "unknown").map(row => row.label);
+  return `<div class="cq-score-box">
+    <div><span class="cq-score">${score == null ? "—" : `${score}%`}</span><span class="mut">Score reportado por el matcher ${safeMatchTag(ticket.match_nivel)}</span></div>
+    <p>El backend no expone el desglose del score; la UI no inventa ponderaciones. Observado aquí: ${matches.length ? `${esc(matches.join(", "))} coincide` : "sin coincidencias verificables"}${differences.length ? `; ${esc(differences.join(", "))} difiere` : ""}. ${unknown.length ? `${esc(unknown.join(", "))} queda sin verificar.` : ""}</p>
+  </div>`;
+}
+
+const valueCell = (value, fallback = "—") => `<span>${esc(value || fallback)}</span>`;
+const stateLabel = state => state === "match" ? '<span class="tag ok">Coincide</span>' : state === "different" ? '<span class="tag warn">Difiere</span>' : '<span class="tag">No verificable</span>';
+
+function comparisonHtml(ticket) {
+  const { candidate, rows } = comparison(ticket);
+  return `<div class="cq-compare-table" role="table" aria-label="Comparación de identidad">
+    <div class="cq-compare-row is-head" role="row"><b>Dato</b><b>Capturado en ticket</b><b>Registro candidato</b><b>Resultado</b></div>
+    ${rows.map(row => `<div class="cq-compare-row" role="row"><b>${esc(row.label)}</b>${valueCell(row.captured, "Sin dato")}${valueCell(row.candidate, row.note || "No disponible")}${stateLabel(row.state)}</div>`).join("")}
+  </div>${scoreExplanation(ticket, rows)}${!candidate ? '<div class="cq-inline-warn">No existe un registro candidato visible; sólo puede prepararse la opción de cliente nuevo.</div>' : ""}`;
+}
+
+function conflicts(ticket) {
+  const { candidate, rows } = comparison(ticket);
+  const items = [];
+  if (!candidate) items.push("No hay cliente candidato visible por RLS.");
+  if (candidate && rows.some(row => row.state === "different")) items.push("El nombre de empresa capturado difiere del candidato.");
+  if (["bajo", ""].includes(normalize(ticket.match_nivel))) items.push("El nivel de coincidencia no es suficiente para decidir automáticamente.");
+  items.push("Correo y teléfono del candidato no pueden compararse sin el contrato seguro de contactos.");
+  items.push("No hay versión esperada ni bloqueo transaccional para evitar carreras sobre el ticket.");
+  return items;
+}
+
+function previewHtml(ticket) {
+  const choice = choiceFor(ticket), candidate = ticket.cliente_id_sugerido ? ST.clients[ticket.cliente_id_sugerido] : null;
+  const selectedExisting = choice.primary === "existing" && candidate;
+  const principal = selectedExisting ? candidate.nombre : (ticket.empresa_capturada || ticket.nombre_capturado || "Nuevo cliente");
+  const action = selectedExisting
+    ? "Asociaría el ticket al cliente existente, conservaría la identidad capturada para auditoría y no modificaría contactos sin una decisión explícita del backend."
+    : "Crearía cliente y contacto principal, asociaría el ticket y registraría auditoría como una sola transacción; ninguna de esas escrituras se ejecuta en esta vista.";
+  const issues = conflicts(ticket);
+  return `<section class="cq-preview" aria-label="Vista previa de consolidación">
+    <div class="cq-preview-head"><div><span class="section-kicker">Vista previa</span><h3>${esc(principal)}</h3></div><span class="tag ${choice.confirmed ? "ok" : "warn"}">${choice.confirmed ? "Revisión confirmada" : "Pendiente de confirmación"}</span></div>
+    <p>${esc(action)}</p>
+    <div class="cq-conflicts"><b>Conflictos y pendientes</b><ul>${issues.map(issue => `<li>${esc(issue)}</li>`).join("")}</ul></div>
+    <label class="cq-confirm"><input type="checkbox" data-confirm-review ${choice.confirmed ? "checked" : ""}> Confirmo que revisé coincidencias, diferencias, conflictos y el registro principal seleccionado.</label>
+    <button class="btn btn-brand" type="button" disabled aria-disabled="true" title="Falta una operación backend transaccional, autorizada e idempotente">Consolidar registros</button>
+    <span class="cq-disabled-reason">CTA deshabilitado: falta el contrato backend transaccional descrito arriba. Esta vista no realiza escrituras.</span>
+  </section>`;
+}
+
+function cardHtml(ticket) {
+  const candidate = ticket.cliente_id_sugerido ? ST.clients[ticket.cliente_id_sugerido] : null, choice = choiceFor(ticket);
+  return `<article class="cq-card" data-id="${esc(ticket.id)}">
+    <div class="cq-head"><div><div class="cl-name">${esc(ticket.folio || "—")} · ${esc(ticket.titulo || "Sin título")}</div><span class="mut">Creado ${fmtFecha(ticket.fecha_creacion)}</span></div><div>${estadoTag(ticket.estado)}</div></div>
+    ${comparisonHtml(ticket)}
+    <fieldset class="cq-primary"><legend>Selecciona el registro principal para la vista previa</legend>
+      ${candidate ? `<label><input type="radio" name="primary_${esc(ticket.id)}" value="existing" data-primary ${choice.primary === "existing" ? "checked" : ""}> <span><b>${esc(candidate.nombre)}</b><small>Cliente existente sugerido</small></span></label>` : ""}
+      <label><input type="radio" name="primary_${esc(ticket.id)}" value="new" data-primary ${choice.primary === "new" ? "checked" : ""}> <span><b>${esc(ticket.empresa_capturada || ticket.nombre_capturado || "Nuevo cliente")}</b><small>Identidad capturada; requeriría alta transaccional</small></span></label>
+    </fieldset>
+    ${previewHtml(ticket)}
+    <div class="cq-actions"><a class="btn btn-ghost" href="ticket.html?id=${encodeURIComponent(ticket.id)}">Ver ticket</a>${candidate ? `<a class="btn btn-ghost" href="cliente.html?id=${encodeURIComponent(ticket.cliente_id_sugerido)}">Ver candidato</a>` : ""}</div>
+  </article>`;
+}
+
+function filteredRows() {
+  let rows = [...ST.rows];
+  if (ST.level === "none") rows = rows.filter(row => !row.cliente_id_sugerido);
+  else if (ST.level) rows = rows.filter(row => normalize(row.match_nivel) === ST.level);
+  if (ST.order === "recent") rows.sort((a, b) => String(b.fecha_creacion || "").localeCompare(String(a.fecha_creacion || "")));
+  else if (ST.order === "score") rows.sort((a, b) => (scorePercent(b.match_score) ?? -1) - (scorePercent(a.match_score) ?? -1));
+  else rows.sort((a, b) => String(a.fecha_creacion || "").localeCompare(String(b.fecha_creacion || "")));
+  return rows;
+}
+
+function persist() {
+  writeQS({ level: ST.level, order: ST.order === "oldest" ? "" : ST.order });
+}
+
+function render() {
   const box = $("#cqList");
-  box.innerHTML = '<div class="cl-skel"></div><div class="cl-skel"></div>';
-  perfCountRequest(4);
-  const t0 = performance.now();
+  if (ST.loading) { box.innerHTML = '<div class="cl-skel"></div><div class="cl-skel"></div>'; $("#cqTotal").textContent = "Cargando…"; return; }
+  if (ST.error) {
+    box.innerHTML = `<div class="empty-state"><b>No se pudo cargar la cola.</b><span>${esc(ST.error.human)}</span><button class="btn btn-ghost" id="cqRetry" type="button">Reintentar</button></div>`;
+    $("#cqTotal").textContent = "Error"; $("#cqRetry")?.addEventListener("click", load); return;
+  }
+  const rows = filteredRows();
+  $("#cqTotal").textContent = `${rows.length} pendiente${rows.length === 1 ? "" : "s"}`;
+  box.innerHTML = rows.length ? rows.map(cardHtml).join("") : '<div class="empty-state"><b>Sin pendientes</b><span>No hay tickets que coincidan con estos filtros dentro de tu alcance.</span></div>';
+}
+
+async function load() {
+  const seq = ++ST.reqSeq, started = performance.now();
+  ST.loading = true; ST.error = null; render();
+  if (!ST.isAdmin) {
+    ST.loading = false;
+    ST.error = { human: "La revisión de consolidación está reservada para administración y no amplía permisos de RLS." };
+    render(); return;
+  }
+  perfCountRequest();
   try {
     const { data, error } = await withTimeout(ST.sb.from("tickets")
-      .select("id,folio,titulo,estado,prioridad,tipo,fecha_creacion,asignado_a,empresa_capturada,nombre_capturado,correo_capturado,telefono_capturado,cliente_id_sugerido,contacto_id_sugerido,match_score,match_nivel")
-      .eq("requiere_consolidacion", true).neq("estado", "cerrado").order("fecha_creacion", { ascending: true }).limit(200), 12000);
+      .select("id,folio,titulo,estado,fecha_creacion,empresa_capturada,nombre_capturado,correo_capturado,telefono_capturado,cliente_id_sugerido,match_score,match_nivel")
+      .eq("requiere_consolidacion", true)
+      .neq("estado", "cerrado")
+      .order("fecha_creacion", { ascending: true })
+      .limit(200), 12000);
     if (error) throw error;
-    if (seq !== ST.reqSeq) { devLog("consolidacion", "load", "STALE_RESPONSE_DISCARDED"); return; }
-    ST.rows = data || [];
-    const cids = [...new Set(ST.rows.map(r => r.cliente_id_sugerido).filter(Boolean))];
-    const aids = [...new Set(ST.rows.map(r => r.asignado_a).filter(Boolean))];
-    const [cl, ct, ag] = await Promise.all([
-      cids.length ? ST.sb.from("clientes").select("id,nombre").in("id", cids) : { data: [] },
-      cids.length ? ST.sb.from("clientes_contactos").select("cliente_id,nombre,correo,telefono,es_principal").in("cliente_id", cids).eq("activo", true) : { data: [] },
-      aids.length ? ST.sb.from("perfiles").select("id,nombre").in("id", aids) : { data: [] },
-    ]);
     if (seq !== ST.reqSeq) return;
-    ST.clientes = Object.fromEntries((cl.data || []).map(x => [x.id, x.nombre]));
-    ST.contactos = {};
-    (ct.data || []).forEach(c => {
-      const prev = ST.contactos[c.cliente_id];
-      if (!prev || (c.es_principal && !prev.es_principal)) ST.contactos[c.cliente_id] = c;
-    });
-    ST.agentes = Object.fromEntries((ag.data || []).map(x => [x.id, x.nombre || "Agente"]));
-    const agSel = $("#cqAgente");
-    agSel.innerHTML = '<option value="">Agente: todos</option>' + aids.map(id => `<option value="${esc(id)}">${esc(ST.agentes[id] || "Agente")}</option>`).join("");
-    render();
-    perfPrimaryDone(); perfPageReady();
+    ST.rows = data || [];
+    const clientIds = [...new Set(ST.rows.map(row => row.cliente_id_sugerido).filter(Boolean))];
+    if (clientIds.length) {
+      perfCountRequest();
+      const clients = await withTimeout(ST.sb.from("clientes").select("id,nombre").in("id", clientIds), 10000);
+      if (clients.error) throw clients.error;
+      ST.clients = Object.fromEntries((clients.data || []).map(client => [client.id, client]));
+    } else ST.clients = {};
+    if (seq !== ST.reqSeq) return;
+    ST.loading = false; render(); perfPrimaryDone(); perfPageReady();
   } catch (ex) {
     if (seq !== ST.reqSeq) return;
-    const e = mapError(ex, "CONSOLIDATION_LOAD_FAILED");
-    devLog("consolidacion", "load", e.code + ":" + e.kind, null, performance.now() - t0);
-    box.innerHTML = `<div class="empty-state">${esc(e.human)} <button class="btn btn-ghost" id="cqRetry" type="button">Reintentar</button></div>`;
-    $("#cqRetry")?.addEventListener("click", load);
+    ST.loading = false; ST.error = mapError(ex, "CONSOLIDATION_LOAD_FAILED");
+    devLog("consolidacion", "load_preview", `${ST.error.code}:${ST.error.kind}`, null, performance.now() - started);
+    render();
   }
-};
-
-const filtered = () => {
-  let out = ST.rows;
-  if (ST.nivel === "sin") out = out.filter(r => !r.cliente_id_sugerido);
-  else if (ST.nivel) out = out.filter(r => (r.match_nivel || "").toLowerCase() === ST.nivel);
-  if (ST.agente) out = out.filter(r => r.asignado_a === ST.agente);
-  if (ST.orden === "reciente") out = [...out].sort((a, b) => String(b.fecha_creacion).localeCompare(String(a.fecha_creacion)));
-  else if (ST.orden === "score") out = [...out].sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
-  return out;
-};
-
-/* Comparación capturado vs candidato (con marcas de coincidencia) */
-const kvHtml = (k, v, match = false) => `<div class="cq-kv"><span class="k">${esc(k)}</span><span class="v ${match ? "cq-match" : ""}">${esc(v || "—")}${match ? " ✓" : ""}</span></div>`;
-const eqTxt = (a, b) => !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
-
-const compareHtml = r => {
-  const cand = r.cliente_id_sugerido ? ST.clientes[r.cliente_id_sugerido] : null;
-  const cc = r.cliente_id_sugerido ? ST.contactos[r.cliente_id_sugerido] : null;
-  const capturado = `<div class="cq-col"><div class="cq-col-h">Capturado en el ticket</div>
-    ${kvHtml("Nombre", r.nombre_capturado)}
-    ${kvHtml("Empresa", r.empresa_capturada)}
-    ${kvHtml("Correo", r.correo_capturado)}
-    ${kvHtml("Teléfono", r.telefono_capturado)}
-    ${kvHtml("Creado", fmtFecha(r.fecha_creacion))}
-    ${kvHtml("Agente", ST.agentes[r.asignado_a] || "Sin asignar")}
-  </div>`;
-  const candidato = cand
-    ? `<div class="cq-col is-cand"><div class="cq-col-h">Candidato sugerido ${matchTag(r.match_nivel)}${r.match_score != null ? ` <span class="tag">score ${r.match_score}</span>` : ""}</div>
-      ${kvHtml("Cliente", cand, eqTxt(cand, r.empresa_capturada) || eqTxt(cand, r.nombre_capturado))}
-      ${kvHtml("Contacto", cc?.nombre, eqTxt(cc?.nombre, r.nombre_capturado))}
-      ${kvHtml("Correo", cc?.correo, eqTxt(cc?.correo, r.correo_capturado))}
-      ${kvHtml("Teléfono", cc?.telefono, eqTxt(cc?.telefono, r.telefono_capturado))}
-      <a class="btn btn-ghost" href="cliente.html?id=${encodeURIComponent(r.cliente_id_sugerido)}" style="justify-self:start">Ver ficha completa</a>
-    </div>`
-    : '<div class="cq-col is-cand"><div class="cq-col-h">Candidato sugerido</div><div class="mut">Sin candidato — puede mantenerse como cliente nuevo o buscarse manualmente desde Clientes.</div></div>';
-  return `<div class="cq-compare">${capturado}${candidato}</div>`;
-};
-
-const render = () => {
-  const rows = filtered();
-  $("#cqTotal").textContent = `${rows.length} pendientes`;
-  const blocked = ST.cap === "unavailable" || ST.cap === "permission_denied";
-  $("#cqList").innerHTML = rows.length ? rows.map(r => `<article class="cq-card" data-id="${esc(r.id)}">
-    <div class="cq-head"><div class="cl-name">${esc(r.folio || "—")} · ${esc(r.titulo || "Sin título")}</div><div>${estadoTag(r.estado)}</div></div>
-    ${compareHtml(r)}
-    <div class="cq-actions">
-      <a class="btn btn-ghost" href="ticket.html?id=${encodeURIComponent(r.id)}">Ver ticket</a>
-      ${r.cliente_id_sugerido ? `<button class="btn btn-brand" data-act="confirmar_asociacion" type="button" ${blocked ? "disabled" : ""}>Confirmar asociación</button>` : ""}
-      <button class="btn btn-ghost" data-act="mantener_sin_asociar" type="button" ${blocked ? "disabled" : ""}>Mantener como nuevo</button>
-      <button class="btn btn-ghost" data-act="posponer" type="button" ${blocked ? "disabled" : ""}>Posponer</button>
-    </div>
-  </article>`).join("") : '<div class="empty-state">🎉 Nada pendiente de consolidación con estos filtros.</div>';
-};
-
-/* ---- acción vía Edge (nunca se simula éxito) ---- */
-const callEdge = async (ticket, accion) => {
-  const { data: { session } } = await ST.sb.auth.getSession();
-  if (!session?.access_token) throw new Error("REQUEST_TIMEOUT: sesión expirada");
-  const cfg = globalThis.TICKET_CORE_CONFIG || {}, url = `${String(cfg.supabaseUrl || "").trim()}/functions/v1/${EDGE}`;
-  perfCountRequest();
-  const r = await withTimeout(fetch(url, {
-    method: "POST",
-    headers: { authorization: `Bearer ${session.access_token}`, "content-type": "application/json" },
-    body: JSON.stringify({ ticket_id: ticket.id, accion, cliente_id: ticket.cliente_id_sugerido || null, contacto_id: ticket.contacto_id_sugerido || null, idempotency_key: `${ticket.id}_${accion}` }),
-  }), 20000);
-  noteEdgeResponse(EDGE, r.status);
-  const j = await r.json().catch(() => ({}));
-  if (r.status === 404 && !j?.error) { ST.cap = "unavailable"; checkGate(); throw new Error("CONSOLIDATION_UNAVAILABLE"); }
-  if (r.status === 401 || r.status === 403) { ST.cap = "permission_denied"; checkGate(); throw new Error("PERMISSION_DENIED"); }
-  if (!r.ok) throw Object.assign(new Error(j?.error && String(j.error).length < 160 ? j.error : "CONSOLIDATION_ACTION_FAILED"), { status: r.status });
-  return j;
-};
-
-const HUMAN_ACTION_ERR = {
-  CONSOLIDATION_UNAVAILABLE: "Las acciones de consolidación aún no están habilitadas en el servidor. No se realizó ningún cambio.",
-  PERMISSION_DENIED: "No tienes permisos para esta acción. No se realizó ningún cambio.",
-};
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   const ctx = await mountNav("consolidacion");
   if (!ctx) return;
-  ST.sb = ctx.sb;
-  ["cqNivel", "cqAgente", "cqOrden"].forEach(id => $("#" + id).addEventListener("change", () => {
-    ST.nivel = $("#cqNivel").value; ST.agente = $("#cqAgente").value; ST.orden = $("#cqOrden").value;
-    render(); /* filtros locales: cero consultas nuevas */
+  ST.sb = ctx.sb; ST.isAdmin = String(ctx.rol || "").toLowerCase() === "admin";
+  const query = readQS({ level: "", order: "oldest" });
+  ST.level = ["", "none", "bajo", "medio", "alto"].includes(query.level) ? query.level : "";
+  ST.order = ["oldest", "recent", "score"].includes(query.order) ? query.order : "oldest";
+  $("#cqNivel").value = ST.level; $("#cqOrden").value = ST.order;
+  ["cqNivel", "cqOrden"].forEach(id => $("#" + id).addEventListener("change", () => {
+    ST.level = $("#cqNivel").value; ST.order = $("#cqOrden").value; persist(); render();
   }));
-  $("#cqList").addEventListener("click", async e => {
-    const btn = e.target.closest?.("[data-act]");
-    if (!btn || ST.busy || btn.disabled) return;
-    const card = btn.closest(".cq-card"), t = ST.rows.find(x => x.id === card?.dataset.id);
-    if (!t) return;
-    const accion = btn.dataset.act;
-    if (accion === "confirmar_asociacion" && !confirm(`¿Asociar ${t.folio} a "${ST.clientes[t.cliente_id_sugerido] || "el cliente sugerido"}"? Los datos capturados originales se preservan.`)) return;
-    if (accion === "mantener_sin_asociar" && !confirm(`¿Mantener ${t.folio} como cliente nuevo (sin asociar al candidato)?`)) return;
-    ST.busy = true; btn.disabled = true;
-    const prev = btn.textContent; btn.textContent = "Procesando…";
-    const t0 = performance.now();
-    try {
-      await callEdge(t, accion);
-      devLog("consolidacion", accion, "CONSOLIDATION_ACTION_OK", null, performance.now() - t0);
-      toast("Acción registrada", "ok"); /* éxito solo tras respuesta válida */
-      await load();
-    } catch (ex) {
-      const known = HUMAN_ACTION_ERR[ex?.message];
-      const e2 = known ? { code: ex.message, human: known, kind: "known" } : mapError(ex, "CONSOLIDATION_ACTION_FAILED", ex?.status);
-      devLog("consolidacion", accion, e2.code + ":" + (e2.kind || ""), ex?.status ?? null, performance.now() - t0);
-      toast(e2.human, "bad"); /* la tarjeta vuelve a estado operable: sin estado ambiguo */
-    } finally {
-      ST.busy = false; btn.disabled = ST.cap === "unavailable" || ST.cap === "permission_denied"; btn.textContent = prev;
-    }
+  $("#cqList").addEventListener("change", event => {
+    const card = event.target.closest(".cq-card"), ticket = ST.rows.find(row => String(row.id) === String(card?.dataset.id));
+    if (!ticket) return;
+    const choice = choiceFor(ticket);
+    if (event.target.matches("[data-primary]")) { choice.primary = event.target.value; choice.confirmed = false; }
+    if (event.target.matches("[data-confirm-review]")) choice.confirmed = event.target.checked;
+    render();
   });
   load();
-  checkGate(); /* en paralelo; deshabilita acciones si aplica */
 });

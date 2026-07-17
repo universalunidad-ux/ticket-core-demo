@@ -1,18 +1,24 @@
 /* B19A/B19D-cont — cola de consolidación (comparación clara + gate honesto). */
-.cq-toolbar{grid-template-columns:repeat(3,minmax(160px,240px))}
+.cq-toolbar{grid-template-columns:repeat(2,minmax(160px,240px))}
 .cq-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--panel-2) 96%,transparent);margin-bottom:10px}
 .cq-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
 .cq-head .cl-name{overflow-wrap:anywhere}
 
-/* Comparación capturado vs candidato */
-.cq-compare{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.cq-col{display:grid;gap:6px;align-content:start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 96%,transparent)}
-.cq-col-h{font-size:11px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.cq-col.is-cand{border-style:dashed;border-color:color-mix(in srgb,var(--brand) 40%,var(--line))}
-.cq-kv{display:grid;gap:1px;font-size:13px;min-width:0}
-.cq-kv .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.cq-kv .v{overflow-wrap:anywhere}
-.cq-match{color:var(--ok);font-weight:800}
+/* Comparación y explicación */
+.cq-compare-table{display:grid;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.cq-compare-row{display:grid;grid-template-columns:minmax(120px,.7fr) repeat(2,minmax(150px,1fr)) minmax(110px,.55fr);gap:10px;align-items:center;padding:9px 11px;border-top:1px solid var(--line);font-size:12.5px;min-width:0}
+.cq-compare-row:first-child{border-top:0}.cq-compare-row.is-head{background:color-mix(in srgb,var(--panel) 94%,transparent);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.cq-compare-row span{overflow-wrap:anywhere}.cq-score-box{display:grid;gap:5px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--brand) 5%,transparent)}
+.cq-score-box>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cq-score{font-size:22px;font-weight:950}.cq-score-box p{margin:0;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.cq-inline-warn{padding:9px 11px;border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 6%,transparent);font-size:12.5px}
+
+/* Selección, preview y conflictos */
+.cq-primary{display:grid;gap:7px;border:1px solid var(--line);border-radius:13px;padding:10px 12px}.cq-primary legend{padding:0 5px;font-weight:850;font-size:12px}
+.cq-primary label{display:flex;gap:8px;align-items:flex-start}.cq-primary label span{display:grid;gap:1px}.cq-primary small{color:var(--muted)}
+.cq-preview{display:grid;gap:9px;padding:12px;border:1px dashed color-mix(in srgb,var(--brand) 45%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--brand) 4%,transparent)}
+.cq-preview-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.cq-preview h3{margin:2px 0 0}.cq-preview p{margin:0;line-height:1.45}
+.cq-conflicts{display:grid;gap:3px}.cq-conflicts ul{margin:0;padding-left:20px;color:var(--muted);font-size:12.5px;line-height:1.5}
+.cq-confirm{display:flex;gap:8px;align-items:flex-start;font-weight:700;font-size:12.5px}.cq-preview .btn{justify-self:start}.cq-disabled-reason{color:var(--muted);font-size:12px}
 
 .cq-actions{display:flex;gap:8px;flex-wrap:wrap}
 .cq-actions .btn{min-height:36px;padding:7px 12px;font-size:13px}
@@ -24,6 +30,6 @@
 
 @media (max-width:860px){
   .cq-toolbar{grid-template-columns:1fr}
-  .cq-compare{grid-template-columns:1fr}
+  .cq-compare-table{overflow-x:auto}.cq-compare-row{min-width:680px}
   .cq-actions .btn{flex:1;justify-content:center}
 }

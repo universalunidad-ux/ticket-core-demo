@@ -28,3 +28,11 @@ El borrador `CLIENT_ROLE_FILTER_RLS_DRAFT.sql` continúa siendo documentación n
 - WhatsApp: existe en tickets públicos, pero no hay campo confirmado en `clientes_contactos` ni en el payload de alta; se muestra como pendiente y no se guarda en notas.
 - Listeners: un único listener de `submit`, uno de limpieza, validación `input/blur` por campo y un debounce de 450 ms para nombre. `busy` bloquea reentrada y la misma `idempotency_key` aleatoria se conserva durante reintentos del mismo formulario.
 - Duplicados: el precheck frontend consulta sólo nombres de `clientes` autorizados. Correo y teléfono deben comprobarse dentro de la transacción, donde existe acceso seguro; una respuesta `409` nunca se convierte en éxito.
+
+## Auditoría local de Consolidación (2026-07-16)
+
+- No existe en el repositorio una RPC, migración, firma o implementación versionada que pruebe una consolidación transaccional. El nombre histórico `consolidar-cliente-ticket` y un probe `OPTIONS` no constituyen contrato verificable.
+- La vista queda limitada a `SELECT` de tickets pendientes y nombres de clientes candidatos autorizados por RLS. No consulta `clientes_contactos`, no llama Edge/RPC y no contiene `insert`, `update` ni `delete`.
+- El score se presenta como señal reportada; sin desglose backend la UI no inventa pesos. Coincidencias observables, diferencias y datos no verificables se separan explícitamente.
+- La persona selecciona cliente existente o identidad capturada como principal, revisa conflictos y confirma el preview. El CTA final permanece deshabilitado aunque la revisión esté confirmada.
+- Contrato mínimo faltante: autorización admin en servidor; lock y versión esperada del ticket; revalidación de candidatos/contactos; mutación atómica de cliente, contacto principal, asociación y auditoría; idempotencia; respuesta con IDs/versión resultante; pruebas sintéticas positivas, negativas y de carrera.
