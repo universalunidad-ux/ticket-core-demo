@@ -17,7 +17,6 @@
       <div class="actions cl-admin-only"><a class="btn btn-brand" href="alta-cliente.html">Alta interna de cliente</a></div>
     </div>
     <div class="cl-summary" id="clSummary"></div>
-    <div class="cl-pills" id="clPills" role="toolbar" aria-label="Clasificación"></div>
     <div class="cl-toolbar">
       <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off"></div>
       <div class="cl-admin-only cl-admin-filter"><label class="sr-only" for="clAgentFilter">Filtrar por agente</label><select class="select" id="clAgentFilter"><option value="all">Todos los agentes</option><option value="unassigned">Sin agente</option></select></div>
@@ -28,8 +27,25 @@
         <option value="az">Nombre A–Z</option>
         <option value="za">Nombre Z–A</option>
       </select>
-      <select class="select" id="clPageSize" aria-label="Clientes por página"><option value="12">12 por página</option><option value="24" selected>24 por página</option><option value="48">48 por página</option></select>
-      <button class="mini btn-ghost" id="clClear" type="button">Limpiar filtros</button>
+      <div class="cl-filter-wrap">
+        <button class="mini btn-ghost cl-filter-trigger" id="clFiltersBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="clFiltersPanel">Filtros <span class="cl-filter-count" id="clFilterCount" hidden>0</span></button>
+        <section class="cl-filter-panel" id="clFiltersPanel" role="dialog" aria-label="Filtros de clientes" hidden>
+          <div class="cl-filter-head"><div><b>Filtros</b><span>Se aplican al directorio autorizado completo.</span></div><button class="icon-btn" type="button" id="clFiltersClose" aria-label="Cerrar filtros">×</button></div>
+          <div class="cl-filter-options" role="group" aria-label="Clasificación del cliente">
+            <button class="cl-filter-option is-active" id="clFilterAll" type="button">Todos</button>
+            <label class="cl-filter-option"><input type="checkbox" value="recent" data-client-filter> Recientes</label>
+            <label class="cl-filter-option"><input type="checkbox" value="open" data-client-filter> Con tickets abiertos</label>
+            <label class="cl-filter-option"><input type="checkbox" value="waiting" data-client-filter> Esperando cliente</label>
+            <label class="cl-filter-option"><input type="checkbox" value="priority" data-client-filter> Prioridad alta</label>
+            <label class="cl-filter-option"><input type="checkbox" value="sla" data-client-filter> Riesgo SLA</label>
+            <label class="cl-filter-option"><input type="checkbox" value="consolidation" data-client-filter> Por consolidar</label>
+          </div>
+          <div class="cl-equipment-field"><label class="lbl" for="clEquipmentInput">Equipo Janome</label><input class="input" id="clEquipmentInput" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clEquipmentList" autocomplete="off" placeholder="Familia o modelo de máquina"><div class="cl-equipment-list" id="clEquipmentList" role="listbox" hidden></div><span class="mut" id="clEquipmentFallback" hidden>Lectura de equipos no disponible; no se aplicará este filtro.</span></div>
+          <label class="cl-filter-size" for="clFilterPageSize"><span>Resultados por página</span><select class="select" id="clFilterPageSize"><option value="10">10</option><option value="20">20</option><option value="40">40</option></select></label>
+          <div class="mut cl-filter-status" id="clFilterStatus" aria-live="polite"></div>
+          <div class="cl-filter-actions"><button class="btn btn-ghost" id="clFiltersClear" type="button">Limpiar</button><button class="btn btn-brand" id="clFiltersApply" type="button">Aplicar</button></div>
+        </section>
+      </div>
       <div class="cl-viewtoggle" role="group" aria-label="Vista">
         <button class="mini btn-ghost" id="clVistaTabla" type="button">Tabla</button>
         <button class="mini btn-ghost" id="clVistaCards" type="button">Tarjetas</button>
