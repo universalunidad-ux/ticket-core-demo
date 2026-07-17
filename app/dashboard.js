@@ -91,8 +91,8 @@ const KPI_DEF = {
   hoyN:       { label: "Creados hoy" },
   semana:     { label: "Creados<br>esta semana" },
   consolidar: { label: "Por consolidar", href: "consolidacion-clientes.html", warnIf: v => v > 0 },
-  slaPR:      { label: "SLA 1ª respuesta<br>vencido", badIf: v => v > 0 },
-  slaRes:     { label: "SLA resolución<br>vencido", badIf: v => v > 0 },
+  slaPR:      { label: "SLA 1ª vencida", badIf: v => v > 0 },
+  slaRes:     { label: "SLA vencido", badIf: v => v > 0 },
   misAbiertos:  { label: "Mis tickets<br>abiertos", href: "tickets.html" },
   misEsperando: { label: "Esperando<br>cliente", href: "tickets.html?state=esperando_cliente" },
   misUrgentes:  { label: "Alta / urgente", href: "tickets.html?priority=urgente", warnIf: v => v > 0 },
@@ -115,8 +115,56 @@ const kpiHtml = (key, v, skel = false) => {
 
 const renderRail = (keys, M, skel = false) => {
   const rail = $("#kpiRail");
-  if (rail) rail.innerHTML = keys.map(k => kpiHtml(k, skel ? null : M?.[k] ?? null, skel)).join("");
+  if (!rail) return;
+  rail.innerHTML = keys.map(k => kpiHtml(k, skel ? null : M?.[k] ?? null, skel)).join("");
+  bindKpiRail();
+  /* Sync inmediato (leer scrollWidth fuerza layout): en pestañas en segundo
+     plano rAF queda suspendido y las flechas quedarían ocultas hasta el primer
+     scroll/resize. El rAF posterior re-verifica tras el primer paint. */
+  syncRailArrows();
+  requestAnimationFrame(syncRailArrows);
 };
+
+/* ---------- KPI rail: desplazamiento accesible (B21) ----------
+   Owner único del scroller: flechas prev/next + swipe/trackpad/rueda nativos
+   (overflow-x + scroll-snap en CSS) + teclado (←/→/Home/End con el rail
+   enfocado). Las flechas se ocultan si no hay overflow y se deshabilitan en
+   los extremos. Singleton: sin listeners duplicados aunque renderRail corra
+   varias veces (skeleton → datos → cache). */
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+function syncRailArrows() {
+  const rail = $("#kpiRail"), prev = $("#kpiRailPrev"), next = $("#kpiRailNext");
+  if (!rail || !prev || !next) return;
+  const max = rail.scrollWidth - rail.clientWidth;
+  const overflow = max > 4;
+  prev.hidden = next.hidden = !overflow;
+  if (!overflow) return;
+  prev.disabled = rail.scrollLeft <= 4;
+  next.disabled = rail.scrollLeft >= max - 4;
+}
+function bindKpiRail() {
+  if (document.documentElement.dataset.kpiRailBound === "1") return;
+  document.documentElement.dataset.kpiRailBound = "1";
+  const rail = $("#kpiRail"), prev = $("#kpiRailPrev"), next = $("#kpiRailNext");
+  if (!rail || !prev || !next) return;
+  const behavior = () => (reducedMotion() ? "auto" : "smooth");
+  const step = dir => rail.scrollBy({ left: dir * Math.max(rail.clientWidth * 0.8, 140), behavior: behavior() });
+  prev.addEventListener("click", () => step(-1));
+  next.addEventListener("click", () => step(1));
+  /* Sync directo en scroll (sin rAF): el navegador ya emite scroll una vez
+     por frame en primer plano, y en pestañas ocluidas rAF queda suspendido y
+     dejaría los estados de flecha desactualizados. El sync es barato. */
+  rail.addEventListener("scroll", syncRailArrows, { passive: true });
+  rail.addEventListener("keydown", e => {
+    if (e.target !== rail) return; /* no interceptar el foco de los enlaces KPI */
+    if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+    else if (e.key === "Home") { e.preventDefault(); rail.scrollTo({ left: 0, behavior: behavior() }); }
+    else if (e.key === "End") { e.preventDefault(); rail.scrollTo({ left: rail.scrollWidth, behavior: behavior() }); }
+  });
+  if ("ResizeObserver" in window) new ResizeObserver(syncRailArrows).observe(rail);
+  else window.addEventListener("resize", syncRailArrows);
+}
 
 /* ---------- métricas por rol ---------- */
 async function loadMetrics() {
@@ -178,19 +226,34 @@ function renderMiCarga(M) {
   if (!CTX.isAdmin) $("#dashMiCarga .section-head h2") && ($("#dashMiCarga .section-head h2").textContent = "Mi resumen");
 }
 
-/* ---------- Actividad reciente (1 consulta pequeña + nombres de agentes en lote) ---------- */
+/* ---------- Actividad reciente (1 consulta pequeña + nombres de agentes en lote) ----------
+   B21: 7 eventos por página con flechas en la cabecera (owner único de la
+   paginación). Se piden PAGE+1 filas por rango para saber si hay página
+   siguiente sin un count adicional. Singleton en los listeners. */
+const ACT_PAGE_SIZE = 7;
+let ACT_PAGE = 0;
+function bindActividadNav() {
+  if (document.documentElement.dataset.actNavBound === "1") return;
+  document.documentElement.dataset.actNavBound = "1";
+  $("#dashActPrev")?.addEventListener("click", () => { if (ACT_PAGE > 0) { ACT_PAGE--; loadActividad(); } });
+  $("#dashActNext")?.addEventListener("click", () => { ACT_PAGE++; loadActividad(); });
+}
 async function loadActividad() {
   const box = $("#dashActividad");
   if (!box) return;
+  bindActividadNav();
+  const prevBtn = $("#dashActPrev"), nextBtn = $("#dashActNext");
   try {
     perfCountRequest();
     let q = supabase.from("tickets")
       .select("id,folio,titulo,estado,asignado_a,fecha_actualizacion")
-      .order("fecha_actualizacion", { ascending: false }).limit(8);
+      .order("fecha_actualizacion", { ascending: false })
+      .range(ACT_PAGE * ACT_PAGE_SIZE, ACT_PAGE * ACT_PAGE_SIZE + ACT_PAGE_SIZE); /* PAGE+1 filas */
     if (!CTX.isAdmin && CTX.me) q = q.eq("asignado_a", CTX.me); // actividad propia para soporte
     const { data, error } = await q;
     if (error) throw error;
-    const rows = data || [];
+    const hasMore = (data || []).length > ACT_PAGE_SIZE;
+    const rows = (data || []).slice(0, ACT_PAGE_SIZE);
     let agentes = {};
     const aids = [...new Set(rows.map(x => x.asignado_a).filter(Boolean))];
     if (CTX.isAdmin && aids.length) {
@@ -204,10 +267,14 @@ async function loadActividad() {
         <span class="dash-act-title">${esc(x.titulo || "Sin título")}${CTX.isAdmin && x.asignado_a ? `<span class="mut"> · ${esc(agentes[x.asignado_a] || "Agente")}</span>` : ""}</span>
         <span class="dash-act-meta"><span class="tag ${ticketStateCls(x.estado)}">${esc(ticketStateLabel(x.estado))}</span><span class="dash-act-when">${esc(ago(x.fecha_actualizacion))}</span></span>
       </a>`).join("")
-      : `<div class="empty-state">${CTX.isAdmin ? "Sin actividad reciente." : "Aún no tienes tickets asignados con actividad."}</div>`;
+      : `<div class="empty-state">${ACT_PAGE > 0 ? "No hay más actividad." : CTX.isAdmin ? "Sin actividad reciente." : "Aún no tienes tickets asignados con actividad."}</div>`;
+    if (prevBtn) prevBtn.disabled = ACT_PAGE === 0;
+    if (nextBtn) nextBtn.disabled = !hasMore;
   } catch {
     box.innerHTML = '<div class="empty-state">No se pudo cargar la actividad. <button class="mini btn-ghost" id="dashActRetry" type="button">Reintentar</button></div>';
     $("#dashActRetry")?.addEventListener("click", loadActividad);
+    if (prevBtn) prevBtn.disabled = ACT_PAGE === 0;
+    if (nextBtn) nextBtn.disabled = true;
   }
 }
 
@@ -241,8 +308,10 @@ async function loadSupervision(){
 const VIEW_CAP_KEY = "tc_cap_dashviews";
 async function loadViewMetrics() {
   if (!CTX.isAdmin) return;
-  const rail = $("#kpiRail");
-  if (!rail) return;
+  /* B21: las notas van a #kpiRailNotes (fuera del scroller), nunca como
+     tarjeta dentro del rail. */
+  const notes = $("#kpiRailNotes");
+  if (!notes) return;
   let cap = null;
   try { cap = sessionStorage.getItem(VIEW_CAP_KEY); } catch { /* noop */ }
   if (cap === "0") { renderViewsPending(); return; }
@@ -255,7 +324,7 @@ async function loadViewMetrics() {
       const el = document.createElement("div");
       el.className = "kpi-pending";
       el.innerHTML = `<b>Carga por agente:</b> ${r.data.map(a => `${esc(a.nombre || "Agente")} ${a.abiertos ?? 0}`).join(" · ")}`;
-      rail.appendChild(el);
+      notes.appendChild(el);
     }
   } catch {
     try { sessionStorage.setItem(VIEW_CAP_KEY, "0"); } catch { /* noop */ }
@@ -264,13 +333,13 @@ async function loadViewMetrics() {
 }
 function renderViewsPending() {
   /* Estado administrativo discreto: nunca un KPI roto ni jerga de BD al usuario. */
-  const rail = $("#kpiRail");
-  if (!rail || rail.querySelector("[data-views-pending]")) return;
+  const notes = $("#kpiRailNotes");
+  if (!notes || notes.querySelector("[data-views-pending]")) return;
   const el = document.createElement("div");
   el.className = "kpi-pending";
   el.setAttribute("data-views-pending", "1");
   el.textContent = "Las métricas complementarias estarán disponibles al completar su integración operativa.";
-  rail.appendChild(el);
+  notes.appendChild(el);
 }
 
 /* ============================================================================
@@ -750,7 +819,14 @@ function rgSimula() {
 async function mountReglas(host) {
   host.innerHTML = '<div class="dash-skel"></div>';
   perfCountRequest();
-  const { data } = await supabase.from("perfiles").select("id,nombre,rol").in("rol", ["soporte", "admin"]).order("nombre");
+  const { data, error: agErr } = await supabase.from("perfiles").select("id,nombre,rol").in("rol", ["soporte", "admin"]).order("nombre");
+  if (agErr) {
+    /* Antes se ignoraba el error y el select decía "(crea perfiles primero)",
+       lo cual era engañoso: ahora estado de error real con reintento. */
+    host.innerHTML = `<div class="empty-state">${esc(errText(agErr, "cargar la lista de agentes"))} <button class="mini btn-ghost" type="button" data-rg-agents-retry>Reintentar</button></div>`;
+    host.querySelector("[data-rg-agents-retry]")?.addEventListener("click", () => mountReglas(host));
+    return;
+  }
   AGENTES = data || [];
   const ags = AGENTES.length ? AGENTES.map(a => `<option value="${a.id}">${esc(a.nombre || a.id)}</option>`).join("") : '<option value="">(crea perfiles de soporte primero)</option>';
   host.innerHTML = `
@@ -1074,7 +1150,8 @@ async function loadLogSummary(box) {
     ];
     box.innerHTML = chips.map(([k, v, cls], i) => `<article class="kpi adm-log-chip ${cls}"><span class="kk">${esc(k)}${i ? '<br><i class="adm-log-chip-note">últimos 200</i>' : ""}</span><span class="kv">${esc(String(v))}</span></article>`).join("");
   } catch (e) {
-    box.innerHTML = `<div class="empty-state">${esc(errText(e, "leer el resumen de la bitácora"))}</div>`;
+    box.innerHTML = `<div class="empty-state">${esc(errText(e, "leer el resumen de la bitácora"))} <button class="mini btn-ghost" type="button" data-log-summary-retry>Reintentar</button></div>`;
+    box.querySelector("[data-log-summary-retry]")?.addEventListener("click", () => loadLogSummary(box));
   }
 }
 
@@ -1108,7 +1185,17 @@ async function mountBitacora(host) {
   host.querySelector("[data-log-open-all]")?.addEventListener("click", openModal);
   host.querySelector("[data-log-modal-close]")?.addEventListener("click", closeModal);
   modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
-  host.addEventListener("keydown", e => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+  /* Escape cierra; Tab queda atrapado dentro del dialog (aria-modal real). */
+  host.addEventListener("keydown", e => {
+    if (modal.hidden) return;
+    if (e.key === "Escape") { closeModal(); return; }
+    if (e.key !== "Tab") return;
+    const f = [...modal.querySelectorAll("button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex='-1'])")];
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
 }
 
 /* ============================================================================

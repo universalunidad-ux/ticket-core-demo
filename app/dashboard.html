@@ -6,7 +6,7 @@
 <title>Dashboard | Ticket Core Janome</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css?v=frontend-final-20260716-01">
-<link rel="stylesheet" href="dashboard.css?v=frontend-final-20260716-01">
+<link rel="stylesheet" href="dashboard.css?v=dashboard-rail-20260717-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B19D: se retiraron tickets.css/estado.css/soporte.css/janome.css. soporte.css
      aplicaba html,body{overflow:hidden} en desktop (patrón de la página pública
@@ -34,13 +34,27 @@
     </div>
   </section>
 
-  <!-- KPI rail compacto (render por rol desde dashboard.js; sin números inventados) -->
-  <section class="kpi-rail" id="kpiRail" aria-label="Indicadores de operación"></section>
+  <!-- KPI rail horizontal (B21): una sola fila sin wrap, scroll-snap + flechas.
+       Owner del render: renderRail() en dashboard.js (sin cifras en HTML).
+       Las notas administrativas (.kpi-pending) viven FUERA del scroller, en
+       #kpiRailNotes (owner: loadViewMetrics/renderViewsPending). -->
+  <section class="kpi-rail-wrap">
+    <button class="kpi-rail-arrow is-prev" id="kpiRailPrev" type="button" aria-controls="kpiRail" aria-label="Ver indicadores anteriores" hidden>‹</button>
+    <div class="kpi-rail" id="kpiRail" role="group" aria-label="Indicadores de operación" tabindex="0"></div>
+    <button class="kpi-rail-arrow is-next" id="kpiRailNext" type="button" aria-controls="kpiRail" aria-label="Ver más indicadores" hidden>›</button>
+    <div class="kpi-rail-notes" id="kpiRailNotes"></div>
+  </section>
 
   <section class="dash-cols">
     <article class="panel">
       <div class="section-head">
         <div><div class="section-kicker">Operación</div><h2 id="dashActTitle">Actividad reciente</h2></div>
+        <!-- B21: paginación de actividad (7 por página) en la propia cabecera,
+             alineada a la derecha por el flex del section-head; sin fila extra. -->
+        <div class="dash-act-nav">
+          <button class="icon-btn" id="dashActPrev" type="button" aria-label="Actividad anterior" disabled>‹</button>
+          <button class="icon-btn" id="dashActNext" type="button" aria-label="Más actividad" disabled>›</button>
+        </div>
       </div>
       <div id="dashActividad" class="dash-act"><div class="dash-skel"></div><div class="dash-skel"></div><div class="dash-skel"></div></div>
     </article>
@@ -88,6 +102,6 @@
 </main>
 
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
-<script type="module" src="dashboard.js?v=frontend-final-20260716-01"></script>
+<script type="module" src="dashboard.js?v=dashboard-rail-20260717-03"></script>
 </body>
 </html>
