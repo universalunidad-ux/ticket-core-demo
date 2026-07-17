@@ -3,13 +3,20 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TURNSTILE_SECRET=Deno.env.get("TURNSTILE_SECRET")||"";
-const REQUIRE_TURNSTILE=(Deno.env.get("REQUIRE_TURNSTILE")||"false")==="true";
 const PUBLIC_APP_URL=(Deno.env.get("PUBLIC_APP_URL")||"").replace(/\/+$/,"");
 const RESEND_API_KEY=Deno.env.get("RESEND_API_KEY")||"";
 const MAIL_FROM=Deno.env.get("MAIL_FROM")||"Expiriti <soporte@expiriti.com.mx>";
 const sb=createClient(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY);
-const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
-const json=(body:Record<string,unknown>,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}});
+// SECURITY U3: control de abuso del endpoint público
+const IS_PROD=(Deno.env.get("ENVIRONMENT")||"").toLowerCase()==="production";
+const REQUIRE_TURNSTILE_EFFECTIVE=((Deno.env.get("REQUIRE_TURNSTILE")||(IS_PROD?"true":"false")).toLowerCase()==="true");
+const MAX_BODY_BYTES=Number(Deno.env.get("MAX_BODY_BYTES")||(64*1024*1024));
+const DEFAULT_ORIGINS=[PUBLIC_APP_URL,"https://universalunidad-ux.github.io"].filter(Boolean);
+const ALLOWED_ORIGINS=new Set((Deno.env.get("CORS_ALLOWED_ORIGINS")||DEFAULT_ORIGINS.join(",")).split(",").map(o=>o.trim().replace(/\/+$/,"")).filter(Boolean));
+const corsBase={"Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, idempotency-key","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"};
+const corsFor=(origin:string)=>({...corsBase,...(origin?{"Access-Control-Allow-Origin":origin}:{})});
+const resolveOrigin=(req:Request)=>{const o=(req.headers.get("origin")||"").replace(/\/+$/,"");return o&&ALLOWED_ORIGINS.has(o)?o:"";};
+const json=(body:Record<string,unknown>,status=200,origin="")=>new Response(JSON.stringify(body),{status,headers:{...corsFor(origin),"Content-Type":"application/json"}});
 const getIp=(req:Request)=>req.headers.get("cf-connecting-ip")||req.headers.get("x-forwarded-for")||req.headers.get("x-real-ip")||"unknown";
 const sanitize=(v:unknown,max=3000)=>String(v??"").trim().replace(/\s+/g," ").slice(0,max);
 const digits=(v:unknown)=>String(v??"").replace(/\D+/g,"");
@@ -68,17 +75,38 @@ for(const a of aliases){const arr=aliasMap.get(a.cliente_id)||[];arr.push(norm((
 }
 
 Deno.serve(async(req)=>{
-  if(req.method==="OPTIONS")return json({ok:true},200);
+  const reqOrigin=resolveOrigin(req);
+  // Shadow por-request: aplica CORS por allowlist (fail-closed) a todas las respuestas.
+  const json=(body:Record<string,unknown>,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(reqOrigin),"Content-Type":"application/json"}});
+  const originHeader=(req.headers.get("origin")||"").replace(/\/+$/,"");
+  if(req.method==="OPTIONS"){
+    if(originHeader&&!reqOrigin)return json({message:"Origin no permitido."},403);
+    return json({ok:true},200);
+  }
   if(req.method!=="POST")return json({message:"Method not allowed"},405);
   const ip=getIp(req);
+  // Origin allowlist fail-closed (no se refleja un Origin arbitrario)
+  if(originHeader&&!reqOrigin){await logSecurity("cors_origin_blocked",null,{ip});return json({message:"Origin no permitido."},403)}
+  // Content-Type estricto
+  const ctype=(req.headers.get("content-type")||"").toLowerCase();
+  if(!ctype.includes("multipart/form-data"))return json({message:"Content-Type no soportado."},415);
+  // Límite duro de cuerpo (defensa temprana por Content-Length)
+  const clen=Number(req.headers.get("content-length")||"0");
+  if(clen>MAX_BODY_BYTES)return json({message:"Solicitud demasiado grande."},413);
+  const idemKey=String(req.headers.get("idempotency-key")||"").slice(0,120);
   try{
     const form=await req.formData();
+    // Honeypot anti-bot: campos ocultos que un humano deja vacíos.
+    const honeypot=String(form.get("website")||form.get("hp_field")||"").trim();
+    if(honeypot){await logSecurity("honeypot_triggered",null,{ip});return json({ok:true,status:"received"},200)}
     const turnstileToken=String(form.get("turnstile_token")||"");
     const rawPayload=String(form.get("payload")||"{}");
+    if(rawPayload.length>200000)return json({message:"Payload demasiado grande."},413);
     let payload:any={};
     try{payload=JSON.parse(rawPayload)}catch{return json({message:"Payload inválido."},400)}
 
-    if(REQUIRE_TURNSTILE){
+    if(REQUIRE_TURNSTILE_EFFECTIVE){
+      if(!TURNSTILE_SECRET){await logSecurity("turnstile_unconfigured",null,{ip});return json({message:"Validación de seguridad no disponible."},503)}
       if(!turnstileToken){await logSecurity("turnstile_missing",null,{ip});return json({message:"Falta validación de seguridad."},400)}
       const ts=await verifyTurnstile(turnstileToken,ip);
       if(!ts?.success){await logSecurity("turnstile_failed",null,{ip,errors:ts?.["error-codes"]||[]});return json({message:"No se pudo validar la solicitud."},400)}
@@ -86,12 +114,24 @@ Deno.serve(async(req)=>{
 
     const rlOk=await rateLimit("support_submit",ip,5,10);
 if(!rlOk){await logSecurity("rate_limit_blocked",null,{ip,scope:"support_submit"});return json({message:"Ha enviado varias solicitudes en poco tiempo. Intente más tarde."},429)}
+    // Límite global de respaldo: no depende de un header por-cliente spoofable.
+    const rlGlobal=await rateLimit("support_submit_global","ALL",300,10);
+    if(!rlGlobal){await logSecurity("rate_limit_blocked",null,{scope:"support_submit_global"});return json({message:"Servicio con alta demanda. Intente más tarde."},429)}
+    // Idempotencia / anti-replay usando la tabla existente rate_limit_events.
+    if(idemKey){
+      const seen=await sb.from("rate_limit_events").select("id",{count:"exact",head:true}).eq("scope","idem_support").eq("key",idemKey);
+      if((seen.count||0)>0){await logSecurity("idempotent_replay",null,{ip});return json({message:"Solicitud duplicada."},409)}
+      const insIdem=await sb.from("rate_limit_events").insert({scope:"idem_support",key:idemKey});
+      if(insIdem.error)console.error("IDEM_INSERT_ERROR",insIdem.error.message);
+    }
 const nombre=sanitize(payload?.nombre,120),empresa=sanitize(payload?.empresa,160)||null,correo=sanitize(payload?.correo,160),telefono=digits(payload?.telefono),categoria=sanitize(payload?.categoria,40),sistema=sanitize(payload?.sistema,120),objetivo=sanitize(payload?.objetivo,300),titulo=sanitize(payload?.titulo,120),descripcion=sanitize(payload?.descripcion,3000),impacto=sanitize(payload?.impacto,20),prioridad=sanitize(payload?.prioridad,20)||((impacto==="alta")?"alta":(impacto==="media")?"media":"baja"),canal=sanitize(payload?.canal,20),desde_cuando=sanitize(payload?.desde_cuando,160),afecta_a=sanitize(payload?.afecta_a,40),ultimo_cambio=sanitize(payload?.cambio_previo||payload?.ultimo_cambio,60),horario_contacto=sanitize(payload?.horario_disponible||payload?.horario_contacto,160),horario_desde=sanitize(payload?.horario_desde,20),horario_hasta=sanitize(payload?.horario_hasta,20),horario_notas=sanitize(payload?.horario_notas||payload?.horario_disponible||payload?.horario_contacto,200),contexto_adicional=sanitize(payload?.contexto_extra||payload?.contexto_adicional,3000),anydesk=sanitize(payload?.anydesk,120),origen="soporte_publico";
 
 
     if(!nombre||!titulo||!descripcion||!sistema)return json({message:"Faltan campos obligatorios."},400);
  if(!correo)return json({message:"Falta el correo."},400);
 if(!validMail(correo))return json({message:"El correo no parece válido."},400);
+    const rlMail=await rateLimit("support_submit_mail",correo.toLowerCase(),5,60);
+    if(!rlMail){await logSecurity("rate_limit_blocked",null,{ip,scope:"support_submit_mail"});return json({message:"Ha enviado varias solicitudes con este correo. Intente más tarde."},429)}
 if(!telefono)return json({message:"Falta el teléfono."},400);
 if(telefono.length<10)return json({message:"El teléfono parece incompleto."},400);
 
@@ -169,5 +209,5 @@ const magic_link=`${appUrl}/estado.html?folio=${encodeURIComponent(folio)}&token
     // (nombres/IDs de cliente, match_score, candidatos, solicitud_id, ticket_id).
     // soporte.js solo consume folio + token_publico; el enlace lo construye el cliente.
     return json({ok:true,folio,token_publico,status:"ticket_creado"},200);
-}catch(err:any){console.error("SUPPORT_FATAL",err);try{await logSecurity("support_submit_error",null,{ip,message:String(err?.message||err),stack:String(err?.stack||"")})}catch(e){console.error("SUPPORT_LOG_ERROR",e)}return json({message:String(err?.message||err||"No se pudo procesar la solicitud.")},500)}
+}catch(err:any){const detail=String(err?.message||err||"");console.error("SUPPORT_FATAL",detail,err?.stack||"");try{await logSecurity("support_submit_error",null,{ip,code:detail.slice(0,80)})}catch(e){console.error("SUPPORT_LOG_ERROR",e)}return json({message:"No se pudo procesar la solicitud."},500)}
 });
