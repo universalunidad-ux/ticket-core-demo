@@ -84,31 +84,32 @@ export async function getProfile() {
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;
 
-  let { data } = await s
+  // SECURITY U2: SOLO LECTURA. El frontend nunca crea perfiles ni asigna rol.
+  // Un usuario autenticado sin fila en `perfiles` = SIN ACCESO AUTORIZADO -> null.
+  // La autorización real la imponen las políticas RLS del servidor (ver migraciones
+  // supabase/migrations/*_authz_*). El aprovisionamiento de perfiles/roles ocurre
+  // server-side (admin/backend), jamás desde el navegador.
+  const { data } = await s
     .from("perfiles")
     .select("id,nombre,rol,tema,preferencias")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (data) return data;
+  return data || null;
+}
 
-  const i = await s
-    .from("perfiles")
-    .insert({ id: user.id, tema: "light", rol: "soporte" })
-    .select("id,nombre,rol,tema,preferencias")
-    .single();
-
-  return i.data || null;
+// Estado seguro para consumidores: perfil existente o "sin acceso autorizado".
+export async function getAuthorizedProfile() {
+  const p = await getProfile();
+  return p ? { profile: p, authorized: true } : { profile: null, authorized: false };
 }
 
 export async function saveTheme(v, id) {
   if (!id) return;
   const tema = v === "dark" ? "dark" : "light";
-  const q = await s.from("perfiles").update({ tema }).eq("id", id);
-
-  if (q.error && /0 rows|No rows/i.test(q.error.message || "")) {
-    await s.from("perfiles").insert({ id, tema, rol: "soporte" });
-  }
+  // SECURITY U2: solo actualiza el tema de un perfil YA existente. Sin fallback
+  // de insert: el frontend no aprovisiona perfiles ni escribe `rol`.
+  await s.from("perfiles").update({ tema }).eq("id", id);
 }
 
 export const applyTheme = v => document.documentElement.setAttribute("data-theme", v === "dark" ? "dark" : "light");
