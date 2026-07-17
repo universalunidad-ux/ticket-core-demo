@@ -1612,19 +1612,19 @@ body[data-page="tickets"] :is(button,.metric-pill):disabled{
   color:var(--tc-control-disabled-fg)!important;
   cursor:not-allowed;
 }
-body[data-page="tickets"] .tk-active-filter{
-  width:max-content;
-  max-width:100%;
-  margin:-2px 0 2px;
-  padding:7px 11px;
-  border:1px solid color-mix(in srgb,var(--tc-control-selected-bg) 40%,var(--line));
-  border-radius:999px;
-  background:color-mix(in srgb,var(--tc-control-selected-bg) 10%,var(--panel));
-  color:var(--text);
-  font-size:.82rem;
-  font-weight:800;
-}
 body[data-page="tickets"] .metric-pill{text-decoration:none}
+body[data-page="tickets"] .metric-pill.is-active{
+  background:#0f766e!important;
+  border-color:#0f766e!important;
+  color:#fff!important;
+}
+body[data-page="tickets"] .metric-pill.is-active :is(.mk,.mv){color:#fff!important}
+body[data-page="tickets"] .metric-pill.is-active img{filter:brightness(0) invert(1)!important}
+html[data-theme="dark"] body[data-page="tickets"] .metric-pill.is-active{
+  background:#0f766e!important;
+  border-color:#2dd4bf!important;
+  color:#fff!important;
+}
 body[data-access-role="soporte"] #tkQuickEditBtn{display:none!important}
 
 @media(max-width:720px){

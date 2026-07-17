@@ -19,7 +19,7 @@ Este contrato define una sola fuente de verdad para el número mostrado, el filt
 - Con JavaScript, activar o desactivar el indicador actualiza `kpi` mediante History API sin recargar.
 - Al abrir una URL directa, `applyUrlFilters` reconstruye el filtro y su estado seleccionado.
 - El tablero y cualquier contador contextual deben aplicar el mismo predicado canónico; no se permiten cifras codificadas en HTML.
-- La interfaz muestra `Filtro activo · …`; “Limpiar filtros” elimina también `kpi`.
+- El propio KPI comunica la selección con fondo activo, texto blanco y `aria-current`; no se crea una fila o pill redundante. “Limpiar filtros” elimina también `kpi`.
 - Si otros filtros están activos, los indicadores se calculan sobre ese subconjunto. Sin filtros, se calculan sobre todos los tickets autorizados para la sesión.
 
 ## Propiedad y zona horaria
