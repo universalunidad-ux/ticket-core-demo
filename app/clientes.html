@@ -21,10 +21,13 @@
     <div class="cl-pills" id="clPills" role="toolbar" aria-label="Clasificación"></div>
     <div class="cl-toolbar">
       <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off"></div>
+      <select class="select cl-manager-only" id="clAgentFilter" aria-label="Filtrar por agente">
+        <option value="all">Todos los agentes</option>
+        <option value="unassigned">Sin agente</option>
+      </select>
       <select class="select" id="clOrder" aria-label="Orden">
         <option value="actividad">Actividad reciente</option>
         <option value="nombre">Nombre</option>
-        <option value="abiertos">Tickets abiertos</option>
       </select>
       <div class="cl-viewtoggle" role="group" aria-label="Vista">
         <button class="mini btn-ghost" id="clVistaTabla" type="button">Tabla</button>

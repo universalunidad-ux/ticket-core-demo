@@ -2,7 +2,7 @@
    B19A/B19D — listado interno de clientes.
    - Sin N+1: 1 query de clientes (paginada) + 3 queries por lote con in.(ids).
    - Debounce real en búsqueda; request sequence (respuestas obsoletas se
-     ignoran); cambiar orden o filtro local NO ejecuta consultas nuevas.
+     ignoran); búsqueda, agente y orden reinician la paginación global.
    - Cabecera resumen con counts head baratos (sin descargar la BD).
    - Pill bar por rol: soporte ve "Mis clientes" = clientes con tickets
      asignados al usuario autenticado (derivado; NO existe ownership permanente
@@ -18,21 +18,41 @@ import { mapError, devLog, withTimeout } from "./shared/errors.js";
 
 const $ = (q, c = document) => c.querySelector(q);
 const PAGE = 30, OPEN = ["abierto", "en_proceso", "esperando_cliente"];
-const ST = { sb: null, rol: "soporte", me: null, isAdmin: false, scopeIds: [], rows: [], page: 0, done: false, loading: false, q: "", filter: "todos", order: "actividad", vista: "tabla", reqSeq: 0, misClientes: null };
-const TC_CLIENT_ORIGINS = ["ticket_core", "soporte_publico", "alta_cliente", "alta_interna", "alta_aprobada", "alta_publica", "registro_aprobado"];
+const ST = { sb: null, rol: "soporte", me: null, isAdmin: false, isManager: false, scopeIds: [], agents: [], agent: "all", rows: [], total: 0, page: 0, done: false, loading: false, q: "", filter: "todos", order: "actividad", vista: "tabla", reqSeq: 0 };
+const scopeTickets = q => {
+  if (!ST.isManager) return q.eq("asignado_a", ST.me);
+  if (ST.agent === "unassigned") return q.is("asignado_a", null);
+  if (ST.agent !== "all") return q.eq("asignado_a", ST.agent);
+  return q;
+};
 
 const loadScopeIds = async () => {
-  const own = ST.sb.from("tickets").select("cliente_id").not("cliente_id", "is", null);
-  const ticketQuery = ST.isAdmin ? own : own.eq("asignado_a", ST.me);
-  const jobs = [ticketQuery];
-  if(ST.isAdmin){
-    jobs.push(ST.sb.from("solicitudes_soporte").select("cliente_id").not("cliente_id", "is", null));
-    jobs.push(ST.sb.from("clientes").select("id").in("origen_registro", TC_CLIENT_ORIGINS));
+  let clientIds = null;
+  if (ST.isManager && ST.agent !== "all") {
+    const tickets = scopeTickets(ST.sb.from("tickets").select("cliente_id").not("cliente_id", "is", null));
+    const { data, error } = await tickets;
+    if (error) throw error;
+    clientIds = [...new Set((data || []).map(r => r.cliente_id).filter(Boolean))];
   }
-  const results = await Promise.all(jobs);
-  const failed = results.find(x=>x.error);
-  if(failed?.error) throw failed.error;
-  ST.scopeIds = [...new Set(results.flatMap((x,i)=>(x.data||[]).map(r=>i===2?r.id:r.cliente_id)).filter(Boolean))];
+  if (clientIds && !clientIds.length) { ST.scopeIds = []; return; }
+  let clients = ST.sb.from("clientes").select("id");
+  if (clientIds) clients = clients.in("id", clientIds);
+  const { data, error } = await clients;
+  if (error) throw error;
+  /* RLS es el owner del alcance: este conjunto solo intersecta filtros explícitos. */
+  ST.scopeIds = [...new Set((data || []).map(r => r.id).filter(Boolean))];
+};
+
+const loadAgents = async () => {
+  const select = $("#clAgentFilter");
+  if (!ST.isManager) { select?.remove(); return; }
+  const { data, error } = await ST.sb.from("perfiles").select("id,nombre,rol").in("rol", ["admin", "supervisor", "soporte"]).order("nombre", { ascending: true });
+  if (error) throw error;
+  ST.agents = data || [];
+  const valid = new Set(["all", "unassigned", ...ST.agents.map(a => String(a.id))]);
+  if (!valid.has(ST.agent)) ST.agent = "all";
+  select.innerHTML = `<option value="all">Todos los agentes</option><option value="unassigned">Sin agente</option>${ST.agents.map(a => `<option value="${esc(a.id)}">${esc(a.nombre || "Agente")} · ${esc(a.rol || "soporte")}</option>`).join("")}`;
+  select.value = ST.agent;
 };
 
 /* ---- Pills por rol (los filtros operan sobre la página cargada) ---- */
@@ -43,7 +63,7 @@ const PILLS_ADMIN = [
   ["incompletos", "Datos incompletos"],
 ];
 const PILLS_SOPORTE = [
-  ["mios", "Mis clientes"], ["todos", "Todos"], ["recientes", "Recientes"],
+  ["mios", "Mis clientes"], ["recientes", "Recientes"],
   ["abiertos", "Con tickets abiertos"], ["esperando", "Esperando cliente"],
   ["prio", "Prioridad alta"], ["sla", "Riesgo SLA"], ["consolidacion", "Por consolidar"],
   ["sin_equipo", "Sin equipo"],
@@ -52,7 +72,11 @@ const PILLS_SOPORTE = [
 const fetchPage = async () => {
   const seq = ++ST.reqSeq, from = ST.page * PAGE, to = from + PAGE - 1;
   if(!ST.scopeIds.length) return { rows: [], count: 0 };
-  let q = ST.sb.from("clientes").select("id,nombre", { count: "exact" }).order("nombre", { ascending: true }).range(from, to);
+  let q = ST.sb.from("clientes").select("id,nombre,ultima_interaccion", { count: "exact" });
+  q = ST.order === "nombre"
+    ? q.order("nombre", { ascending: true })
+    : q.order("ultima_interaccion", { ascending: false, nullsFirst: false }).order("nombre", { ascending: true });
+  q = q.range(from, to);
   q = q.in("id", ST.scopeIds);
   if (ST.q) q = q.ilike("nombre", `%${ST.q}%`);
   perfCountRequest();
@@ -64,7 +88,7 @@ const fetchPage = async () => {
   if (ids.length) {
     perfCountRequest(3);
     const [a, b, c] = await Promise.all([
-      ST.sb.from("tickets").select("cliente_id,estado,prioridad,fecha_actualizacion,requiere_consolidacion,asignado_a,sla_resolution_deadline").in("cliente_id", ids),
+      scopeTickets(ST.sb.from("tickets").select("cliente_id,estado,prioridad,fecha_actualizacion,requiere_consolidacion,asignado_a,sla_resolution_deadline").in("cliente_id", ids)),
       ST.sb.from("clientes_contactos").select("cliente_id,nombre,correo,telefono,es_principal").in("cliente_id", ids).eq("activo", true),
       ST.sb.from("cliente_sistemas").select("cliente_id").in("cliente_id", ids),
     ]);
@@ -77,7 +101,8 @@ const fetchPage = async () => {
     const t = tk.filter(x => x.cliente_id === cl.id);
     const open = t.filter(x => OPEN.includes((x.estado || "").toLowerCase()));
     const abiertos = open.length;
-    const ult = t.map(x => x.fecha_actualizacion).sort().pop() || null;
+    const ticketUlt = t.map(x => x.fecha_actualizacion).filter(Boolean).sort().pop() || null;
+    const ult = [cl.ultima_interaccion, ticketUlt].filter(Boolean).sort().pop() || null;
     const cons = t.some(x => x.requiere_consolidacion);
     const mio = ST.me ? t.some(x => x.asignado_a === ST.me) : false;
     const esperando = t.some(x => (x.estado || "").toLowerCase() === "esperando_cliente");
@@ -103,7 +128,6 @@ const applyFilterOrder = rows => {
   else if (ST.filter === "incompletos") out = out.filter(r => !r.contacto || (!r.contacto.correo && !r.contacto.telefono));
   else if (ST.filter === "mios") out = out.filter(r => r.mio);
   if (ST.order === "nombre") out = [...out].sort((a, b) => a.nombre.localeCompare(b.nombre));
-  else if (ST.order === "abiertos") out = [...out].sort((a, b) => b.abiertos - a.abiertos);
   else out = [...out].sort((a, b) => String(b.ult || "").localeCompare(String(a.ult || "")));
   return out;
 };
@@ -131,6 +155,10 @@ const render = () => {
   document.querySelectorAll("#clPills .mini").forEach(b => b.classList.toggle("is-active", b.dataset.pill === ST.filter));
   $("#clVistaTabla")?.classList.toggle("is-active", ST.vista === "tabla");
   $("#clVistaCards")?.classList.toggle("is-active", ST.vista === "cards");
+  const count = $("#clCount");
+  if (count) count.textContent = ST.filter === "todos"
+    ? `${ST.rows.length} de ${ST.total} clientes`
+    : `${rows.length} visibles de ${ST.rows.length} cargados · ${ST.total} total`;
   if (!rows.length) {
     box.innerHTML = `<div class="empty-state">${ST.rows.length ? "Ningún cliente coincide con el filtro en esta página cargada." : "Sin clientes para esta búsqueda."}</div>`;
     return;
@@ -140,7 +168,7 @@ const render = () => {
     : `<table class="cl-table"><thead><tr class="mut"><th style="text-align:left">Cliente</th><th style="text-align:left">Contacto principal</th><th>Equipos</th><th>Tickets abiertos</th><th style="text-align:left">Última actividad</th><th></th></tr></thead><tbody>${rows.map(rowTable).join("")}</tbody></table>`;
 };
 
-const persist = () => writeQS({ q: ST.q, filter: ST.filter === "todos" ? "" : ST.filter, order: ST.order === "actividad" ? "" : ST.order, vista: ST.vista === "tabla" ? "" : ST.vista });
+const persist = () => writeQS({ q: ST.q, filter: ST.filter === "todos" ? "" : ST.filter, order: ST.order === "actividad" ? "" : ST.order, vista: ST.vista === "tabla" ? "" : ST.vista, agent: ST.isManager && ST.agent !== "all" ? ST.agent : "" });
 
 const load = async (reset = false) => {
   if (ST.loading) return;
@@ -152,8 +180,8 @@ const load = async (reset = false) => {
     const res = await withTimeout(fetchPage(), 12000);
     if (res) {
       ST.rows = ST.rows.concat(res.rows);
-      ST.done = ST.rows.length >= (res.count || 0);
-      $("#clCount").textContent = `${ST.rows.length} de ${res.count ?? "?"} clientes`;
+      ST.total = res.count || 0;
+      ST.done = ST.rows.length >= ST.total;
       $("#clMore").hidden = ST.done;
       render();
       perfPrimaryDone();
@@ -180,16 +208,14 @@ async function loadSummary() {
   const BASE = { count: "exact", head: true };
   perfCountRequest(3);
   if(!ST.scopeIds.length){ box.innerHTML = '<div class="empty-state">Sin clientes dentro del alcance de Ticket Core.</div>'; perfSecondaryDone(); return; }
-  let scopedTickets = ST.sb.from("tickets");
-  const own = q => ST.isAdmin ? q : q.eq("asignado_a", ST.me);
   const [total, porConsolidar, abiertosTk] = await Promise.all([
     Promise.resolve(ST.scopeIds.length),
-    cnt(own(scopedTickets.select("id", BASE).in("cliente_id", ST.scopeIds).eq("requiere_consolidacion", true).neq("estado", "cerrado"))),
-    cnt(own(ST.sb.from("tickets").select("id", BASE).in("cliente_id", ST.scopeIds).in("estado", OPEN))),
+    cnt(scopeTickets(ST.sb.from("tickets").select("id", BASE).in("cliente_id", ST.scopeIds).eq("requiere_consolidacion", true).neq("estado", "cerrado"))),
+    cnt(scopeTickets(ST.sb.from("tickets").select("id", BASE).in("cliente_id", ST.scopeIds).in("estado", OPEN))),
   ]);
   const chip = (k, v, warn) => `<article class="cl-sum ${warn && v > 0 ? "is-warn" : ""}"><span class="kk">${esc(k)}</span><span class="kv">${v == null ? "—" : v}</span></article>`;
   box.innerHTML = [
-    chip(ST.isAdmin ? "Clientes Ticket Core" : "Mis clientes", total),
+    chip(ST.isManager ? "Clientes Ticket Core" : "Mis clientes", total),
     chip("Tickets abiertos", abiertosTk),
     chip("Por consolidar", porConsolidar, true),
   ].join("") + '<span class="mut" style="font-size:12px">Alcance temporal por relaciones de Ticket Core; no incluye el directorio completo de Panel.</span>';
@@ -200,10 +226,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ctx = await mountNav("clientes");
   if (!ctx) return;
   ST.sb = ctx.sb; ST.rol = ctx.rol; ST.me = ctx.perfil?.id || ctx.user?.id || null;
-  ST.isAdmin = String(ST.rol||"").toLowerCase() === "admin";
-  document.body.dataset.accessRole = ST.isAdmin ? "admin" : "soporte";
+  const role = String(ST.rol || "").toLowerCase();
+  ST.isAdmin = role === "admin";
+  ST.isManager = role === "admin" || role === "supervisor";
+  document.body.dataset.accessRole = ST.isManager ? role : "soporte";
   if(!ST.isAdmin) document.querySelectorAll(".cl-admin-only").forEach(x=>x.remove());
-  try{ await loadScopeIds(); }
+
+  const qs = readQS({ q: "", filter: "todos", order: "actividad", vista: "tabla", agent: "all" });
+  ST.q = qs.q; ST.filter = qs.filter || "todos";
+  ST.order = ["actividad", "nombre"].includes(qs.order) ? qs.order : "actividad";
+  ST.agent = ST.isManager ? (qs.agent || "all") : "all";
+  ST.vista = window.matchMedia("(max-width:860px)").matches ? "cards" : (qs.vista || "tabla");
+
+  try{ await loadAgents(); await loadScopeIds(); }
   catch(ex){
     const e=mapError(ex,"CLIENT_SCOPE_LOAD_FAILED");
     devLog("clientes","load_scope",e.code+":"+e.kind);
@@ -211,24 +246,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const qs = readQS({ q: "", filter: "todos", order: "actividad", vista: "tabla" });
-  ST.q = qs.q; ST.filter = qs.filter || "todos"; ST.order = qs.order || "actividad";
-  ST.vista = window.matchMedia("(max-width:860px)").matches ? "cards" : (qs.vista || "tabla");
-
   /* pill bar por rol */
-  const pills = (ST.rol === "admin" ? PILLS_ADMIN : PILLS_SOPORTE);
+  const pills = (ST.isManager ? PILLS_ADMIN : PILLS_SOPORTE);
   $("#clPills").innerHTML = pills.map(([v, l]) => `<button class="mini btn-ghost" type="button" data-pill="${v}">${esc(l)}</button>`).join("");
-  if (!pills.some(([v]) => v === ST.filter)) ST.filter = pills[0][0] === "mios" ? "todos" : pills[0][0];
+  if (!pills.some(([v]) => v === ST.filter)) ST.filter = pills[0][0];
 
   $("#clSearch").value = ST.q; $("#clOrder").value = ST.order;
+  $("#clScopeNote").textContent = ST.isManager
+    ? "Clientes autorizados por RLS. El filtro se deriva de tickets reales; “Sin agente” significa que existe al menos un ticket sin asignar."
+    : "Solo ves clientes relacionados con tickets asignados a tu perfil. El alcance lo aplica la base de datos, no el navegador.";
 
   $("#clSearch").addEventListener("input", debounce(() => { ST.q = $("#clSearch").value.trim(); persist(); load(true); }, 350));
+  $("#clAgentFilter")?.addEventListener("change", async () => {
+    ST.agent = $("#clAgentFilter").value || "all";
+    persist();
+    try { await loadScopeIds(); await load(true); loadSummary(); }
+    catch (ex) {
+      const e = mapError(ex, "CLIENT_AGENT_FILTER_FAILED");
+      $("#clCount").textContent = e.human;
+    }
+  });
   $("#clPills").addEventListener("click", e => {
     const b = e.target.closest("[data-pill]");
     if (!b) return;
     ST.filter = b.dataset.pill; persist(); render(); /* filtro local: cero consultas nuevas */
   });
-  $("#clOrder").addEventListener("change", () => { ST.order = $("#clOrder").value; persist(); render(); /* orden local: cero consultas */ });
+  $("#clOrder").addEventListener("change", () => { ST.order = $("#clOrder").value; persist(); load(true); /* orden global: reinicia paginación */ });
   $("#clVistaTabla").addEventListener("click", () => { ST.vista = "tabla"; persist(); render(); });
   $("#clVistaCards").addEventListener("click", () => { ST.vista = "cards"; persist(); render(); });
   $("#clMore").addEventListener("click", () => { ST.page++; load(false); });

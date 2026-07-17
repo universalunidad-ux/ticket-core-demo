@@ -6,7 +6,7 @@
 .cl-sum.is-warn{border-color:color-mix(in srgb,var(--warn) 38%,var(--line))}
 .cl-sum.is-warn .kv{color:var(--warn)}
 .cl-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.cl-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 200px auto;gap:10px;margin-top:10px}
+.cl-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,240px) minmax(170px,210px) auto;gap:10px;margin-top:10px}
 .cl-viewtoggle{display:flex;gap:6px;align-items:center}
 .cl-table{width:100%;border-collapse:separate;border-spacing:0 8px}
 .cl-row{cursor:pointer}
