@@ -6,9 +6,8 @@
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="clientes.css?v=frontend-final-20260716-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
-<!-- B19D: cabecera con resumen (counts head baratos), pill bar de clasificación
-     por rol, vista tabla/cards con estado en URL. Los filtros de página se
-     aplican sobre lo cargado; los globales llegarán con la vista B19B. -->
+<!-- CLIENTES: filtros, orden y paginación exactos dentro del conjunto autorizado
+     por RLS. Contactos, sistemas y supervisor siguen bloqueados por contrato. -->
 </head>
 <body data-surface="admin" data-shell="app" data-page="clientes">
 <div id="appShell"></div>
@@ -21,14 +20,16 @@
     <div class="cl-pills" id="clPills" role="toolbar" aria-label="Clasificación"></div>
     <div class="cl-toolbar">
       <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off"></div>
-      <select class="select cl-manager-only" id="clAgentFilter" aria-label="Filtrar por agente">
-        <option value="all">Todos los agentes</option>
-        <option value="unassigned">Sin agente</option>
-      </select>
+      <div class="cl-admin-only cl-admin-filter"><label class="sr-only" for="clAgentFilter">Filtrar por agente</label><select class="select" id="clAgentFilter"><option value="all">Todos los agentes</option><option value="unassigned">Sin agente</option></select></div>
       <select class="select" id="clOrder" aria-label="Orden">
-        <option value="actividad">Actividad reciente</option>
-        <option value="nombre">Nombre</option>
+        <option value="actividad">Última actividad</option>
+        <option value="tickets">Más tickets</option>
+        <option value="abiertos">Más tickets abiertos</option>
+        <option value="az">Nombre A–Z</option>
+        <option value="za">Nombre Z–A</option>
       </select>
+      <select class="select" id="clPageSize" aria-label="Clientes por página"><option value="12">12 por página</option><option value="24" selected>24 por página</option><option value="48">48 por página</option></select>
+      <button class="mini btn-ghost" id="clClear" type="button">Limpiar filtros</button>
       <div class="cl-viewtoggle" role="group" aria-label="Vista">
         <button class="mini btn-ghost" id="clVistaTabla" type="button">Tabla</button>
         <button class="mini btn-ghost" id="clVistaCards" type="button">Tarjetas</button>
@@ -38,7 +39,7 @@
   </section>
   <section class="panel" id="clPanel">
     <div id="clList"><div class="cl-skel"></div><div class="cl-skel"></div><div class="cl-skel"></div></div>
-    <div class="cl-pager"><button class="btn btn-ghost" id="clMore" type="button" hidden>Cargar más</button><span class="mut" id="clCount"></span></div>
+    <div class="cl-pager"><span class="mut" id="clCount" aria-live="polite"></span><nav class="cl-pagination" id="clPagination" aria-label="Paginación de clientes"></nav></div>
   </section>
 </main>
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>

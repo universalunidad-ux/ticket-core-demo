@@ -6,9 +6,12 @@
 .cl-sum.is-warn{border-color:color-mix(in srgb,var(--warn) 38%,var(--line))}
 .cl-sum.is-warn .kv{color:var(--warn)}
 .cl-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.cl-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,240px) minmax(170px,210px) auto;gap:10px;margin-top:10px}
+.cl-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,230px) minmax(180px,220px) minmax(140px,170px) auto auto;gap:10px;margin-top:10px;align-items:center}
+.cl-admin-filter{min-width:0}.cl-admin-filter .select{width:100%}
 .cl-viewtoggle{display:flex;gap:6px;align-items:center}
-.cl-table{width:100%;border-collapse:separate;border-spacing:0 8px}
+.cl-table-wrap{overflow-x:auto}.cl-table{width:100%;min-width:680px;border-collapse:separate;border-spacing:0 8px}
+.cl-table th{text-align:left;padding:0 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.cl-table th:nth-child(2),.cl-table th:nth-child(3){text-align:center}
 .cl-row{cursor:pointer}
 .cl-row td{padding:10px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel-2) 96%,transparent)}
 .cl-row td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}
@@ -18,12 +21,13 @@
 .cl-name{font-weight:850;overflow-wrap:anywhere}
 .cl-sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .cl-num{font-weight:800;text-align:center;white-space:nowrap}
-.cl-pager{display:flex;align-items:center;gap:12px;margin-top:12px}
+.cl-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap}
+.cl-pagination{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.cl-page-gap{padding:0 2px;color:var(--muted)}
 .cl-skel{height:52px;border-radius:14px;background:color-mix(in srgb,var(--panel-2) 92%,transparent);animation:clPulse 1.2s ease-in-out infinite;margin-bottom:8px}
 @keyframes clPulse{0%,100%{opacity:.55}50%{opacity:1}}
 .mini.is-active{border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:color-mix(in srgb,var(--brand) 12%,transparent)}
 /* Vista de tarjetas */
-.cl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.cl-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
 .cl-card{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--panel-2) 96%,transparent);cursor:pointer;min-width:0}
 .cl-card:hover{border-color:color-mix(in srgb,var(--brand) 35%,var(--line))}
 .cl-card:focus-visible{outline:none;box-shadow:var(--focus)}
@@ -36,4 +40,7 @@
   .cl-table thead{display:none}
   .cl-table .cl-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:color-mix(in srgb,var(--panel-2) 96%,transparent)}
   .cl-table .cl-row td{display:block;border:0!important;background:transparent;padding:0}
+}
+@media (max-width:520px){
+  .cl-pager{align-items:flex-start}.cl-pagination{width:100%}.cl-pagination .mini{flex:1;justify-content:center}
 }
