@@ -24,12 +24,12 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-card .section-head h2,.estado-card .section-head h3{margin:0;text-wrap:balance}
 .estado-summary-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:6px 16px;min-width:0}
 .estado-summary-head .section-kicker{align-self:baseline}
-/* B17C46: título + badge en flujo inline robusto. El h2 es inline y el badge
+/* B17C46: título + badge en flujo inline robusto. El h1 es inline y el badge
    inline-flex continúa tras el último carácter del título; si el título envuelve,
    el badge baja con él dentro de la columna derecha (nunca inicia fila propia,
    sin position:absolute ni márgenes negativos). */
 .estado-summary-title{min-width:0}
-.estado-summary-title h2{display:inline;margin:0;font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
+.estado-summary-title h1{display:inline;margin:0;font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
 .estado-summary-title .estado-status-pill{margin-left:8px;vertical-align:middle}
 .estado-summary-card{gap:16px}
 .estado-summary-card .estado-next-actions.hidden{display:none}
@@ -65,7 +65,8 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-last-meta{font-size:12px;opacity:.76}
 .estado-last-actions{display:flex;gap:10px;flex-wrap:wrap}
 .preview-card .v,#stReplyStatus,#stReplyFilesMeta{overflow-wrap:anywhere}
-.help-dot{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel-2) 92%,transparent);font-weight:900;cursor:pointer;box-shadow:var(--st-shadow-soft)}
+.help-dot{position:relative;display:inline-grid;place-items:center;width:36px;height:36px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel-2) 92%,transparent);font-weight:900;cursor:pointer;box-shadow:var(--st-shadow-soft)}
+.help-dot::after{content:"";position:absolute;inset:-4px}
 .help-dot:hover{transform:translateY(-1px)}
 .help-pop{position:fixed;right:22px;top:92px;z-index:95;display:grid;gap:12px;width:min(360px,calc(100vw - 24px));padding:16px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--panel) 97%,transparent);backdrop-filter:blur(var(--st-blur));box-shadow:0 26px 60px rgba(2,6,23,.22)}
 .help-pop.hidden{display:none}

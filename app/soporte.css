@@ -364,10 +364,10 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
 #spWhatsRow.hidden{display:none!important}
 /* B17C47: la pill del consentimiento se ajusta a su contenido (termina poco
    después de "condiciones."), sin estirarse a todo el ancho. */
-.sp-consent{display:grid;grid-template-columns:22px minmax(0,auto);gap:8px 10px;align-items:start;width:fit-content;max-width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--panel-2) 72%,var(--panel));font-size:13px;line-height:1.45}
-.sp-consent>input{width:18px;height:18px;margin:1px 0 0}
+.sp-consent{display:grid;grid-template-columns:24px minmax(0,auto);gap:8px 10px;align-items:start;width:fit-content;max-width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--panel-2) 72%,var(--panel));font-size:13px;line-height:1.45}
+.sp-consent>input{width:24px;height:24px;margin:0}
 .sp-consent>label{min-width:0}
-.sp-consent a{font-weight:800;text-underline-offset:2px}
+.sp-consent a{min-height:44px;display:inline-flex;align-items:center;font-weight:800;text-underline-offset:2px}
 .sp-consent .sp-field-error{grid-column:2;min-height:0;margin:0}
 .support-legal-strip{margin:0;padding:8px 3px 2px;border-top:1px solid var(--line);font-size:12px;line-height:1.25}
 .support-legal-strip nav{gap:6px}

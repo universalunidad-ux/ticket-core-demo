@@ -305,13 +305,15 @@ body[data-surface="login"] {
 @media (max-width: 420px) {
   .login-nav {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .login-nav a,
   .login-theme {
-    width: 100%;
-    justify-content: flex-start;
+    width: auto;
+    padding: 0 4px;
+    justify-content: center;
+    font-size: 11px;
   }
 
   .login-hero h1 {

@@ -83,7 +83,7 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   // Resumen grid
   has(css,/\.estado-summary-head\{display:grid/,"estado: Resumen en grid de dos columnas");
   // B17C46: título + badge en flujo inline (sin fila propia, sin absolute)
-  has(css,/\.estado-summary-title h2\{display:inline/,"estado: h2 del título en display:inline");
+  has(css,/\.estado-summary-title h1\{display:inline/,"estado: h1 del título en display:inline");
   has(css,/\.estado-summary-title \.estado-status-pill\{[^}]*vertical-align/,"estado: badge inline continúa tras el título");
   // Progreso: solo el activo respira, con guard de reduced-motion
   has(css,/@media\(prefers-reduced-motion:no-preference\)\{\.tl-item\.active::before\{animation:tlActivePulse/,"estado: solo el punto activo anima (respeta reduced-motion)");
