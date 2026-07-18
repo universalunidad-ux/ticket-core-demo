@@ -20,6 +20,8 @@ jobs:
         run: node tools/frontend-gates.mjs .
       - name: Scan forbidden secrets and local config
         run: bash tools/secret-gate.sh .
+      - name: Test secret scanner fail-closed behavior
+        run: bash tools/secret-gate-test.sh
       - name: Reject real-looking PII fixtures
         run: node tools/pii-gate.mjs .
       - name: Keep company optional in public support

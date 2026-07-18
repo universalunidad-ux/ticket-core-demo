@@ -6,40 +6,119 @@
 set -euo pipefail
 
 root="${1:-.}"
-cd "$root"
+gate_source="${BASH_SOURCE[0]}"
+case "$gate_source" in
+  /*) ;;
+  *) gate_source="$PWD/$gate_source" ;;
+esac
+gate_dir="${gate_source%/*}"
+patterns_file="$gate_dir/secret-gate-patterns.txt"
+fallback_scanner="$gate_dir/secret-gate-scanner.py"
 
-# 1) Config/entorno local prohibido en el árbol.
-if find . -type f \( -name '.env' -o -name '.env.*' -o -name 'supabase.config.local.js' \) \
-     -not -path './.git/*' -not -name '*.example' -print -quit | grep -q .; then
-  echo 'SECRET_GATE: FAIL forbidden local config/.env'
+fail() {
+  echo "SECRET_GATE: FAIL $*" >&2
   exit 1
+}
+
+if ! cd "$root"; then
+  fail "scan root is not accessible: $root"
 fi
 
-# 2) Valores con forma de secreto. sb_publishable_ excluido a propósito.
-if rg -n --hidden --glob '!.git/**' --glob '!*.example' --glob '!tools/secret-gate.sh' \
-  -e '-----BEGIN (RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----' \
-  -e 'postgres(?:ql)?://[^[:space:]/]+:[^[:space:]@]+@' \
-  -e 'SUPABASE_SERVICE_ROLE_KEY[^[:cntrl:]]*eyJ' \
-  -e 'sb_secret_[A-Za-z0-9_-]{10,}' \
-  -e 'service_role[^[:cntrl:]]{0,40}eyJ[A-Za-z0-9_-]{10,}' \
-  -e 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' \
-  -e 'sbp_[A-Za-z0-9]{40,}' \
-  -e 'gh[pousr]_[A-Za-z0-9]{30,}' \
-  -e 'xox[baprs]-[A-Za-z0-9-]{10,}' \
-  -e 're_[A-Za-z0-9]{25,}' \
-  -e 'AKIA[0-9A-Z]{16}' \
-  -e '(access|refresh)_token"?\s*[:=]\s*"?eyJ' \
-  -e 'sb-[a-z0-9]+-auth-token' \
-  -e '(passwd|password)\s*[:=]\s*["'\''][^"'\'' ]{6,}' \
-  -e '(recovery|magiclink|magic_link|confirmation)[^[:cntrl:]]{0,20}token=[A-Za-z0-9._-]{20,}' \
-  . ; then
-  echo 'SECRET_GATE: FAIL secret-shaped value detected'
-  exit 1
+if ! command -v find >/dev/null 2>&1; then
+  fail "required file enumerator unavailable: find"
+fi
+if [[ ! -r "$patterns_file" ]]; then
+  fail "pattern file unavailable: $patterns_file"
 fi
 
-# 3) sb_publishable_ NO debe tratarse como secreto: aviso informativo si aparece.
-if rg -q -n --glob '!.git/**' -e 'sb_publishable_' . 2>/dev/null; then
-  echo 'SECRET_GATE: note sb_publishable_ present (public by design; OK)'
+# 1) Config/entorno local prohibido en el árbol. Los errores de enumeración son
+# fallos del gate, no equivalen a un árbol limpio.
+set +e
+forbidden_output="$({ find . \
+  \( -path '*/.git' -o -path '*/node_modules' \) -prune -o \
+  -type f \( -name '.env' -o -name '.env.*' -o -name 'supabase.config.local.js' \) \
+  -not -name '*.example' -not -name '*.example.*' -print -quit; } 2>&1)"
+forbidden_status=$?
+set -e
+if (( forbidden_status != 0 )); then
+  fail "file enumeration failed: $forbidden_output"
 fi
+if [[ -n "$forbidden_output" ]]; then
+  fail "forbidden local config/.env: $forbidden_output"
+fi
+
+scanner=""
+if command -v rg >/dev/null 2>&1; then
+  scanner="rg"
+elif command -v python3 >/dev/null 2>&1 && [[ -r "$fallback_scanner" ]]; then
+  scanner="python3"
+else
+  fail "no scanner available (install rg or provide python3 with $fallback_scanner)"
+fi
+
+run_rg_scan() {
+  local mode="$1"
+  local common=(
+    --files-with-matches --hidden --no-ignore
+    --glob '!.git/**'
+    --glob '!**/.git/**'
+    --glob '!node_modules/**'
+    --glob '!**/node_modules/**'
+    --glob '!*.example'
+    --glob '!*.example.*'
+    --glob '!tools/secret-gate.sh'
+    --glob '!tools/secret-gate-scanner.py'
+    --glob '!tools/secret-gate-patterns.txt'
+  )
+  if [[ "$mode" == "secrets" ]]; then
+    rg "${common[@]}" -f "$patterns_file" .
+  else
+    rg "${common[@]}" -e 'sb_publishable_' .
+  fi
+}
+
+run_python_scan() {
+  python3 "$fallback_scanner" --patterns "$patterns_file" --mode "$1" .
+}
+
+run_scan() {
+  local mode="$1"
+  set +e
+  if [[ "$scanner" == "rg" ]]; then
+    scan_output="$(run_rg_scan "$mode" 2>&1)"
+  else
+    scan_output="$(run_python_scan "$mode" 2>&1)"
+  fi
+  scan_status=$?
+  set -e
+}
+
+echo "SECRET_GATE: scanner=$scanner"
+
+# Los scanners usan semántica grep: 0=hallazgo, 1=sin hallazgos, >1=error.
+# Cualquier estado inesperado falla cerrado.
+run_scan secrets
+case "$scan_status" in
+  0)
+    [[ -n "$scan_output" ]] && printf '%s\n' "$scan_output" >&2
+    fail "secret-shaped value detected"
+    ;;
+  1) ;;
+  *)
+    [[ -n "$scan_output" ]] && printf '%s\n' "$scan_output" >&2
+    fail "scanner error (scanner=$scanner status=$scan_status)"
+    ;;
+esac
+
+# sb_publishable_ NO debe tratarse como secreto: aviso informativo si aparece.
+run_scan publishable
+case "$scan_status" in
+  0) echo 'SECRET_GATE: note sb_publishable_ present (public by design; OK)' ;;
+  1) ;;
+  *)
+    [[ -n "$scan_output" ]] && printf '%s\n' "$scan_output" >&2
+    fail "scanner error while checking publishable keys (scanner=$scanner status=$scan_status)"
+    ;;
+esac
 
 echo 'SECRET_GATE: PASS'
