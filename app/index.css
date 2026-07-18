@@ -329,3 +329,4 @@ body[data-surface="login"] {
     transition-duration: .001ms !important;
   }
 }
+.login-brand-title{font-size:.92rem;font-weight:800;letter-spacing:.06em;color:var(--muted,#64748b);white-space:nowrap}
