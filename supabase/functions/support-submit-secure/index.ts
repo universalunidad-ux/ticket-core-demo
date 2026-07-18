@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { ALLOWED_EXT, ALLOWED_MIME, extCategory, sniffCategory, MAX_FILES, MAX_IMG, MAX_VID, MAX_PDF, CAP_IMG, CAP_PDF, CAP_VID, MAX_TOTAL_BYTES } from "../_shared/upload-contract.ts";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -28,8 +29,6 @@ const getIp=(req:Request)=>{const xff=(req.headers.get("x-forwarded-for")||"").s
 const sha256hex=async(v:string)=>{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("");};
 const ipHashOf=async(ip:string)=>ip&&ip!=="unknown"?(await sha256hex(ip)).slice(0,16):"unknown";
 // Contrato de límites coherente (aplica aunque falte Content-Length).
-const MAX_FILES=5, MAX_IMG=3, MAX_VID=1, MAX_PDF=1;
-const MB=1024*1024, CAP_IMG=5*MB, CAP_PDF=5*MB, CAP_VID=40*MB, MAX_TOTAL_BYTES=60*MB;
 const sanitize=(v:unknown,max=3000)=>String(v??"").trim().replace(/\s+/g," ").slice(0,max);
 const digits=(v:unknown)=>String(v??"").replace(/\D+/g,"");
 const clean=(v:unknown)=>String(v??"").trim();
@@ -39,21 +38,8 @@ const domainOf=(mail:string)=>{const m=String(mail||"").trim().toLowerCase(),i=m
 const randToken=()=>crypto.randomUUID().replace(/-/g,"")+crypto.randomUUID().replace(/-/g,"");
 const getNextFolio=async(prefix="EX")=>{const {data,error}=await sb.rpc("next_ticket_folio",{p_prefix:prefix});if(error)throw new Error(`FOLIO_RPC_ERROR: ${error.message}`);const folio=String(data||"").trim();if(!folio)throw new Error("FOLIO_EMPTY");return folio};
 const slaPack=(prioridad:string)=>{const p=String(prioridad||"media").toLowerCase(),now=Date.now();if(p==="urgente")return{sla_policy:"urgent_2h_8h",sla_first_response_deadline:new Date(now+2*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+8*60*60*1000).toISOString()};if(p==="alta")return{sla_policy:"high_4h_24h",sla_first_response_deadline:new Date(now+4*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+24*60*60*1000).toISOString()};if(p==="media")return{sla_policy:"medium_8h_48h",sla_first_response_deadline:new Date(now+8*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+48*60*60*1000).toISOString()};return{sla_policy:"low_24h_72h",sla_first_response_deadline:new Date(now+24*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+72*60*60*1000).toISOString()}};
-const allowedExt=new Set(["jpg","jpeg","png","webp","heic","heif","mp4","mov","m4v","pdf"]);
-const allowedMime=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif","video/mp4","video/quicktime","video/x-m4v","application/pdf"]);
-const extCategory=(ext:string)=>["jpg","jpeg","png","webp","heic","heif"].includes(ext)?"image":["mp4","mov","m4v"].includes(ext)?"video":ext==="pdf"?"pdf":"other";
-// Sniff por firma real (magic bytes); evita renombrados (p.ej. HTML/SVG como .png).
-const sniffCategory=(b:Uint8Array)=>{
-  const a=(...xs:number[])=>xs.every((v,i)=>b[i]===v);
-  const ascii=(off:number,str:string)=>[...str].every((c,i)=>b[off+i]===c.charCodeAt(0));
-  if(a(0xFF,0xD8,0xFF))return "image"; // jpeg
-  if(a(0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A))return "image"; // png
-  if(ascii(0,"RIFF")&&ascii(8,"WEBP"))return "image"; // webp
-  if(ascii(0,"%PDF"))return "pdf"; // pdf
-  if(ascii(4,"ftyp")){const brand=String.fromCharCode(b[8]||0,b[9]||0,b[10]||0,b[11]||0);
-    if(/heic|heix|hevc|mif1|heim|heis|msf1|heif/.test(brand))return "image"; return "video";}
-  return "unknown";
-};
+const allowedExt=ALLOWED_EXT;
+const allowedMime=ALLOWED_MIME;
 
 async function verifyTurnstile(token:string,ip:string){const form=new FormData();form.append("secret",TURNSTILE_SECRET);form.append("response",token);if(ip&&ip!=="unknown")form.append("remoteip",ip);const res=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});return await res.json()}
 async function rateLimit(scope:string,key:string,limit:number,windowMinutes:number){const since=new Date(Date.now()-windowMinutes*60_000).toISOString();const {count,error}=await sb.from("rate_limit_events").select("*",{count:"exact",head:true}).eq("scope",scope).eq("key",key).gte("created_at",since);if(error)throw error;if((count||0)>=limit)return false;const ins=await sb.from("rate_limit_events").insert({scope,key});if(ins.error)throw ins.error;return true}
@@ -100,7 +86,7 @@ for(const a of aliases){const arr=aliasMap.get(a.cliente_id)||[];arr.push(norm((
   return{level,score:best.score,cliente_id:best.cliente_id,contacto_id,cliente_nombre:best.cliente_nombre,contacto_nombre,reasons:best.reasons};
 }
 
-Deno.serve(async(req)=>{
+export const handler=async(req:Request):Promise<Response>=>{
   const reqOrigin=resolveOrigin(req);
   // Shadow por-request: aplica CORS por allowlist (fail-closed) a todas las respuestas.
   const json=(body:Record<string,unknown>,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(reqOrigin),"Content-Type":"application/json"}});
@@ -251,4 +237,5 @@ const magic_link=`${appUrl}/estado.html?folio=${encodeURIComponent(folio)}&token
     if(idemActive)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"succeeded",p_response:resp})}catch(_e){console.error("IDEM_FINISH_ERROR")}
     return json(resp,200);
 }catch(err:any){const reqId=crypto.randomUUID();console.error("SUPPORT_FATAL",reqId);if(uploadedPaths.length)try{await sb.storage.from("soporte_adjuntos").remove(uploadedPaths)}catch(_e){console.error("COMPENSATION_REMOVE_ERROR")}if(idemKey)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"failed",p_response:null})}catch(_e){/* noop */}try{await logSecurity("support_submit_error",null,{ip,request_id:reqId})}catch(_e){console.error("SUPPORT_LOG_ERROR")}return json({message:"No se pudo procesar la solicitud.",request_id:reqId},500)}
-});
+};
+Deno.serve(handler);
