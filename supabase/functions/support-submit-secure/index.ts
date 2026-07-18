@@ -28,7 +28,8 @@ const getIp=(req:Request)=>{const xff=(req.headers.get("x-forwarded-for")||"").s
 const sha256hex=async(v:string)=>{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("");};
 const ipHashOf=async(ip:string)=>ip&&ip!=="unknown"?(await sha256hex(ip)).slice(0,16):"unknown";
 // Contrato de límites coherente (aplica aunque falte Content-Length).
-const MAX_FILES=10, MAX_FILE_BYTES=20*1024*1024, MAX_TOTAL_BYTES=60*1024*1024;
+const MAX_FILES=5, MAX_IMG=3, MAX_VID=1, MAX_PDF=1;
+const MB=1024*1024, CAP_IMG=5*MB, CAP_PDF=5*MB, CAP_VID=40*MB, MAX_TOTAL_BYTES=60*MB;
 const sanitize=(v:unknown,max=3000)=>String(v??"").trim().replace(/\s+/g," ").slice(0,max);
 const digits=(v:unknown)=>String(v??"").replace(/\D+/g,"");
 const clean=(v:unknown)=>String(v??"").trim();
@@ -38,8 +39,21 @@ const domainOf=(mail:string)=>{const m=String(mail||"").trim().toLowerCase(),i=m
 const randToken=()=>crypto.randomUUID().replace(/-/g,"")+crypto.randomUUID().replace(/-/g,"");
 const getNextFolio=async(prefix="EX")=>{const {data,error}=await sb.rpc("next_ticket_folio",{p_prefix:prefix});if(error)throw new Error(`FOLIO_RPC_ERROR: ${error.message}`);const folio=String(data||"").trim();if(!folio)throw new Error("FOLIO_EMPTY");return folio};
 const slaPack=(prioridad:string)=>{const p=String(prioridad||"media").toLowerCase(),now=Date.now();if(p==="urgente")return{sla_policy:"urgent_2h_8h",sla_first_response_deadline:new Date(now+2*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+8*60*60*1000).toISOString()};if(p==="alta")return{sla_policy:"high_4h_24h",sla_first_response_deadline:new Date(now+4*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+24*60*60*1000).toISOString()};if(p==="media")return{sla_policy:"medium_8h_48h",sla_first_response_deadline:new Date(now+8*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+48*60*60*1000).toISOString()};return{sla_policy:"low_24h_72h",sla_first_response_deadline:new Date(now+24*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+72*60*60*1000).toISOString()}};
-const allowedExt=new Set(["jpg","jpeg","png","webp","pdf","xml","xls","xlsx","csv","txt","zip"]);
-const allowedMime=new Set(["image/jpeg","image/png","image/webp","application/pdf","text/xml","application/xml","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","text/csv","text/plain","application/zip","application/x-zip-compressed"]);
+const allowedExt=new Set(["jpg","jpeg","png","webp","heic","heif","mp4","mov","m4v","pdf"]);
+const allowedMime=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif","video/mp4","video/quicktime","video/x-m4v","application/pdf"]);
+const extCategory=(ext:string)=>["jpg","jpeg","png","webp","heic","heif"].includes(ext)?"image":["mp4","mov","m4v"].includes(ext)?"video":ext==="pdf"?"pdf":"other";
+// Sniff por firma real (magic bytes); evita renombrados (p.ej. HTML/SVG como .png).
+const sniffCategory=(b:Uint8Array)=>{
+  const a=(...xs:number[])=>xs.every((v,i)=>b[i]===v);
+  const ascii=(off:number,str:string)=>[...str].every((c,i)=>b[off+i]===c.charCodeAt(0));
+  if(a(0xFF,0xD8,0xFF))return "image"; // jpeg
+  if(a(0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A))return "image"; // png
+  if(ascii(0,"RIFF")&&ascii(8,"WEBP"))return "image"; // webp
+  if(ascii(0,"%PDF"))return "pdf"; // pdf
+  if(ascii(4,"ftyp")){const brand=String.fromCharCode(b[8]||0,b[9]||0,b[10]||0,b[11]||0);
+    if(/heic|heix|hevc|mif1|heim|heis|msf1|heif/.test(brand))return "image"; return "video";}
+  return "unknown";
+};
 
 async function verifyTurnstile(token:string,ip:string){const form=new FormData();form.append("secret",TURNSTILE_SECRET);form.append("response",token);if(ip&&ip!=="unknown")form.append("remoteip",ip);const res=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});return await res.json()}
 async function rateLimit(scope:string,key:string,limit:number,windowMinutes:number){const since=new Date(Date.now()-windowMinutes*60_000).toISOString();const {count,error}=await sb.from("rate_limit_events").select("*",{count:"exact",head:true}).eq("scope",scope).eq("key",key).gte("created_at",since);if(error)throw error;if((count||0)>=limit)return false;const ins=await sb.from("rate_limit_events").insert({scope,key});if(ins.error)throw ins.error;return true}
@@ -106,6 +120,7 @@ Deno.serve(async(req)=>{
   const clen=Number(req.headers.get("content-length")||"0");
   if(clen>MAX_BODY_BYTES)return json({message:"Solicitud demasiado grande."},413);
   const idemKey=String(req.headers.get("idempotency-key")||"").slice(0,120);
+  const uploadedPaths:string[]=[];
   try{
     const form=await req.formData();
     // Honeypot anti-bot: campos ocultos que un humano deja vacíos.
@@ -144,14 +159,16 @@ if(telefono.length<10)return json({message:"El teléfono parece incompleto."},40
     const files=[...form.entries()].filter(([k])=>k.startsWith("file_")).map(([,v])=>v).filter(v=>v instanceof File) as File[];
     if(files.length>MAX_FILES)return json({message:"Máximo de archivos excedido."},400);
 
-    let totalBytes=0;
+    let totalBytes=0,nImg=0,nVid=0,nPdf=0;
     for(const file of files){
-const safe=file.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9._()-]/g,"").slice(0,140)||"archivo",ext=(safe.split(".").pop()||"").toLowerCase(),mime=(file.type||"").toLowerCase(),size=Number(file.size||0);
+const safe=file.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9._()-]/g,"").slice(0,140)||"archivo",ext=(safe.split(".").pop()||"").toLowerCase(),mime=(file.type||"").toLowerCase(),size=Number(file.size||0),cat=extCategory(ext);
       totalBytes+=size;
-      if(!allowedExt.has(ext))return json({message:`Tipo no permitido: ${safe}`},400);
+      if(!allowedExt.has(ext)||cat==="other")return json({message:`Tipo no permitido: ${safe}`},400);
       if(mime&&!allowedMime.has(mime))return json({message:`MIME no permitido: ${safe}`},400);
   if(size<=0)return json({message:`Archivo vacío: ${safe||file.name}`},400);
-if(size>MAX_FILE_BYTES)return json({message:`Archivo demasiado grande: ${safe}`},400);
+      if(cat==="image"){if(++nImg>MAX_IMG)return json({message:"Máximo 3 imágenes."},400);if(size>CAP_IMG)return json({message:`Imagen demasiado grande: ${safe}`},400);}
+      else if(cat==="video"){if(++nVid>MAX_VID)return json({message:"Máximo 1 video."},400);if(size>CAP_VID)return json({message:`Video demasiado grande: ${safe}`},400);}
+      else if(cat==="pdf"){if(++nPdf>MAX_PDF)return json({message:"Máximo 1 PDF."},400);if(size>CAP_PDF)return json({message:`PDF demasiado grande: ${safe}`},400);}
       if(totalBytes>MAX_TOTAL_BYTES)return json({message:"El total de archivos excede el máximo permitido."},400);
     }
 
@@ -196,9 +213,13 @@ if(requiere_consolidacion)await addTicketEvento(ticket.id,"sistema","interna","s
 
     const adjuntos:Array<Record<string,unknown>>=[];
     for(const file of files){
-const safe=file.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9._()-]/g,"").slice(0,140)||"archivo",mime=(file.type||"").toLowerCase(),path=`${ticket.id}/${Date.now()}_${crypto.randomUUID()}_${safe}`,bytes=new Uint8Array(await file.arrayBuffer());
+const safe=file.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9._()-]/g,"").slice(0,140)||"archivo",ext=(safe.split(".").pop()||"").toLowerCase(),mime=(file.type||"").toLowerCase(),path=`${ticket.id}/${Date.now()}_${crypto.randomUUID()}_${safe}`,bytes=new Uint8Array(await file.arrayBuffer());
+      // Validación por FIRMA real: la categoría sniffeada debe coincidir con la extensión.
+      const sniff=sniffCategory(bytes.subarray(0,16)),expected=extCategory(ext);
+      if(sniff==="unknown"||sniff!==expected)return json({message:`Contenido no coincide con el tipo declarado: ${safe}`},415);
       const up=await sb.storage.from("soporte_adjuntos").upload(path,bytes,{contentType:mime||"application/octet-stream",upsert:false});
       if(up.error)throw new Error(`Error subiendo ${safe}: ${up.error.message}`);
+      uploadedPaths.push(path);
       const arch=await sb.from("solicitud_archivos").insert({solicitud_id:solicitud.id,nombre_archivo:file.name,storage_path:path,mime_type:file.type||null,tamano_bytes:file.size,tipo_detectado:"soporte_publico"});
       if(arch.error)throw new Error(`Error guardando metadata de solicitud para ${safe}: ${arch.error.message}`);
 const archTicket=await sb.from("ticket_archivos").insert({ticket_id:ticket.id,nombre_archivo:file.name,url_archivo:path,mime_type:file.type||null,tamano_bytes:file.size});
@@ -229,5 +250,5 @@ const magic_link=`${appUrl}/estado.html?folio=${encodeURIComponent(folio)}&token
     const resp={ok:true,folio,token_publico,status:"ticket_creado"};
     if(idemActive)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"succeeded",p_response:resp})}catch(_e){console.error("IDEM_FINISH_ERROR")}
     return json(resp,200);
-}catch(err:any){const reqId=crypto.randomUUID();console.error("SUPPORT_FATAL",reqId);if(idemKey)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"failed",p_response:null})}catch(_e){/* noop */}try{await logSecurity("support_submit_error",null,{ip,request_id:reqId})}catch(_e){console.error("SUPPORT_LOG_ERROR")}return json({message:"No se pudo procesar la solicitud.",request_id:reqId},500)}
+}catch(err:any){const reqId=crypto.randomUUID();console.error("SUPPORT_FATAL",reqId);if(uploadedPaths.length)try{await sb.storage.from("soporte_adjuntos").remove(uploadedPaths)}catch(_e){console.error("COMPENSATION_REMOVE_ERROR")}if(idemKey)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"failed",p_response:null})}catch(_e){/* noop */}try{await logSecurity("support_submit_error",null,{ip,request_id:reqId})}catch(_e){console.error("SUPPORT_LOG_ERROR")}return json({message:"No se pudo procesar la solicitud.",request_id:reqId},500)}
 });

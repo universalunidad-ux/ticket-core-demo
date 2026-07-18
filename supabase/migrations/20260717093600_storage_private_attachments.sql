@@ -1,23 +1,29 @@
--- STORAGE U5 · Contrato privado para adjuntos (soporte_adjuntos, certificados).
--- PREPARED_NOT_APPLIED. Aditiva/idempotente. Revisar en staging.
+-- STORAGE V2 · Contrato privado para adjuntos. PREPARED_NOT_APPLIED. Aditiva.
+-- MIME alineado al contrato REAL de la UI (imágenes + video + PDF; sin zip/xml/excel).
 
--- 1) Buckets privados con límite de tamaño y MIME allowlist (sin SVG/HTML ejecutable).
-update storage.buckets
-set public = false,
-    file_size_limit = 20971520, -- 20 MB por archivo (coincide con el Edge)
-    allowed_mime_types = array[
-      'image/jpeg','image/png','image/webp','application/pdf',
-      'text/xml','application/xml','application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv','text/plain','application/zip','application/x-zip-compressed'
-    ]
-where id in ('soporte_adjuntos','certificados');
+-- 1) Buckets privados: crear si faltan (INSERT ... ON CONFLICT) con límites y MIME.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('soporte_adjuntos','soporte_adjuntos', false, 41943040, array[
+  'image/jpeg','image/png','image/webp','image/heic','image/heif',
+  'video/mp4','video/quicktime','video/x-m4v','application/pdf'
+])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
--- 2) RLS de objetos. anon: sin policy => denegado. Escrituras: solo service_role
---    (el Edge sube con service_role); authenticated no inserta/borra directamente.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('certificados','certificados', false, 20971520, array['application/pdf'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+-- 2) RLS de objetos. anon: sin policy => denegado. Escritura: solo service_role.
 alter table storage.objects enable row level security;
 
--- Lectura de adjuntos de soporte: staff con alcance al ticket (carpeta = ticket.id).
+-- Lectura de adjuntos: staff con alcance al ticket (la 1ª carpeta del path = ticket.id,
+-- exactamente como sube el Edge: `${ticket.id}/...`).
 drop policy if exists soporte_adjuntos_staff_read on storage.objects;
 create policy soporte_adjuntos_staff_read
   on storage.objects for select to authenticated
@@ -30,33 +36,21 @@ create policy soporte_adjuntos_staff_read
     )
   );
 
--- Lectura de certificados: usuarios internos (permite createSignedUrl server-side).
 drop policy if exists certificados_staff_read on storage.objects;
 create policy certificados_staff_read
   on storage.objects for select to authenticated
   using (bucket_id = 'certificados' and public.is_internal_user());
 
--- 3) Compensación de huérfanos: elimina objetos de soporte_adjuntos sin metadata
---    asociada (ticket insert falló tras subir). DESTRUCTIVA: ejecutar en staging o
---    vía tarea programada supervisada. SECURITY DEFINER con search_path fijo.
-create or replace function public.tc_delete_orphan_support_files(older_than interval default interval '24 hours')
-returns integer
-language plpgsql
-security definer
-set search_path = public, storage
-as $$
-declare deleted int;
-begin
-  with orphans as (
-    select o.id from storage.objects o
-    where o.bucket_id = 'soporte_adjuntos'
-      and o.created_at < now() - older_than
-      and not exists (select 1 from public.solicitud_archivos sa where sa.storage_path = o.name)
-      and not exists (select 1 from public.archivos_ticket at where at.storage_path = o.name)
-  )
-  delete from storage.objects o using orphans x where o.id = x.id;
-  get diagnostics deleted = row_count;
-  return deleted;
-end
-$$;
-revoke execute on function public.tc_delete_orphan_support_files(interval) from public, anon, authenticated;
+-- 3) Detección de huérfanos (solo lectura). La ELIMINACIÓN se hace vía Storage API
+--    remove() desde la Edge Function support-orphan-cleanup / job admin: borrar de
+--    storage.objects NO elimina el archivo físico, por eso NO se hace en SQL.
+create or replace view public.v_support_orphan_objects as
+  select o.name as storage_path, o.created_at
+  from storage.objects o
+  where o.bucket_id = 'soporte_adjuntos'
+    and not exists (select 1 from public.solicitud_archivos sa where sa.storage_path = o.name)
+    and not exists (select 1 from public.archivos_ticket a where a.storage_path = o.name);
+revoke all on public.v_support_orphan_objects from anon, authenticated;
+
+-- 4) Retirar el borrado directo previo (no elimina el archivo físico real).
+drop function if exists public.tc_delete_orphan_support_files(interval);

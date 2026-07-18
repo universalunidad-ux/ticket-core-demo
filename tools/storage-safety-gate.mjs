@@ -1,31 +1,36 @@
 #!/usr/bin/env node
-/* SECURITY GATE (U5): la subida de adjuntos del Edge debe usar rutas no
-   predecibles (crypto.randomUUID) y NO permitir SVG/HTML ejecutable en las
-   allowlists de extensión/MIME. Estático sobre el Edge. */
+/* SECURITY GATE (V2-9): contrato de subida seguro y alineado con la UI.
+   FALLA (no SKIP) si falta el Edge que debe proteger. Verifica:
+   - ruta no predecible (crypto.randomUUID);
+   - allowlists SIN SVG/HTML/JS ejecutable NI zip/xml/excel/csv/txt (alineado a UI);
+   - validación por FIRMA de bytes (sniffCategory);
+   - límite de tamaño por archivo. */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, join } from "node:path";
 
 const root = resolve(process.argv[2] || ".");
 const file = join(root, "supabase/functions/support-submit-secure/index.ts");
-if (!existsSync(file)) { console.log("STORAGE_SAFETY_GATE: SKIP (edge no presente)"); process.exit(0); }
-const src = readFileSync(file, "utf8");
 const failures = [];
 
-// 1) Ruta de subida no predecible.
-const upload = src.match(/storage\.from\(\s*["'`]soporte_adjuntos["'`]\s*\)\.upload\(\s*([A-Za-z0-9_]+)/);
-if (!upload) failures.push("no se encontró la subida a 'soporte_adjuntos'");
-if (!/crypto\.randomUUID\(\)/.test(src)) failures.push("la ruta de subida no usa crypto.randomUUID() (predecible)");
+if (!existsSync(file)) {
+  console.error("STORAGE_SAFETY_GATE: FAIL — falta el Edge support-submit-secure (no se puede verificar).");
+  process.exit(1);
+}
+const src = readFileSync(file, "utf8");
 
-// 2) Extensiones/MIME peligrosos no deben estar permitidos.
-const DANGEROUS_EXT = ["svg", "html", "htm", "xhtml", "js", "mjs", "svgz"];
-const DANGEROUS_MIME = ["image/svg+xml", "text/html", "application/xhtml+xml", "text/javascript", "application/javascript"];
+const DANGEROUS = ["svg","svgz","html","htm","xhtml","js","mjs"];
+const NON_UI = ["zip","xml","xls","xlsx","csv","txt"]; // no forman parte del contrato UI
+const DANGEROUS_MIME = ["image/svg+xml","text/html","application/xhtml+xml","text/javascript","application/javascript","application/zip","application/x-zip-compressed","text/csv","text/plain","application/vnd.ms-excel"];
+
 const allowedExt = (src.match(/allowedExt\s*=\s*new Set\(\[([^\]]*)\]/) || [])[1] || "";
 const allowedMime = (src.match(/allowedMime\s*=\s*new Set\(\[([^\]]*)\]/) || [])[1] || "";
-for (const e of DANGEROUS_EXT) if (new RegExp(`["'\`]${e}["'\`]`).test(allowedExt)) failures.push(`extensión peligrosa permitida: ${e}`);
-for (const m of DANGEROUS_MIME) if (allowedMime.includes(m)) failures.push(`MIME peligroso permitido: ${m}`);
 
-// 3) Debe existir un límite de tamaño por archivo.
-if (!/size>\s*\d+\s*\*\s*1024\s*\*\s*1024/.test(src)) failures.push("sin límite de tamaño por archivo");
+if (!/crypto\.randomUUID\(\)/.test(src)) failures.push("ruta de subida predecible (sin crypto.randomUUID)");
+for (const e of [...DANGEROUS, ...NON_UI]) if (new RegExp(`["'\`]${e}["'\`]`).test(allowedExt)) failures.push(`extensión fuera de contrato permitida: ${e}`);
+for (const m of DANGEROUS_MIME) if (allowedMime.includes(m)) failures.push(`MIME fuera de contrato permitido: ${m}`);
+if (!/sniffCategory\s*\(/.test(src)) failures.push("sin validación por firma de bytes (sniffCategory)");
+if (!/sniff!==expected/.test(src)) failures.push("no se compara firma vs extensión declarada");
+if (!/size>\s*CAP_(IMG|PDF|VID)/.test(src)) failures.push("sin límite de tamaño por tipo (CAP_*)");
 
 if (failures.length) {
   console.error([...new Set(failures)].map((x) => " - " + x).join("\n"));
