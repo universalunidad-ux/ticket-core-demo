@@ -255,8 +255,11 @@ const send=async e=>{
       fd.append(`file_${i}`,f,f.name);
     });
 
+    // Idempotency-Key: se reusa en reintentos del MISMO envío; se limpia al éxito.
+    ST.idemKey=ST.idemKey||(crypto?.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2));
     const r=await fetch(SUPPORT_ENDPOINT,{
       method:"POST",
+      headers:{"Idempotency-Key":ST.idemKey},
       body:fd
     });
 
@@ -314,6 +317,7 @@ const send=async e=>{
 
     saveKnownIdentity();
     clearDraft();
+    ST.idemKey=null; // nuevo envío => nueva clave
     resetTurnstile();
 
     console.info(
