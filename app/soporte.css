@@ -62,7 +62,7 @@ html{scrollbar-gutter:stable}
   line-height:1.2
 }
 .support-form .section-head h2,.support-form .section-head h3{margin:0}
-@media(max-width:1100px){.support-layout,.hero-support{grid-template-columns:1fr}.support-side{position:static}.hero-badges{justify-content:flex-start}.hero-support{flex-direction:column;align-items:stretch}.hero-support-main{width:100%}.hero-support-aside{flex:1 1 auto;width:100%}.hero-support-aside .support-global-notice{max-height:none}}
+@media(max-width:1100px){.support-layout,.hero-support{grid-template-columns:1fr}.support-side{position:static}.hero-badges{justify-content:flex-start}.hero-support{flex-direction:column;align-items:stretch}.hero-support-main{width:100%}.hero-support-aside{flex:1 1 auto;width:100%}}
 
 @media(max-width:760px){.form-grid,.upload-grid{grid-template-columns:1fr}.support-form .actions{display:grid;grid-template-columns:1fr}.support-form .actions .btn{width:100%;min-width:0}.hero-support h1{max-width:none}}
 
@@ -350,11 +350,14 @@ body[data-surface="client"] .btn-brand:active{color:#fff}
 /* B17C46: hints en gris alineados verticalmente al centro del hero y pegados al
    título "Estamos para ayudarte" (ya no empujados al extremo derecho). */
 .hero-support-main{display:flex;align-items:center;justify-content:flex-start;gap:16px;min-width:0;flex:1 1 auto}
-.hero-support-main h1{flex:0 0 auto;max-width:none;white-space:nowrap;margin:0;text-align:left}
+.hero-support-main h1{flex:0 0 auto;max-width:none;white-space:nowrap;margin:0;line-height:1;text-align:left}
 .hero-support-main .support-hints{margin:0;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-start}
 .hero-support-aside{flex:0 1 clamp(280px,42%,520px);min-width:0;display:block}
 .hero-support-aside[hidden]{display:none}
-.hero-support-aside .support-global-notice{margin:0;max-height:132px;overflow:auto}
+.hero-support-aside .support-global-notice{margin:0;max-height:none;overflow:visible}
+@media(min-width:1024px){
+  .hero-support-aside .support-global-notice{max-height:132px;overflow:auto}
+}
 .support-hints span,.support-hints i{cursor:default;box-shadow:none}
 #spIdentityFields .field:has(#spWhatsRow:not(.hidden)){grid-template-rows:auto auto auto}
 #spIdentityFields .jn-phone:has(#spWhatsRow:not(.hidden)){height:auto;min-height:47px}

@@ -164,18 +164,27 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   has(gcss,/PUBLIC-MOBILE-HEADER-20260717[\s\S]*?body\[data-surface=client\] \.jn-topbar-inner\{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:auto minmax\(0,1fr\) auto/,"header público: owner Grid compartido y determinista");
   has(gcss,/\.jn-topbar-inner\{[^}]*min-width:0/,"header público: inner permite encogimiento controlado");
   has(gcss,/\.jn-brand\{[^}]*min-width:0/,"header público: identidad aplica min-width:0");
+  has(gcss,/\.jn-brand-sub\{[^}]*white-space:nowrap/,"header público: subtítulo nunca se fragmenta");
   has(gcss,/\.jn-top-actions\{[^}]*flex-wrap:nowrap/,"header público: acciones no dependen de flex-wrap accidental");
   has(gcss,/safe-area-inset-left/,"header público: respeta safe area izquierda");
   has(gcss,/safe-area-inset-right/,"header público: respeta safe area derecha");
+  has(gcss,/body\[data-surface=client\] \.jn-topbar\{[^}]*padding-top:env\(safe-area-inset-top,0px\)/,"header público: owner sticky respeta safe area superior una sola vez");
   has(gcss,/\.jn-top-actions \.mini,[\s\S]{0,100}?\.st-notify-btn\{[^}]*min-width:44px;[^}]*min-height:44px/,"header público: controles táctiles de al menos 44px");
   has(gcss,/\.jn-top-actions \.jn-theme-btn\{[^}]*width:96px;[^}]*min-width:96px/,"header público: selector de tema reserva ancho estable");
   has(gcss,/@media\(max-width:430px\)\{[\s\S]*?\.jn-brand\{[^}]*display:grid/,"header público: identidad apilada de forma controlada hasta 430px");
-  has(gcss,/@media\(max-width:375px\)\{[\s\S]*?\[data-theme-label\]\{[^}]*clip-path:inset\(50%\)/,"header público: tema compacto conserva nombre accesible en móvil mínimo");
+  has(gcss,/@media\(max-width:430px\)\{[\s\S]*?\.jn-brand-sub\{[^}]*white-space:nowrap/,"header público: subtítulo móvil permanece en una sola línea");
+  has(gcss,/@media\(max-width:430px\)\{[\s\S]*?\.jn-theme-btn\{[^}]*width:44px;[\s\S]*?\[data-theme-label\]\{[^}]*clip-path:inset\(50%\)/,"header público: tema compacto estable conserva nombre accesible en 320–430px");
+  has(scss,/\.hero-support-aside \.support-global-notice\{[^}]*max-height:none;[^}]*overflow:visible\}/,"soporte: aviso crece completo en móvil/tablet");
+  has(scss,/@media\(min-width:1024px\)\{\s*\.hero-support-aside \.support-global-notice\{[^}]*max-height:132px;[^}]*overflow:auto\}/,"soporte: límite compacto de aviso pertenece solo a escritorio");
+  not(scss,/@media\s*\(max-width:[^)]+\)[^{]*\{[\s\S]{0,500}?\.hero-support-aside \.support-global-notice\{[^}]*max-height:132px/,"soporte: ningún owner móvil/tablet reimpone 132px");
   not(`${ecss}\n${scss}`,/(?:^|\n)\.jn-(?:topbar|topbar-inner|brand|brand-img|brand-sub|top-actions|wa-pill)(?:\{|:)/,"header público: sin owners base duplicados por página");
   not(`${gcss}\n${ecss}\n${scss}`,/\.jn-brand-sub[^,{]*\{[^}]*display\s*:\s*none/,"header público: subtítulo nunca se elimina con display:none");
   not(gcss,/\.jn-topbar-inner\{[^}]*width:100vw/,"header público: inner sin width:100vw");
+  ((gcss.match(/PUBLIC-MOBILE-HEADER-20260717/g)||[]).length===1)?ok("header público: owner compartido único"):bad("header público: owner compartido ausente o duplicado");
   for(const [page,html] of [["estado",estadoHtml],["soporte",soporteHtml]])
     has(html,/class="jn-wa-pill"[^>]*aria-label="WhatsApp 55 6843 7918"/,`${page}: WhatsApp conserva nombre accesible al ocultar el teléfono visual`);
+  for(const [page,html] of [["estado",estadoHtml],["soporte",soporteHtml]])
+    has(html,/global\.css\?r=public-responsive-20260717-03&v=frontend-final-20260716-01/,`${page}: carga la versión corregida del owner compartido dentro de la release canónica`);
 }
 
 // ---- TICKETS (Commit C) ----

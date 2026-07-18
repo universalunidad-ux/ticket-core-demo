@@ -4,8 +4,9 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Soporte Janome | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="soporte.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
+<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01"><link rel="stylesheet" href="soporte.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
 
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body data-surface="client">
 <!-- B17C43C: header público Janome con logo real y número real. -->
@@ -76,8 +77,8 @@
 
 <div class="field span-2 hidden" id="spTurnstileWrap">
   <label class="lbl">Validación de seguridad</label>
-  <div class="cf-turnstile" data-sitekey="0x4AAAAAAC_3a20019HrKmhm" data-theme="auto" data-response-field="false" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError"></div>
-  <div class="mut" id="spCaptchaStatus">Confirma la validación para enviar tu solicitud.</div>
+  <div class="cf-turnstile" data-sitekey="0x4AAAAAAD4NK1upg2cHkCuI" data-theme="auto" data-response-field="false" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError"></div>
+  <div class="mut" id="spCaptchaStatus" role="status" aria-live="polite">Confirma la validación para enviar tu solicitud.</div>
 </div>
 <div class="sp-consent" id="spConsentField"><input type="checkbox" id="spConsent" required aria-required="true" aria-describedby="spConsentError"><label for="spConsent">He leído y acepto el <a href="aviso-privacidad.html" target="_blank" rel="noopener">Aviso de privacidad</a> y los <a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a>.</label><div class="sp-field-error" id="spConsentError" aria-live="polite"></div></div>
 <div class="actions sp-send-actions"><button class="btn btn-brand" id="spSendBtn" type="submit">Enviar</button></div>
