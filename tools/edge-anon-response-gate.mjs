@@ -14,7 +14,7 @@ const FORBIDDEN = [
   "candidates", "cliente_nombre", "contacto_nombre", "magic_link",
 ];
 
-if (!existsSync(file)) { console.log("EDGE_ANON_RESPONSE_GATE: SKIP (edge no presente)"); process.exit(0); }
+if (!existsSync(file)) { console.error("EDGE_ANON_RESPONSE_GATE: FAIL — falta el Edge support-submit-secure (no se puede verificar)."); process.exit(1); }
 const src = readFileSync(file, "utf8");
 
 // Extrae argumento objeto balanceado a partir del índice de la '{'.

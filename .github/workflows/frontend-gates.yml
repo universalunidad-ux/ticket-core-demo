@@ -32,5 +32,9 @@ jobs:
         run: node tools/client-role-write-gate.mjs .
       - name: Enforce private/safe storage upload contract (U5)
         run: node tools/storage-safety-gate.mjs .
+      - name: Enforce Turnstile config before production (V2-7)
+        run: node tools/turnstile-deploy-gate.mjs .
+      - name: Run upload-contract unit tests (V2-10)
+        run: node --experimental-strip-types tools/run-contract-tests.mjs .
       - name: Reject whitespace and conflict-marker errors
         run: git diff --check HEAD^ HEAD
