@@ -99,18 +99,46 @@ const loadThumb=rec=>{if(rec.objectUrl){applyThumbImage(rec);return Promise.reso
 const loadVisibleThumbs=()=>{const ids=[...new Set([...document.querySelectorAll("[data-st-thumb]")].map(node=>node.dataset.stThumb))];ids.forEach(id=>{const rec=THUMBS.state.get(id);if(rec&&!rec.failed)loadThumb(rec)})};
 const retryThumb=id=>{const rec=THUMBS.state.get(id);if(!rec||rec.retries>=1)return;rec.retries++;rec.failed=false;if(rec.objectUrl){URL.revokeObjectURL(rec.objectUrl);rec.objectUrl=""}document.querySelectorAll(`[data-st-thumb="${id}"]`).forEach(node=>{node.classList.remove("is-error");node.innerHTML=thumbLoadingMarkup()});loadThumb(rec)};
 const bindThumbnailFallbacks=()=>{if(document.documentElement.dataset.stThumbFallbackBound)return;document.documentElement.dataset.stThumbFallbackBound="1";document.addEventListener("error",e=>{const node=e.target?.closest?.("[data-st-thumb]");if(e.target?.tagName==="IMG"&&node)showThumbFailure(node.dataset.stThumb)},true);document.addEventListener("click",e=>{const retry=e.target?.closest?.("[data-thumb-retry]");if(retry){e.preventDefault();e.stopPropagation();retryThumb(retry.dataset.thumbRetry)}},true)};
+const overlayIsOpen=el=>!!el&&!el.classList.contains("hidden");
+const setOverlayInert=(el,on)=>el?.toggleAttribute("inert",!!on);
+const syncOverlays=()=>{
+  const chat=$("#stChatPop"),backdrop=$("#stChatBackdrop"),viewer=$("#stViewer");
+  const chatOpen=ST.open&&overlayIsOpen(chat),viewerOpen=overlayIsOpen(viewer);
+  const inertBackground=chatOpen||viewerOpen;
+  document.querySelectorAll("body > header, body > main, #stChatFab, #stNotifyPanel, #stHelpPop").forEach(el=>setOverlayInert(el,inertBackground));
+  setOverlayInert(chat,viewerOpen);
+  setOverlayInert(backdrop,viewerOpen);
+  setOverlayInert(viewer,false);
+  document.body.classList.toggle("st-chat-open",inertBackground);
+  const activeOverlay=viewerOpen?viewer:chatOpen?chat:null;
+  console.assert(!activeOverlay||activeOverlay.closest("[inert]")===null,"ACTIVE_OVERLAY_MUST_NOT_BE_INERT");
+  return{chatOpen,viewerOpen,activeOverlay};
+};
+const overlayFocusable=overlay=>overlay?[...overlay.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(el=>!el.hidden&&!el.closest(".hidden")&&el.getClientRects().length):[];
+const trapOverlayFocus=(e,overlay)=>{
+  if(e.key!=="Tab"||!overlay)return;
+  const focusable=overlayFocusable(overlay);
+  if(!focusable.length){e.preventDefault();return}
+  const first=focusable[0],last=focusable[focusable.length-1],current=document.activeElement;
+  if(!overlay.contains(current)){e.preventDefault();(e.shiftKey?last:first).focus()}
+  else if(e.shiftKey&&current===first){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&current===last){e.preventDefault();first.focus()}
+};
+const bindOverlayFocusTrap=overlay=>{if(overlay&&!overlay.onkeydown)overlay.onkeydown=e=>{if(e.key==="Tab"&&syncOverlays().activeOverlay===overlay)trapOverlayFocus(e,overlay)}};
+const validFocusTarget=el=>!!el&&document.contains(el)&&!el.closest(".hidden")&&!el.closest("[inert]");
+const restoreOverlayFocus=(preferred,fallback)=>{try{(validFocusTarget(preferred)?preferred:fallback)?.focus?.()}catch{}};
 /* ====== B17C45 — visor público único (carrusel) ====== */
-const VW={list:[],idx:0,retries:0};
+const VW={list:[],idx:0,retries:0,lastFocus:null};
 const vwRender=(resetRetry=true)=>{const it=VW.list[VW.idx];if(!it)return;const rec=THUMBS.state.get(it.thumbId);if(resetRetry)VW.retries=rec?.retries||0;const img=$("#stViewerImg"),error=$("#stViewerError"),retry=$("#stViewerRetry");error?.classList.add("hidden");retry?.classList.add("hidden");if(img){img.alt=it.name||"";if(rec?.objectUrl){img.classList.remove("hidden");img.src=rec.objectUrl}else{img.removeAttribute("src");img.classList.add("hidden")}}setTxt("stViewerName",it.name||"Imagen");setTxt("stViewerCount",VW.list.length>1?`${VW.idx+1} / ${VW.list.length}`:"");const open=$("#stViewerOpen");if(open)open.href=it.url;$("#stViewerPrev")?.classList.toggle("hidden",VW.list.length<2);$("#stViewerNext")?.classList.toggle("hidden",VW.list.length<2);if(!rec?.objectUrl){if(rec?.failed){if(error){error.textContent="Imagen no disponible.";error.classList.remove("hidden")}retry?.classList.toggle("hidden",(rec?.retries||0)>=1)}else if(rec){if(error){error.textContent="Cargando imagen…";error.classList.remove("hidden")}const idx=VW.idx;loadThumb(rec).then(()=>{if(VW.idx===idx&&!$("#stViewer")?.classList.contains("hidden"))vwRender(false)})}}};
-const openViewer=i=>{if(!VW.list.length)return;VW.idx=Math.max(0,Math.min(Number(i)||0,VW.list.length-1));$("#stViewer")?.classList.remove("hidden");$("#stViewer")?.setAttribute("aria-hidden","false");vwRender()};
-const closeViewer=()=>{$("#stViewer")?.classList.add("hidden");$("#stViewer")?.setAttribute("aria-hidden","true")};
+const openViewer=i=>{if(!VW.list.length)return;VW.lastFocus=document.activeElement;VW.idx=Math.max(0,Math.min(Number(i)||0,VW.list.length-1));$("#stViewer")?.classList.remove("hidden");$("#stViewer")?.setAttribute("aria-hidden","false");bindOverlayFocusTrap($("#stViewer"));syncOverlays();vwRender();setTimeout(()=>$("#stViewerClose")?.focus(),0)};
+const closeViewer=()=>{if(!overlayIsOpen($("#stViewer")))return;$("#stViewer")?.classList.add("hidden");$("#stViewer")?.setAttribute("aria-hidden","true");const{chatOpen}=syncOverlays();const fallback=chatOpen?$("#stChatClose"):validFocusTarget(ST.lastFocus)?ST.lastFocus:$("#stChatFab");restoreOverlayFocus(VW.lastFocus,fallback);VW.lastFocus=null;if(!chatOpen)ST.lastFocus=null};
 const vwNav=d=>{if(VW.list.length<2)return;VW.idx=(VW.idx+d+VW.list.length)%VW.list.length;vwRender()};
 const setTab=tab=>{ST.tab=tab;$("#stTabHistory")?.classList.toggle("is-active",tab==="history");$("#stTabFiles")?.classList.toggle("is-active",tab==="files");$("#stPanelHistory")?.classList.toggle("hidden",tab!=="history");$("#stPanelFiles")?.classList.toggle("hidden",tab!=="files")};
 const markStillPending=()=>{openChat();const msg="El caso sigue pendiente. Comparto más contexto para que lo revisen por favor.";$("#stReplyTextPop")&&($("#stReplyTextPop").value=msg);$("#stReplyTextPop")?.focus();$("#stReplyStatus")&&($("#stReplyStatus").textContent="Puedes explicar en la conversación por qué el caso sigue pendiente.");$("#stReplyStatusPop")&&($("#stReplyStatusPop").textContent="Puedes explicar aquí por qué el caso sigue pendiente.")};
-/* B17C45: drawer — bloquea scroll del body, oculta FAB y restaura foco al FAB */
-const openChat=()=>{ST.open=true;ST.lastFocus=document.activeElement;document.body.classList.add("st-chat-open");$("#stChatPop")?.classList.remove("hidden");$("#stChatBackdrop")?.classList.remove("hidden");$("#stChatPop")?.setAttribute("aria-hidden","false");$("#stChatBadge")?.classList.add("hidden");$("#stChatFab")?.classList.remove("is-warn","is-strong");const focusTarget=!$("#stChatCompose")?.classList.contains("hidden")?$("#stReplyTextPop"):$("#stChatClose");setTimeout(()=>{scrollChatToEnd();focusTarget?.focus?.()},40)};
+/* B17C45: drawer — bloquea scroll del body, oculta FAB y restaura foco al disparador */
+const openChat=()=>{if(!ST.open)ST.lastFocus=document.activeElement;ST.open=true;$("#stChatPop")?.classList.remove("hidden");$("#stChatBackdrop")?.classList.remove("hidden");$("#stChatPop")?.setAttribute("aria-hidden","false");$("#stChatBadge")?.classList.add("hidden");$("#stChatFab")?.classList.remove("is-warn","is-strong");bindOverlayFocusTrap($("#stChatPop"));const{viewerOpen}=syncOverlays();const focusTarget=!$("#stChatCompose")?.classList.contains("hidden")?$("#stReplyTextPop"):$("#stChatClose");setTimeout(()=>{scrollChatToEnd();if(!viewerOpen)focusTarget?.focus?.()},40)};
 const toggleReplyHelp=force=>{const panel=$("#stChatReplyHelp"),btn=$("#stChatHelpToggle"),on=typeof force==="boolean"?force:panel?.classList.contains("hidden");panel?.classList.toggle("hidden",!on);btn?.setAttribute("aria-expanded",String(!!on));return!!on};
-const closeChat=()=>{if(!ST.open)return;toggleReplyHelp(false);ST.open=false;document.body.classList.remove("st-chat-open");$("#stChatPop")?.classList.add("hidden");$("#stChatBackdrop")?.classList.add("hidden");$("#stChatPop")?.setAttribute("aria-hidden","true");try{(ST.lastFocus&&document.contains(ST.lastFocus)?ST.lastFocus:$("#stChatFab"))?.focus?.()}catch{}ST.lastFocus=null};
+const closeChat=()=>{if(!ST.open)return;toggleReplyHelp(false);ST.open=false;$("#stChatPop")?.classList.add("hidden");$("#stChatBackdrop")?.classList.add("hidden");$("#stChatPop")?.setAttribute("aria-hidden","true");const{viewerOpen}=syncOverlays();if(!viewerOpen){restoreOverlayFocus(ST.lastFocus,$("#stChatFab"));ST.lastFocus=null}};
 const toggleHelp=force=>{const on=typeof force==="boolean"?force:$("#stHelpPop")?.classList.contains("hidden");$("#stHelpPop")?.classList.toggle("hidden",!on);$("#stHelpPop")?.setAttribute("aria-hidden",on?"false":"true");$("#stHelpBtn")?.setAttribute("aria-expanded",String(!!on))};
 const sigOf=t=>JSON.stringify({estado:t?.estado||"",updated:t?.fecha_actualizacion||"",timeline:Array.isArray(t?.timeline_publica)?t.timeline_publica.length:0,adjuntos:Array.isArray(t?.adjuntos)?t.adjuntos.length:0});
 const notifyAllowed=()=>("Notification"in window)&&Notification.permission==="granted";
