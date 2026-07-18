@@ -18,7 +18,10 @@ const supportReturnTarget=()=>{const params=new URLSearchParams(location.search)
 const mountSupportBack=()=>{const btn=$("#supportBack"),target=supportReturnTarget();if(!btn)return;btn.hidden=!target;if(target)btn.href=target;else btn.removeAttribute("href")};
 
 ST.match=null;
-const TURNSTILE_ENABLED=false;
+const TURNSTILE_SITEKEY=(typeof document!=="undefined"?(document.querySelector(".cf-turnstile")?.getAttribute("data-sitekey")||""):"").trim();
+// Dev EXPLÍCITO vía config; por defecto se habilita si hay site key real.
+const TURNSTILE_DEV=(globalThis.TICKET_CORE_CONFIG?.turnstileMode==="off");
+const TURNSTILE_ENABLED=!!TURNSTILE_SITEKEY && !/^0x0+$|^DEV$|PLACEHOLDER/i.test(TURNSTILE_SITEKEY) && !TURNSTILE_DEV;
 let TURNSTILE_TOKEN="";
 let SUPPORT_SENDING=false;
 const extOf=name=>((name||"").split(".").pop()||"").toLowerCase();
@@ -333,6 +336,7 @@ const send=async e=>{
 
   }catch(ex){
     stopSubmitFeedback();
+    resetTurnstile(); // token de un solo uso: renovar para el reintento
     console.error("SUPPORT_SEND_ERROR",ex);
 
     setStatus(
@@ -400,7 +404,7 @@ const bindB17C43B=()=>{
 /* B17C43E-R2: hijack de rueda retirado. El scroll ahora es documento
    natural (ver soporte.css); no se secuestra el wheel del hero/recibo. */
 
-document.addEventListener("DOMContentLoaded",async()=>{mountSupportBack();const box=document.createElement("div");box.id="spFilesMeta";box.className="list";$("#spFiles")?.closest(".field")?.appendChild(box);const fst=document.createElement("div");fst.id="spFilesStatus";fst.className="sp-files-status mut";fst.hidden=true;$("#spFiles")?.closest(".field")?.appendChild(fst);poblarSelect($("#spSystem"));montarBuscadorEquipo($("#spSystem"),$("#spEquipoCombo"));bind();$("#spSystem")?.addEventListener("change",preview);preview();renderFiles();renderFaq(null);evalFaq();syncUrgentUi();syncWhats();syncOtro();hydrateKnownIdentity();bindB17C43B();if(restoreDraft()){preview();evalFaq();setStatus("Recuperamos tus datos. Si habías adjuntado un archivo, vuelve a seleccionarlo para enviarlo.","ok")}if(!TURNSTILE_ENABLED)$("#spTurnstileWrap")?.classList.add("hidden");await loadGlobalNotice()});
+document.addEventListener("DOMContentLoaded",async()=>{mountSupportBack();const box=document.createElement("div");box.id="spFilesMeta";box.className="list";$("#spFiles")?.closest(".field")?.appendChild(box);const fst=document.createElement("div");fst.id="spFilesStatus";fst.className="sp-files-status mut";fst.hidden=true;$("#spFiles")?.closest(".field")?.appendChild(fst);poblarSelect($("#spSystem"));montarBuscadorEquipo($("#spSystem"),$("#spEquipoCombo"));bind();$("#spSystem")?.addEventListener("change",preview);preview();renderFiles();renderFaq(null);evalFaq();syncUrgentUi();syncWhats();syncOtro();hydrateKnownIdentity();bindB17C43B();if(restoreDraft()){preview();evalFaq();setStatus("Recuperamos tus datos. Si habías adjuntado un archivo, vuelve a seleccionarlo para enviarlo.","ok")}if(!TURNSTILE_ENABLED)$("#spTurnstileWrap")?.classList.add("hidden");else $("#spTurnstileWrap")?.classList.remove("hidden");await loadGlobalNotice()});
 window.onTurnstileSuccess=token=>{TURNSTILE_TOKEN=token||"";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="Validación correcta.");};
 window.onTurnstileExpired=()=>{TURNSTILE_TOKEN="";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="La validación expiró. Confírmela de nuevo.");};
 window.onTurnstileError=()=>{TURNSTILE_TOKEN="";$("#spCaptchaStatus")&&($("#spCaptchaStatus").textContent="No se pudo validar. Intente de nuevo.");};

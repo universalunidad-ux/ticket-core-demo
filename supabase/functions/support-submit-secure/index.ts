@@ -8,7 +8,11 @@ const RESEND_API_KEY=Deno.env.get("RESEND_API_KEY")||"";
 const MAIL_FROM=Deno.env.get("MAIL_FROM")||"Expiriti <soporte@expiriti.com.mx>";
 const sb=createClient(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY);
 // SECURITY U3: control de abuso del endpoint público
-const IS_PROD=(Deno.env.get("ENVIRONMENT")||"").toLowerCase()==="production";
+const ENVIRONMENT=(Deno.env.get("ENVIRONMENT")||"").toLowerCase();
+// Dev debe ser EXPLÍCITO. La ausencia de ENVIRONMENT se asume PRODUCCIÓN (fail-closed),
+// nunca abre el antiabuso por olvido de configuración.
+const IS_DEV=["development","dev","local"].includes(ENVIRONMENT);
+const IS_PROD=!IS_DEV;
 const REQUIRE_TURNSTILE_EFFECTIVE=((Deno.env.get("REQUIRE_TURNSTILE")||(IS_PROD?"true":"false")).toLowerCase()==="true");
 const MAX_BODY_BYTES=Number(Deno.env.get("MAX_BODY_BYTES")||(64*1024*1024));
 const DEFAULT_ORIGINS=[PUBLIC_APP_URL,"https://universalunidad-ux.github.io"].filter(Boolean);
