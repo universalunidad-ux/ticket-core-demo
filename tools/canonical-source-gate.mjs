@@ -87,6 +87,37 @@ function canonicalExternal(value) {
   } catch { return null; }
 }
 
+function canonicalRemote(value) {
+  return String(value || "").trim().replace(/\/+$/, "").replace(/\.git$/i, "");
+}
+
+function allowedImplementationBranch(manifest, branch) {
+  if (!branch || branch === "main") return false;
+  return (manifest.allowed_branch?.allowed_prefixes || []).some((prefix) => branch.startsWith(prefix));
+}
+
+function ciBranchContext(manifest, env, fail) {
+  const event = env.GITHUB_EVENT_NAME || "";
+  const policy = manifest.ci_event_policy || {};
+  if (!policy.expected_repository || env.GITHUB_REPOSITORY !== policy.expected_repository)
+    fail("CI_REPOSITORY_MISMATCH", env.GITHUB_REPOSITORY || "missing");
+  if (!(policy.allowed_events || []).includes(event)) {
+    fail("CI_EVENT_NOT_ALLOWED", event || "missing");
+    return "";
+  }
+  if (event === "pull_request") {
+    const headRef = env.GITHUB_HEAD_REF || "";
+    if (!headRef || !allowedImplementationBranch(manifest, headRef)) fail("CI_REF_NOT_ALLOWED", headRef || "missing");
+    if (policy.require_github_ref_context && !/^refs\/pull\/\d+\/(?:merge|head)$/.test(env.GITHUB_REF || ""))
+      fail("CI_REF_CONTEXT_INVALID", env.GITHUB_REF || "missing");
+    return headRef;
+  }
+  const refName = env.GITHUB_REF_NAME || String(env.GITHUB_REF || "").replace(/^refs\/heads\//, "");
+  if (!(policy.allowed_push_branches || []).includes(refName)) fail("CI_PUSH_REF_NOT_ALLOWED", refName || "missing");
+  if (policy.require_github_ref_context && env.GITHUB_REF !== `refs/heads/${refName}`) fail("CI_REF_CONTEXT_INVALID", env.GITHUB_REF || "missing");
+  return refName;
+}
+
 function resolveLocalRef(root, owner, value) {
   const clean = normalizeRef(value);
   if (/^(?:https?:)?\/\//i.test(clean) || /^[a-z]+:/i.test(clean)) return null;
@@ -113,11 +144,11 @@ function activeEntrypointPath(entrypoint) {
   return typeof entrypoint === "string" ? entrypoint : entrypoint?.path;
 }
 
-function externalPolicy(root, manifest, fail) {
+function externalPolicy(sourceRoot, gitRoot, manifest, fail) {
   const owner = manifest.external_resource_policy_owner;
   if (!owner?.path || !owner?.symbol) { fail("EXTERNAL_POLICY_OWNER_INVALID", "path/symbol required"); return new Set(); }
-  const file = resolve(root, owner.path);
-  if (!inside(root, file) || !existsSync(file) || !isTracked(root, owner.path)) {
+  const file = resolve(sourceRoot, owner.path);
+  if (!inside(sourceRoot, file) || !existsSync(file) || !isTracked(gitRoot, owner.path)) {
     fail("EXTERNAL_POLICY_OWNER_MISSING", owner.path);
     return new Set();
   }
@@ -139,6 +170,10 @@ function validateManifestShape(manifest, fail) {
   if (manifest.product !== "ticket-core-demo") fail("PRODUCT_MISMATCH", manifest.product || "missing");
   if (manifest.allowed_branch?.policy !== "prefix" || !manifest.allowed_branch?.implementation_branch || !manifest.allowed_branch?.allowed_prefixes?.length)
     fail("BRANCH_POLICY", "prefix policy and implementation branch required");
+  if (manifest.allowed_branch?.main_direct_implementation_allowed !== false || manifest.allowed_branch?.allowed_prefixes?.includes("main"))
+    fail("MAIN_BRANCH_POLICY", "main direct implementation must remain disabled");
+  if (!manifest.ci_event_policy?.allowed_events?.length || !manifest.ci_event_policy?.allowed_push_branches?.length)
+    fail("CI_EVENT_POLICY", "allowed events and push branches required");
   if (manifest.worktree_policy?.mode !== "registered_worktree_of_canonical_common_git_dir")
     fail("WORKTREE_POLICY", "canonical common git dir membership required");
   if (manifest.repository_policy?.head?.mode !== "descendant_of_base" || !manifest.repository_policy?.head?.expected_base_head)
@@ -156,13 +191,17 @@ function validateManifestShape(manifest, fail) {
   for (const key of secretKeys) fail("SECRET_FIELD_FORBIDDEN", key);
 }
 
-export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, allowBootstrap = false, env = process.env }) {
+export function evaluateGate({ root: rawRoot, sourceRoot: rawSourceRoot, manifestPath: rawManifestPath, mode = "normal", allowBootstrap = false, env = process.env }) {
   const failures = [];
   const checks = [];
   const fail = (code, detail) => failures.push({ code, detail: String(detail) });
   const pass = (code) => checks.push(code);
   const root = resolve(rawRoot || ".");
-  const manifestPath = resolve(rawManifestPath || join(root, DEFAULT_MANIFEST));
+  const sourceRoot = resolve(rawSourceRoot || root);
+  const manifestPath = resolve(rawManifestPath || join(sourceRoot, DEFAULT_MANIFEST));
+
+  if (!["normal", "pre-commit", "ci"].includes(mode))
+    return { ok: false, failures: [{ code: "MODE_INVALID", detail: mode }], checks };
 
   if (!existsSync(manifestPath)) return { ok: false, failures: [{ code: "MANIFEST_MISSING", detail: manifestPath }], checks };
   let manifest;
@@ -170,14 +209,15 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
   catch { return { ok: false, failures: [{ code: "MANIFEST_INVALID_JSON", detail: manifestPath }], checks }; }
   validateManifestShape(manifest, fail);
 
-  if (!inside(root, manifestPath)) fail("MANIFEST_OUTSIDE_REPO", manifestPath);
-  if (isNoncanonical(relative(root, manifestPath), manifest.noncanonical_patterns || [])) fail("MANIFEST_NONCANONICAL", manifestPath);
+  if (!inside(sourceRoot, manifestPath)) fail("MANIFEST_OUTSIDE_REPO", manifestPath);
+  if (isNoncanonical(relative(sourceRoot, manifestPath), manifest.noncanonical_patterns || [])) fail("MANIFEST_NONCANONICAL", manifestPath);
   for (const privateRoot of manifest.private_product_roots || []) {
     if (samePath(root, privateRoot) || samePath(manifest.canonical_repo, privateRoot)) fail("PRIVATE_PRODUCT_AS_DEMO", privateRoot);
   }
 
-  const inCi = env.CI === "true" || env.GITHUB_ACTIONS === "true";
+  const inCi = env.CI === "true" && env.GITHUB_ACTIONS === "true";
   const ciAllowed = manifest.repository_policy?.ci_checkout_allowed === true;
+  if (inCi && !ciAllowed) fail("CI_CHECKOUT_NOT_ALLOWED", "repository policy");
   let top = "", common = "", gitDir = "", head = "", branch = "", remote = "";
   try {
     top = git(root, ["rev-parse", "--show-toplevel"]).stdout;
@@ -191,9 +231,11 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
   }
 
   if (top && !samePath(top, root)) fail("REPO_ROOT_MISMATCH", top);
-  if (remote && remote !== manifest.expected_remote) fail("REMOTE_MISMATCH", remote);
-  if (branch && !(manifest.allowed_branch?.allowed_prefixes || []).some((prefix) => branch.startsWith(prefix))) fail("BRANCH_MISMATCH", branch);
-  if (!branch) fail("DETACHED_HEAD", head || "unknown");
+  if (remote && canonicalRemote(remote) !== canonicalRemote(manifest.expected_remote)) fail("REMOTE_MISMATCH", remote);
+  let effectiveBranch = branch;
+  if (inCi && ciAllowed) effectiveBranch = ciBranchContext(manifest, env, fail);
+  else if (!branch) fail("DETACHED_HEAD", head || "unknown");
+  else if (!allowedImplementationBranch(manifest, branch)) fail("BRANCH_MISMATCH", branch);
   const canonicalCommon = join(manifest.canonical_repo || "", ".git");
   if (!inCi && manifest.repository_policy?.common_git_dir && !samePath(manifest.repository_policy.common_git_dir, canonicalCommon))
     fail("CANONICAL_COMMON_GIT_DIR_MISMATCH", manifest.repository_policy.common_git_dir);
@@ -214,14 +256,17 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
 
   const dirty = head ? changedPaths(root) : [];
   if (dirty.length) {
-    const bootstrap = new Set(manifest.bootstrap_files || []);
-    const staged = new Set(git(root, ["diff", "--cached", "--name-only"], true).stdout.split("\n").filter(Boolean));
-    const unstaged = git(root, ["diff", "--name-only"], true).stdout.split("\n").filter(Boolean);
-    const onlyBootstrap = dirty.every((path) => bootstrap.has(path));
-    const allBootstrapStaged = [...bootstrap].every((path) => staged.has(path));
-    if (!(allowBootstrap && head === base && onlyBootstrap && allBootstrapStaged && unstaged.length === 0))
-      fail("WORKTREE_DIRTY", dirty.join(","));
-    else pass("BOOTSTRAP_CHANGES_ISOLATED");
+    if (mode === "pre-commit") pass("INDEX_CANDIDATE_MODE");
+    else {
+      const bootstrap = new Set(manifest.bootstrap_files || []);
+      const staged = new Set(git(root, ["diff", "--cached", "--name-only"], true).stdout.split("\n").filter(Boolean));
+      const unstaged = git(root, ["diff", "--name-only"], true).stdout.split("\n").filter(Boolean);
+      const onlyBootstrap = dirty.every((path) => bootstrap.has(path));
+      const allBootstrapStaged = [...bootstrap].every((path) => staged.has(path));
+      if (!(allowBootstrap && head === base && onlyBootstrap && allBootstrapStaged && unstaged.length === 0))
+        fail("WORKTREE_DIRTY", dirty.join(","));
+      else pass("BOOTSTRAP_CHANGES_ISOLATED");
+    }
   }
 
   const ownerIds = new Set(), ownerPaths = new Set();
@@ -230,17 +275,17 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
     if (ownerIds.has(owner.id)) fail("DUPLICATE_OWNER_ID", owner.id);
     if (ownerPaths.has(owner.path)) fail("DUPLICATE_OWNER_PATH", owner.path);
     ownerIds.add(owner.id); ownerPaths.add(owner.path);
-    const target = resolve(root, owner.path);
-    if (!inside(root, target) || isNoncanonical(owner.path, manifest.noncanonical_patterns || [])) fail("OWNER_NONCANONICAL", owner.path);
+    const target = resolve(sourceRoot, owner.path);
+    if (!inside(sourceRoot, target) || isNoncanonical(owner.path, manifest.noncanonical_patterns || [])) fail("OWNER_NONCANONICAL", owner.path);
     else if (!existsSync(target)) fail("OWNER_MISSING", owner.path);
     else if (!isTracked(root, owner.path)) fail("OWNER_UNTRACKED", owner.path);
   }
 
   for (const path of manifest.specialized_gate_owners || []) {
-    if (!existsSync(resolve(root, path)) || !isTracked(root, path)) fail("SPECIALIZED_GATE_OWNER_MISSING", path);
+    if (!existsSync(resolve(sourceRoot, path)) || !isTracked(root, path)) fail("SPECIALIZED_GATE_OWNER_MISSING", path);
   }
 
-  const allowedExternal = externalPolicy(root, manifest, fail);
+  const allowedExternal = externalPolicy(sourceRoot, root, manifest, fail);
   const activeRuntime = new Set();
   const runtimeQueue = [];
   for (const entrypointRecord of manifest.active_entrypoints || []) {
@@ -249,8 +294,8 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
       fail("ENTRYPOINT_INVALID", entrypoint || "missing");
       continue;
     }
-    const file = resolve(root, entrypoint);
-    if (!inside(root, file) || isNoncanonical(entrypoint, manifest.noncanonical_patterns || [])) { fail("ENTRYPOINT_NONCANONICAL", entrypoint); continue; }
+    const file = resolve(sourceRoot, entrypoint);
+    if (!inside(sourceRoot, file) || isNoncanonical(entrypoint, manifest.noncanonical_patterns || [])) { fail("ENTRYPOINT_NONCANONICAL", entrypoint); continue; }
     if (!existsSync(file)) { fail("ENTRYPOINT_MISSING", entrypoint); continue; }
     if (!isTracked(root, entrypoint)) fail("ENTRYPOINT_UNTRACKED", entrypoint);
     activeRuntime.add(entrypoint); runtimeQueue.push(file);
@@ -263,10 +308,10 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
         if (!canonical || !allowedExternal.has(canonical)) fail("EXTERNAL_RESOURCE_NOT_ALLOWED", `${entrypoint}:${raw}`);
         continue;
       }
-      const target = resolveLocalRef(root, file, raw);
-      if (!target || !inside(root, target) || !existsSync(target)) fail("HTML_ACTIVE_REF_MISSING", `${entrypoint}:${raw}`);
+      const target = resolveLocalRef(sourceRoot, file, raw);
+      if (!target || !inside(sourceRoot, target) || !existsSync(target)) fail("HTML_ACTIVE_REF_MISSING", `${entrypoint}:${raw}`);
       else {
-        const rel = relative(root, target).replaceAll("\\", "/");
+        const rel = relative(sourceRoot, target).replaceAll("\\", "/");
         activeRuntime.add(rel);
         if (/\.(?:js|mjs)$/.test(rel)) runtimeQueue.push(target);
       }
@@ -280,9 +325,12 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
     visitedRuntime.add(file);
     if (!/\.(?:js|mjs)$/.test(file)) continue;
     for (const raw of jsLocalRefs(readFileSync(file, "utf8"))) {
-      const target = resolveLocalRef(root, file, raw);
-      if (!target || !inside(root, target) || !existsSync(target)) continue;
-      const rel = relative(root, target).replaceAll("\\", "/");
+      const owner = relative(sourceRoot, file).replaceAll("\\", "/");
+      if ((manifest.private_product_roots || []).some((privateRoot) => raw.includes(privateRoot))) { fail("PRIVATE_PRODUCT_AS_DEMO", `${owner}:${raw}`); continue; }
+      if (isNoncanonical(raw, manifest.noncanonical_patterns || [])) { fail("ACTIVE_NONCANONICAL_SOURCE", `${owner}:${raw}`); continue; }
+      const target = resolveLocalRef(sourceRoot, file, raw);
+      if (!target || !inside(sourceRoot, target) || !existsSync(target)) { fail("ACTIVE_IMPORT_MISSING", `${owner}:${raw}`); continue; }
+      const rel = relative(sourceRoot, target).replaceAll("\\", "/");
       activeRuntime.add(rel); runtimeQueue.push(target);
     }
   }
@@ -298,14 +346,21 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
 
   const externalized = new Map();
   for (const owner of manifest.externalized_owners || []) {
-    if (!owner?.name || owner.type !== "edge-function" || owner.classification !== "EXTERNALIZED_EXPLICIT" || !owner.reason) { fail("EXTERNAL_OWNER_INVALID", owner?.name || "missing"); continue; }
+    if (!owner?.name || owner.type !== "edge-function" || owner.classification !== "EXTERNALIZED_EXPLICIT" || !owner.reason || !owner.caller || !owner.contract_owner || !owner.status) {
+      fail("EXTERNAL_OWNER_INVALID", owner?.name || "missing"); continue;
+    }
     if (externalized.has(owner.name)) fail("DUPLICATE_EXTERNAL_OWNER", owner.name);
+    if (!activeRuntime.has(owner.caller)) fail("EXTERNAL_OWNER_CALLER_NOT_ACTIVE", `${owner.name}:${owner.caller}`);
+    if (!existsSync(resolve(sourceRoot, owner.contract_owner)) || !isTracked(root, owner.contract_owner))
+      fail("EXTERNAL_OWNER_CONTRACT_MISSING", `${owner.name}:${owner.contract_owner}`);
     externalized.set(owner.name, owner);
   }
   const requiredLocal = new Map();
   for (const owner of manifest.required_edge_owners || []) {
     if (!owner?.name || owner.classification !== "REQUIRED_LOCAL" || !owner.path || !owner.caller) { fail("REQUIRED_EDGE_OWNER_INVALID", owner?.name || "missing"); continue; }
     if (requiredLocal.has(owner.name)) fail("DUPLICATE_REQUIRED_EDGE_OWNER", owner.name);
+    if (!activeRuntime.has(owner.caller)) fail("REQUIRED_EDGE_CALLER_NOT_ACTIVE", `${owner.name}:${owner.caller}`);
+    if (!existsSync(resolve(sourceRoot, owner.path)) || !isTracked(root, owner.path)) fail("EDGE_OWNER_MISSING", owner.name);
     requiredLocal.set(owner.name, owner);
   }
   const historical = new Map();
@@ -319,11 +374,11 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
     if (categories > 1) fail("EDGE_CLASSIFICATION_COLLISION", name);
   }
   const tracked = head ? git(root, ["ls-files"]).stdout.split("\n").filter(Boolean) : [];
-  const sourceFiles = tracked.filter((path) => /^app\/.*\.(?:html|js|mjs)$/.test(path) && !isNoncanonical(path, manifest.noncanonical_patterns || []));
+  const sourceFiles = [...activeRuntime].filter((path) => /^app\/.*\.(?:html|js|mjs)$/.test(path) && !isNoncanonical(path, manifest.noncanonical_patterns || []));
   const edgeNames = new Set();
-  for (const path of sourceFiles) for (const name of staticEdgeNames(readFileSync(join(root, path), "utf8"))) edgeNames.add(name);
+  for (const path of sourceFiles) for (const name of staticEdgeNames(readFileSync(join(sourceRoot, path), "utf8"))) edgeNames.add(name);
   for (const name of edgeNames) {
-    const ownerDir = join(root, "supabase/functions", name);
+    const ownerDir = join(sourceRoot, "supabase/functions", name);
     const localOwner = existsSync(ownerDir) && statSync(ownerDir).isDirectory() && ["index.ts", "index.js", "index.mjs"].some((file) => isTracked(root, `supabase/functions/${name}/${file}`));
     if (historical.has(name)) fail("HISTORICAL_OWNER_ACTIVE", name);
     else if (requiredLocal.has(name)) {
@@ -347,19 +402,22 @@ export function evaluateGate({ root: rawRoot, manifestPath: rawManifestPath, all
   if (!failures.length) {
     pass("IDENTITY"); pass("GIT_STATE"); pass("ACTIVE_FILES"); pass("NONCANONICAL_SOURCES"); pass("EDGE_AND_MIGRATIONS"); pass("PRODUCT_BOUNDARY");
   }
-  return { ok: failures.length === 0, failures, checks, metadata: { head, branch, edgeOwnersChecked: edgeNames.size, entrypointsChecked: (manifest.active_entrypoints || []).length } };
+  return { ok: failures.length === 0, failures, checks, metadata: { head, branch: effectiveBranch, edgeOwnersChecked: edgeNames.size, entrypointsChecked: (manifest.active_entrypoints || []).length, activeRuntimeFiles: activeRuntime.size } };
 }
 
 function parseArgs(argv) {
-  const args = { root: ".", manifestPath: "", allowBootstrap: false };
+  const args = { root: ".", sourceRoot: "", manifestPath: "", mode: "normal", allowBootstrap: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--root") args.root = argv[++i];
+    else if (argv[i] === "--source-root") args.sourceRoot = argv[++i];
     else if (argv[i] === "--manifest") args.manifestPath = argv[++i];
+    else if (argv[i] === "--mode") args.mode = argv[++i];
     else if (argv[i] === "--allow-bootstrap") args.allowBootstrap = true;
     else throw new Error(`argumento no reconocido: ${argv[i]}`);
   }
   args.root = resolve(args.root);
-  args.manifestPath = resolve(args.manifestPath || join(args.root, DEFAULT_MANIFEST));
+  args.sourceRoot = resolve(args.sourceRoot || args.root);
+  args.manifestPath = resolve(args.manifestPath || join(args.sourceRoot, DEFAULT_MANIFEST));
   return args;
 }
 
@@ -378,4 +436,4 @@ function main() {
   console.log(`CANONICAL_BRANCH=${result.metadata.branch}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) main();

@@ -15,7 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+      - name: Enforce canonical source and anti-drift context
+        run: node tools/preflight.mjs --mode ci
       - name: Validate final Pages artifact
         run: node tools/frontend-gates.mjs .
       - name: Scan forbidden secrets and local config

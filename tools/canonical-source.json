@@ -1,5 +1,5 @@
 {
-  "gate_version": "1.0.0",
+  "gate_version": "1.1.0",
   "product": "ticket-core-demo",
   "canonical_repo": "/Users/jaziel/Documents/EXPIRITI_REPOS_PUBLIC/ticket-core-demo",
   "expected_remote": "https://github.com/universalunidad-ux/ticket-core-demo.git",
@@ -17,10 +17,17 @@
     },
     "worktree": "clean"
   },
+  "ci_event_policy": {
+    "expected_repository": "universalunidad-ux/ticket-core-demo",
+    "allowed_events": ["pull_request", "push"],
+    "allowed_push_branches": ["main"],
+    "require_github_ref_context": true
+  },
   "allowed_branch": {
     "policy": "prefix",
     "implementation_branch": "review/backend-security-v2-20260718",
-    "allowed_prefixes": ["review/"]
+    "allowed_prefixes": ["review/", "fix/", "feat/", "chore/", "sec/", "docs/", "test/"],
+    "main_direct_implementation_allowed": false
   },
   "known_pr_context": {
     "number": 6,
@@ -56,7 +63,12 @@
     { "id": "canonical-manifest", "responsibility": "canonical-source-contract", "path": "tools/canonical-source.json" },
     { "id": "canonical-gate", "responsibility": "canonical-source-enforcement", "path": "tools/canonical-source-gate.mjs" },
     { "id": "canonical-gate-tests", "responsibility": "canonical-source-test-owner", "path": "tools/canonical-source-gate.test.mjs" },
-    { "id": "canonical-continuity-doc", "responsibility": "canonical-source-continuity", "path": "docs/CANONICAL_SOURCE.md" }
+    { "id": "canonical-continuity-doc", "responsibility": "canonical-source-continuity", "path": "docs/CANONICAL_SOURCE.md" },
+    { "id": "canonical-preflight", "responsibility": "canonical-preflight-orchestration", "path": "tools/preflight.mjs" },
+    { "id": "canonical-preflight-tests", "responsibility": "canonical-preflight-test-owner", "path": "tools/preflight.test.mjs" },
+    { "id": "canonical-hook-installer", "responsibility": "canonical-hook-installation", "path": "tools/install-git-hooks.mjs" },
+    { "id": "canonical-precommit-hook", "responsibility": "canonical-precommit-entrypoint", "path": ".githooks/pre-commit" },
+    { "id": "canonical-ci-workflow", "responsibility": "canonical-ci-enforcement", "path": ".github/workflows/frontend-gates.yml" }
   ],
   "required_edge_owners": [
     {
@@ -71,30 +83,47 @@
       "name": "crear-cliente-janome",
       "type": "edge-function",
       "classification": "EXTERNALIZED_EXPLICIT",
+      "caller": "app/alta-cliente.js",
+      "contract_owner": "tools/canonical-source.json",
+      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
       "reason": "El frontend comprueba disponibilidad; el owner desplegado no pertenece a este worktree."
     },
     {
       "name": "ticket-escalar-admin",
       "type": "edge-function",
       "classification": "EXTERNALIZED_EXPLICIT",
+      "caller": "app/ticket-composer-polish.js",
+      "contract_owner": "tools/canonical-source.json",
+      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
       "reason": "Dependencia operativa externa explícita del compositor de supervisión."
     },
     {
       "name": "crear-ticket-interno",
       "type": "edge-function",
       "classification": "EXTERNALIZED_EXPLICIT",
+      "caller": "app/tickets.js",
+      "contract_owner": "tools/canonical-source.json",
+      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
       "reason": "Dependencia operativa externa explícita del flujo interno de tickets."
     },
     {
       "name": "estado-ticket-ts",
       "type": "edge-function",
       "classification": "EXTERNALIZED_EXPLICIT",
+      "caller": "app/estado.js",
+      "contract_owner": "tools/canonical-source.json",
+      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
+      "constraints": ["DO_NOT_RESTORE_FROM_PRIVATE_CORE", "DO_NOT_RECONSTRUCT_AUTOMATICALLY"],
       "reason": "Endpoint de consulta invocado por app/estado.js; se registra el contrato externo sin restaurar ni copiar una Edge histórica."
     },
     {
       "name": "estado-ticket-responder-ts",
       "type": "edge-function",
       "classification": "EXTERNALIZED_EXPLICIT",
+      "caller": "app/estado.js",
+      "contract_owner": "tools/canonical-source.json",
+      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
+      "constraints": ["DO_NOT_RESTORE_FROM_PRIVATE_CORE", "DO_NOT_RECONSTRUCT_AUTOMATICALLY"],
       "reason": "Endpoint de respuesta invocado por app/estado.js; se registra el contrato externo sin restaurar ni copiar una Edge histórica."
     }
   ],
@@ -128,6 +157,13 @@
     "tools/turnstile-deploy-gate.mjs",
     "tools/run-contract-tests.mjs"
   ],
+  "automation": {
+    "standard_command": "node tools/preflight.mjs",
+    "test_command": "node tools/preflight.mjs --mode test",
+    "full_command": "node tools/preflight.mjs --mode full",
+    "precommit_hook": ".githooks/pre-commit",
+    "ci_workflow": ".github/workflows/frontend-gates.yml"
+  },
   "bootstrap_files": [
     "tools/canonical-source.json",
     "tools/canonical-source-gate.mjs",

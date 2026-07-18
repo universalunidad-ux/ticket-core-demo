@@ -9,15 +9,33 @@ El contrato legible por máquina está en `tools/canonical-source.json`; su úni
 Desde el worktree aprobado y con el árbol limpio:
 
 ```sh
-node tools/canonical-source-gate.mjs --root "$PWD"
-node tools/canonical-source-gate.test.mjs
+node tools/preflight.mjs
 ```
+
+**Ejecuta el preflight canónico antes de editar y detente si no devuelve PASS.**
+
+Comandos sin npm ni dependencias nuevas:
+
+```sh
+# FAST PRE-EDIT: identidad, estado y fuente canónica; exige árbol limpio.
+node tools/preflight.mjs
+
+# TEST: pruebas G0 y pruebas de automatización.
+node tools/preflight.mjs --mode test
+
+# FULL: gate, pruebas y gates especializados pertinentes.
+node tools/preflight.mjs --mode full
+```
+
+El gate owner sigue disponible como `node tools/canonical-source-gate.mjs --root "$PWD"`; el preflight lo orquesta y no duplica su contrato.
 
 El gate termina con error ante diferencias de repo, remote, política de branch, base Git o common Git dir; worktrees no registradas; operaciones Git incompletas; `index.lock`; fuentes activas ausentes o no canónicas; owners activos duplicados o no versionados; Edge activas sin owner local o externalización explícita; migraciones locales con identificador duplicado; y referencias al producto privado.
 
 La política de HEAD admite únicamente commits descendientes de `fd1336985bd9446c5d28e7d8c6296a2d375ce90b`. La rama de implementación fue `review/backend-security-v2-20260718`; la política futura permite branches `review/` que desciendan de esa base. El checkout CI está permitido de forma explícita, pero conserva las comprobaciones de remote, branch, base y owners.
 
 La ruta `backend-security-v2-review` es contexto aprobado para crear G0, no una ruta eterna. Un worktree futuro pasa únicamente si está registrado en el mismo common Git dir canónico y satisface remote, branch y ancestry. Un clone ajeno o un worktree de otro producto falla.
+
+Los prefijos de implementación permitidos viven únicamente en el manifiesto: `review/`, `fix/`, `feat/`, `chore/`, `sec/`, `docs/` y `test/`. Trabajar directamente sobre `main` sigue prohibido; CI puede validar un push a `main` sin convertirlo en rama local de implementación.
 
 ## Bootstrap G0
 
@@ -46,3 +64,23 @@ Antes de cada unidad futura:
 3. modificar solo archivos autorizados para esa unidad;
 4. repetir este gate y los gates específicos del cambio;
 5. no usar `_CHECKPOINTS`, `_ANALYSIS_OUTPUTS`, `_DELIVERABLES`, backups o worktrees como fuente productiva.
+
+## Hook local y CI
+
+El hook versionado `.githooks/pre-commit` llama `node tools/preflight.mjs --mode pre-commit`. Ese modo materializa el índice staged en un directorio temporal, valida exactamente el candidato y no usa `stash`, `reset`, `checkout` del worktree ni `clean`.
+
+Instalación local segura, solo si no existe un owner previo:
+
+```sh
+node tools/install-git-hooks.mjs
+```
+
+El instalador configura `core.hooksPath=.githooks` y se detiene ante cualquier ruta o hook ajeno. La ruta relativa funciona desde worktrees registrados del mismo repo.
+
+El workflow existente `.github/workflows/frontend-gates.yml` ejecuta el modo CI en PR/push con historial completo. Detached HEAD solo se admite en GitHub Actions con evento, repositorio, ref, remote y ancestry válidos; `CI=true` no desactiva otros controles.
+
+## Evidencia reservada para unidades futuras
+
+FIX-U1 no se implementó: `app/estado.html` carece de `#stNextStepBox` y `#stNextStep`; tres rutas de error en `app/estado.js` escriben esos IDs con optional chaining. Los owners `.estado-status-pill.warn` y `.estado-next` ya existen, y `setHero()` puede restaurar la clase normal tras éxito. La unidad futura deberá reutilizarlos, centralizar las tres rutas y demostrar limpieza de `warn`, sin CSS duplicado.
+
+FIX-U4 tampoco se implementó: existen `header`, `main`, `#stChatPop`, `#stViewer` y listeners Escape, pero falta demostrar la jerarquía exacta y los cuatro estados de overlays antes de aplicar `inert`.
