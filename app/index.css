@@ -46,7 +46,7 @@ body[data-surface="login"] {
   color: #fff;
   box-shadow: 0 8px 20px color-mix(in srgb, var(--brand) 20%, transparent);
 }
-.login-brand-image{width:34px;height:34px;border-radius:9px;object-fit:cover;display:block}
+.login-brand-image{width:auto;height:34px;max-width:160px;border-radius:9px;object-fit:contain;display:block}
 
 .login-nav {
   min-width: 0;
