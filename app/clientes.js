@@ -169,7 +169,7 @@ function renderSummary() {
   const clientIds = new Set(tickets.map(ticket => ticket.cliente_id).filter(Boolean));
   const chip = (label, value, warn = false) => `<article class="cl-sum${warn && value ? " is-warn" : ""}"><span class="kk">${esc(label)}</span><span class="kv">${value}</span></article>`;
   $("#clSummary").innerHTML = [
-    chip(ST.isAdmin && ST.agent !== "all" ? "Clientes del agente" : "Clientes autorizados", ST.isAdmin && ST.agent !== "all" ? clientIds.size : ST.clients.length),
+    chip(ST.isAdmin && ST.agent !== "all" ? "Clientes del agente" : "Clientes del directorio", ST.isAdmin && ST.agent !== "all" ? clientIds.size : ST.clients.length),
     chip("Tickets visibles", tickets.length), chip("Tickets abiertos", tickets.filter(isOpen).length, true),
   ].join("");
   perfSecondaryDone();
@@ -270,7 +270,7 @@ async function loadDirectory() {
     if (!ST.isAdmin && !ST.me) throw new Error("AUTH_CONTEXT_MISSING");
     await loadAgents();
     const [clients, tickets] = await withTimeout(Promise.all([
-      fetchAll(() => ST.sb.from("clientes").select("id,nombre,ultima_interaccion").order("id", { ascending: true })), fetchAll(buildTicketQuery),
+      fetchAll(() => ST.sb.from("clientes").select("id,nombre,ultima_interaccion,rfc,origen_registro,activo,estatus,calidad_datos,requiere_revision").order("id", { ascending: true })), fetchAll(buildTicketQuery),
     ]), 20000);
     if (seq !== ST.reqSeq) return;
     ST.clients = clients; ST.tickets = tickets;

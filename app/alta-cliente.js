@@ -1,8 +1,7 @@
 /* ==========================================================================
    ALTA DE CLIENTE — preparación, validación y envío a una única operación
    transaccional. No hay escrituras directas a clientes/contactos/sistemas.
-   RFC y WhatsApp no se capturan: no existe contrato local confirmado para
-   esos campos en clientes_contactos (CLIENT_RLS_BLOCKED=YES).
+   RFC, WhatsApp, preferencia y origen usan únicamente códigos canónicos.
    ========================================================================== */
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
 import { esc, toast, debounce } from "./global.js?v=frontend-final-20260716-01";
@@ -38,6 +37,8 @@ const FIELD_RULES = [
   { id: "acContacto", check: value => cleanText(value).length >= 2 ? "" : "Escribe el nombre del contacto principal." },
   { id: "acCorreo", check: value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanText(value).toLowerCase()) ? "" : "Escribe un correo válido (ej. nombre@dominio.com)." },
   { id: "acTelefono", check: value => { const phone = normalizePhone(value); return !phone || phone.length === 10 ? "" : "Usa 10 dígitos; también aceptamos el prefijo +52."; } },
+  { id: "acWhatsapp", check: value => { const phone = normalizePhone(value); return !phone || phone.length === 10 ? "" : "Usa 10 dígitos para WhatsApp."; } },
+  { id: "acRfc", check: value => { const rfc=cleanText(value).toUpperCase();return !rfc||/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(rfc)?"":"Escribe un RFC válido de 12 o 13 caracteres."; } },
   { id: "acModelo", check: value => {
     const typed = cleanText(value), selected = MODEL_BY_ID.get($("#acModeloCatalogId").value);
     if (!typed) return "";
@@ -109,6 +110,8 @@ function normalizeForm() {
   $("#acCorreo").value = cleanText($("#acCorreo").value).toLowerCase();
   const phone = normalizePhone($("#acTelefono").value);
   $("#acTelefono").value = phone;
+  $("#acWhatsapp").value = normalizePhone($("#acWhatsapp").value);
+  $("#acRfc").value = cleanText($("#acRfc").value).toUpperCase();
   $("#acNotas").value = String($("#acNotas").value || "").trim();
 }
 
@@ -196,12 +199,15 @@ async function checkGate() {
 
 function payload() {
   return {
-    cliente: { nombre: cleanText($("#acNombre").value), origen: $("#acOrigen").value },
+    cliente: { nombre: cleanText($("#acNombre").value), rfc: cleanText($("#acRfc").value).toUpperCase()||null, origen_registro: $("#acOrigen").value },
     contacto: {
       nombre: cleanText($("#acContacto").value),
       puesto: cleanText($("#acPuesto").value) || null,
       correo: cleanText($("#acCorreo").value).toLowerCase(),
       telefono: normalizePhone($("#acTelefono").value) || null,
+      whatsapp: normalizePhone($("#acWhatsapp").value) || null,
+      metodo_contacto_preferido: $("#acPreference").value,
+      origen_alta: $("#acOrigen").value,
     },
     equipo: cleanText($("#acModelo").value) ? { modelo: cleanText($("#acModelo").value), serie: cleanText($("#acSerie").value) || null } : null,
     notas: String($("#acNotas").value || "").trim() || null,
