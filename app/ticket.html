@@ -92,7 +92,7 @@ if("serviceWorker" in navigator){
 </div>
 </div>
 
-<div class="log-area" id="logArea"></div>
+<div class="log-area" id="logArea" role="log" aria-live="polite" aria-relevant="additions text" aria-atomic="false"></div>
 
   <div class="hidden" id="tkDataMode" aria-hidden="true"></div>
 
@@ -105,7 +105,7 @@ if("serviceWorker" in navigator){
 <div class="composer-bottom">
 <div class="composer-left">
 
-<input class="sr-only" id="logFiles" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.m4v">
+<input class="sr-only" id="logFiles" type="file" tabindex="-1" aria-label="Adjuntar archivos" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.m4v">
 <div class="mut compact" id="logFilesMeta">Sin archivos adjuntos.</div>
 </div>
 <button class="mini btn-ghost tk-close-case" type="button" id="tkCloseCaseBtn" title="Cerrar caso (doble clic)">Cerrar caso</button>
@@ -116,7 +116,7 @@ if("serviceWorker" in navigator){
 <span class="tag" id="tkComposerStateTag">Sin cambio de estado</span>
 </div>
 <div class="mut" id="tkComposerModeText">Responde de forma breve, clara y fácil de continuar.</div>
-<div class="mut" id="logStatus">Se enviará como respuesta normal del caso.</div>
+<div class="mut" id="logStatus" role="status" aria-live="polite" aria-atomic="true">Se enviará como respuesta normal del caso.</div>
 
 <div class="quick-replies-wrap"><div class="quick-replies" id="quickReplies">
 <button class="mini btn-ghost" type="button" data-qr="modelo">Pedir modelo</button>
@@ -129,13 +129,13 @@ if("serviceWorker" in navigator){
 </div><button class="mini btn-ghost quick-edit-btn" id="tkQrEditBtn" type="button" title="Editar respuestas rápidas" aria-label="Editar respuestas rápidas">✎</button></div>
 </div>
 
-<select class="select sr-only" id="logKind">
+<select class="select sr-only" id="logKind" tabindex="-1" aria-label="Tipo de mensaje">
 <option value="nota">Nota interna</option>
 <option value="seguimiento">Seguimiento visible</option>
 <option value="solicitud">Solicitud al cliente</option>
 <option value="solucion">Solución o cierre</option>
 </select>
-<select class="select sr-only" id="logState">
+<select class="select sr-only" id="logState" tabindex="-1" aria-label="Estado del ticket">
 <option value="">Sin cambio</option>
 <option value="abierto">Abierto</option>
 <option value="en_proceso">En proceso</option>
