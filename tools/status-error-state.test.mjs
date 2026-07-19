@@ -16,6 +16,7 @@ const functionSource=name=>{
   return match[0].replace(`const ${name}=`,`globalThis.${name}=`);
 };
 const elements=new Map([
+  ["#stTitle",{textContent:"—",className:"",classList:null}],
   ["#stHeroStatus",{textContent:"",className:"estado-status-pill",classList:null}],
   ["#stNextStep",{textContent:"",classList:null}],
   ["#stNextStepBox",{textContent:"",classes:new Set(["estado-next","hidden"]),classList:null}]
@@ -28,8 +29,8 @@ const context={
   ticketStateCls:state=>state==="en_proceso"?"info":"ok"
 };
 vm.createContext(context);
-vm.runInContext(["setPublicStatusError","clearPublicStatusError","setHero"].map(functionSource).join("\n"),context);
-const reset=()=>{elements.get("#stHeroStatus").textContent="";elements.get("#stHeroStatus").className="estado-status-pill";elements.get("#stNextStep").textContent="";elements.get("#stNextStepBox").classes=new Set(["estado-next","hidden"])};
+vm.runInContext(["ensurePublicStatusHeading","setPublicStatusError","clearPublicStatusError","setHero"].map(functionSource).join("\n"),context);
+const reset=()=>{elements.get("#stTitle").textContent="—";elements.get("#stHeroStatus").textContent="";elements.get("#stHeroStatus").className="estado-status-pill";elements.get("#stNextStep").textContent="";elements.get("#stNextStepBox").classes=new Set(["estado-next","hidden"])};
 
 test("CASE 1 missing folio/token uses visible warning owner",()=>{
   reset();context.setPublicStatusError("Enlace incompleto","Faltan folio o token.");

@@ -40,5 +40,7 @@ jobs:
         run: node tools/turnstile-deploy-gate.mjs .
       - name: Run upload-contract unit tests (V2-10)
         run: node --experimental-strip-types tools/run-contract-tests.mjs .
+      - name: Enforce admin UX functional closeout (U10)
+        run: node tools/admin-ux-u10.test.mjs
       - name: Reject whitespace and conflict-marker errors
         run: git diff --check HEAD^ HEAD
