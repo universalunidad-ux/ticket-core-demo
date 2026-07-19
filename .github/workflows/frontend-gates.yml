@@ -46,5 +46,7 @@ jobs:
         run: node tools/prestaging-authz-contract.test.mjs
       - name: Enforce SECURITY DEFINER inventory (U12A)
         run: node tools/security-definer-contract.test.mjs
+      - name: Enforce synthetic staging seed contract (U12B)
+        run: node tools/staging-synthetic-seed-contract.test.mjs
       - name: Reject whitespace and conflict-marker errors
         run: git diff --check HEAD^ HEAD
