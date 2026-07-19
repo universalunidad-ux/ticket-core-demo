@@ -56,12 +56,20 @@ const RENDER = {
   consolidacion: d => UI.renderConsolidacion(d),
 };
 
-const markActive = () => document.querySelectorAll("#cfTabs .chat-tab").forEach(b => {
-  const on = b.dataset.tab === ST.tab;
-  b.classList.toggle("is-active", on);
-  b.setAttribute("aria-selected", on ? "true" : "false");
-  if (on) b.scrollIntoView({ block: "nearest", inline: "nearest" }); /* tab activa visible en scroll horizontal */
-});
+const markActive = () => {
+  let activeTab = null;
+  document.querySelectorAll("#cfTabs .chat-tab").forEach(b => {
+    const on = b.dataset.tab === ST.tab;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+    b.tabIndex = on ? 0 : -1;
+    if (on) {
+      activeTab = b;
+      b.scrollIntoView({ block: "nearest", inline: "nearest" }); /* tab activa visible en scroll horizontal */
+    }
+  });
+  if (activeTab?.id) $("#cfBody")?.setAttribute("aria-labelledby", activeTab.id);
+};
 
 const syncCounts = () => {
   const k = ST.identidad?.kpis || {};
@@ -100,6 +108,33 @@ async function openTab(tab, push = true) {
   } finally { ST.loading[tab] = false; }
 }
 
+const bindClientTabs = () => {
+  const tablist = $("#cfTabs");
+  if (!tablist || tablist.dataset.clientTabsBound === "1") return;
+  tablist.dataset.clientTabsBound = "1";
+  tablist.addEventListener("click", e => {
+    const tab = e.target.closest?.(".chat-tab");
+    if (tab) openTab(tab.dataset.tab);
+  });
+  tablist.addEventListener("keydown", e => {
+    const current = e.target.closest?.(".chat-tab[role='tab']");
+    if (!current || !tablist.contains(current)) return;
+    const tabs = [...tablist.querySelectorAll(".chat-tab[role='tab']")];
+    const currentIndex = tabs.indexOf(current);
+    if (currentIndex < 0) return;
+    let targetIndex;
+    if (e.key === "Home") targetIndex = 0;
+    else if (e.key === "End") targetIndex = tabs.length - 1;
+    else if (e.key === "ArrowRight") targetIndex = (currentIndex + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    else return;
+    e.preventDefault();
+    const target = tabs[targetIndex];
+    target.focus({ preventScroll: true });
+    openTab(target.dataset.tab);
+  });
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
   const returnTo = clientListReturn();
   $("#cfBack").href = returnTo;
@@ -130,10 +165,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   perfPageReady();
   perfSecondaryDone();
 
-  $("#cfTabs").addEventListener("click", e => {
-    const b = e.target.closest?.(".chat-tab");
-    if (b) openTab(b.dataset.tab);
-  });
+  bindClientTabs();
   $("#cfBody").addEventListener("click", e => {
     const rt = e.target.closest?.("[data-tab-retry]");
     if (rt) { delete ST.cache[rt.dataset.tabRetry]; openTab(rt.dataset.tabRetry, false); return; }
