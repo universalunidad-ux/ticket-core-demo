@@ -385,8 +385,12 @@ function normalizeEnterCopy(){
   function d2hHideEvidence(){
     const modal = $("#evModal");
     if(!modal) return;
-    modal.hidden = true;
-    document.body.classList.remove("modal-open");
+    if(globalThis.__tcDialogLifecycle?.closeDialog){
+      globalThis.__tcDialogLifecycle.closeDialog(modal);
+    }else{
+      modal.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
   }
 
   async function d2hDownloadEvidence(){

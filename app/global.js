@@ -12,7 +12,146 @@ export const toast=(text,type="",ms=2600)=>{document.querySelectorAll(".toast").
 export const debounce=(fn,ms=220)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
 export const copyTxt=(v,msg="Copiado")=>navigator.clipboard.writeText(v||"").then(()=>toast(msg,"ok")).catch(()=>toast("No se pudo copiar","bad"));
 const blurInside=n=>{const a=document.activeElement;if(n&&a&&n.contains(a)&&a.blur)a.blur()};
-export const bindModal=(sel,closeSel=".close,.close-x,.icon-btn")=>{const m=$(sel);if(!m||m.dataset.bound)return;m.dataset.bound="1";m.addEventListener("click",e=>{if(e.target===m||e.target.closest(closeSel))hide(sel)})};
+const DIALOG_FOCUSABLE='a[href],area[href],button,input,select,textarea,summary,[contenteditable="true"],[tabindex]';
+const dialogStack=[];
+const dialogRecords=new WeakMap();
+const dialogInertState=new Map();
+
+const dialogElement=value=>typeof value==="string"?$(value):value;
+const dialogTargetVisible=el=>{
+  if(!el?.isConnected||el.hidden||el.disabled||el.closest?.(".hidden,[inert],[hidden],[aria-hidden='true']"))return false;
+  const style=getComputedStyle(el);
+  return style.display!=="none"&&style.visibility!=="hidden";
+};
+const dialogFocusables=dialog=>[...dialog.querySelectorAll(DIALOG_FOCUSABLE)].filter(el=>{
+  if(!dialogTargetVisible(el)||el.tabIndex<0)return false;
+  return !el.matches("[disabled],[aria-disabled='true']");
+});
+const focusDialogTarget=(record,preferLast=false)=>{
+  const explicit=dialogElement(record.options.initialFocus);
+  const controls=dialogFocusables(record.element);
+  const target=!preferLast&&dialogTargetVisible(explicit)?explicit:(preferLast?controls.at(-1):controls[0])||record.element;
+  target?.focus?.({preventScroll:true});
+};
+const rememberInert=el=>{
+  if(!dialogInertState.has(el))dialogInertState.set(el,{had:el.hasAttribute("inert"),value:el.getAttribute("inert"),property:!!el.inert});
+};
+const setDialogInert=(el,on)=>{
+  if(!el)return;
+  rememberInert(el);
+  el.inert=!!on;
+  el.toggleAttribute("inert",!!on);
+};
+const restoreDialogInert=()=>{
+  dialogInertState.forEach((state,el)=>{
+    el.inert=state.property;
+    if(state.had)el.setAttribute("inert",state.value??"");
+    else el.removeAttribute("inert");
+  });
+};
+const inertOutsideDialog=(root,allowed)=>{
+  [...root.children].forEach(child=>{
+    if(allowed.has(child))return;
+    if([...allowed].some(node=>child.contains(node)))return inertOutsideDialog(child,allowed);
+    if(!child.matches("script,style,link,template"))setDialogInert(child,true);
+  });
+};
+const restoreDialogFocus=(record,next)=>{
+  const preferred=record.trigger;
+  const fallback=dialogElement(record.options.fallbackFocus);
+  const target=dialogTargetVisible(preferred)?preferred:dialogTargetVisible(fallback)?fallback:null;
+  if(target)return target.focus?.({preventScroll:true});
+  if(next)focusDialogTarget(next);
+};
+
+export const syncDialogStack=()=>{
+  restoreDialogInert();
+  if(!dialogStack.length){
+    dialogInertState.clear();
+    document.body?.classList.remove("modal-open");
+    document.documentElement?.classList.remove("modal-open");
+    return null;
+  }
+  const top=dialogStack.at(-1),allowed=new Set([top.element,...(top.options.relatedElements||[]).map(dialogElement).filter(Boolean)]);
+  dialogStack.slice(0,-1).forEach(record=>setDialogInert(record.element,true));
+  inertOutsideDialog(document.body,allowed);
+  allowed.forEach(el=>setDialogInert(el,false));
+  document.body.classList.add("modal-open");
+  return top.element;
+};
+
+const onDialogKeydown=e=>{
+  const record=dialogStack.at(-1);
+  if(!record)return;
+  if(e.key==="Tab"){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const controls=dialogFocusables(record.element),active=document.activeElement;
+    if(!controls.length)return focusDialogTarget(record);
+    const first=controls[0],last=controls.at(-1);
+    if(!record.element.contains(active))return (e.shiftKey?last:first).focus();
+    if(e.shiftKey&&active===first)return last.focus();
+    if(!e.shiftKey&&active===last)return first.focus();
+    const index=controls.indexOf(active),next=index+(e.shiftKey?-1:1);
+    (controls[next]|| (e.shiftKey?last:first)).focus();
+    return;
+  }
+  if(e.key!=="Escape")return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if(record.options.onEscape?.(e)===false)return;
+  (record.options.onCloseRequest||(()=>closeDialog(record.element)))(e);
+};
+const ensureDialogOwner=()=>{
+  if(document.documentElement.dataset.dialogLifecycleBound)return;
+  document.documentElement.dataset.dialogLifecycleBound="1";
+  document.addEventListener("keydown",onDialogKeydown,true);
+};
+
+export const openDialog=(value,options={})=>{
+  const element=dialogElement(value);
+  if(!element)return null;
+  ensureDialogOwner();
+  let record=dialogRecords.get(element);
+  const existingIndex=dialogStack.findIndex(item=>item.element===element);
+  if(existingIndex>=0)dialogStack.splice(existingIndex,1);
+  if(!record)record={element,trigger:null,options:{}};
+  record.trigger=options.trigger||(!element.contains(document.activeElement)?document.activeElement:null)||record.trigger;
+  record.options={...record.options,...options};
+  dialogRecords.set(element,record);
+  dialogStack.push(record);
+  if(!element.hasAttribute("role"))element.setAttribute("role","dialog");
+  element.setAttribute("aria-modal","true");
+  element.hidden=false;
+  element.classList.remove("hidden");
+  element.setAttribute("aria-hidden","false");
+  if(!element.hasAttribute("tabindex"))element.setAttribute("tabindex","-1");
+  syncDialogStack();
+  requestAnimationFrame(()=>focusDialogTarget(record));
+  return element;
+};
+
+export const closeDialog=(value,options={})=>{
+  const element=dialogElement(value);
+  if(!element)return null;
+  const index=dialogStack.findIndex(item=>item.element===element),wasTop=index===dialogStack.length-1;
+  const record=index>=0?dialogStack[index]:dialogRecords.get(element);
+  if(index>=0)dialogStack.splice(index,1);
+  element.hidden=true;
+  element.classList.add("hidden");
+  element.classList.remove("open");
+  element.setAttribute("aria-hidden","true");
+  element.removeAttribute("inert");
+  element.inert=false;
+  const next=dialogStack.at(-1)||null;
+  syncDialogStack();
+  if(wasTop&&record)requestAnimationFrame(()=>restoreDialogFocus({...record,options:{...record.options,...options}},next));
+  dialogRecords.delete(element);
+  return element;
+};
+
+export const bindModal=(sel,closeSel=".close,.close-x,.icon-btn",options={})=>{const m=$(sel);if(!m||m.dataset.bound)return;m.dataset.bound="1";m.addEventListener("click",e=>{if(e.target===m||e.target.closest(closeSel))(options.onCloseRequest||(()=>closeDialog(m)))(e)})};
+globalThis.__tcDialogLifecycle={openDialog,closeDialog,syncDialogStack};
 
 export const applyTheme=v=>{const t=v==="dark"?"dark":"light";document.documentElement.setAttribute("data-theme",t);const label=$("[data-theme-label]");if(label)label.textContent=t==="dark"?"Oscuro":"Claro";return t};
 export const toggleTheme=()=>{const next=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";localStorage.setItem("tc_theme",next);applyTheme(next);return next};
