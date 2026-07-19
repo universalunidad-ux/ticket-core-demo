@@ -155,7 +155,8 @@
     "tools/secret-gate.sh",
     "tools/storage-safety-gate.mjs",
     "tools/turnstile-deploy-gate.mjs",
-    "tools/run-contract-tests.mjs"
+    "tools/run-contract-tests.mjs",
+    "tools/a11y-static-gate.mjs"
   ],
   "automation": {
     "standard_command": "node tools/preflight.mjs",

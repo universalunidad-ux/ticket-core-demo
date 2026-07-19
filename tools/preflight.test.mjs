@@ -12,9 +12,22 @@ const REMOTE = "https://github.com/example/ticket-core-demo.git";
 const PRIVATE_CORE = "/Users/jaziel/Documents/EXPIRITI_REPOS/ticket-core";
 const results = [];
 
+// Stub determinista y aislado de produccion: preflight.test.mjs valida la orquestacion de preflight,
+// no el contenido de las cuatro suites reales (owner: tools/a11y-static-gate.test.mjs).
+const A11Y_GATE_STUB = `#!/usr/bin/env node
+if (process.env.A11Y_STATIC_GATE_FORCE_FAIL === "1") {
+  console.error("A11Y_STATIC_GATE=FAIL");
+  console.error("STOP_REASON=A11Y_STATIC_GATE_FORCED_FAILURE");
+  process.exit(1);
+}
+console.log("A11Y_STATIC_GATE=PASS");
+console.log("A11Y_STATIC_SUITE_COUNT=4");
+`;
+
 function fixtureEnv() {
   const env = { ...process.env };
   delete env.CI;
+  delete env.A11Y_STATIC_GATE_FORCE_FAIL;
   for (const key of Object.keys(env)) {
     if (key.startsWith("GITHUB_")) delete env[key];
   }
@@ -42,6 +55,7 @@ function fixture() {
   put(root, "app/main.css", "body { color: #111; }\n");
   put(root, "tools/owner.mjs", "export const owner = true;\n");
   put(root, "tools/external-policy.mjs", 'export const allowedExternalAssets = new Set(["https://allowed.example/lib.js"]);\n');
+  put(root, "tools/a11y-static-gate.mjs", A11Y_GATE_STUB);
   for (const path of [
     "tools/canonical-source-gate.mjs",
     "tools/preflight.mjs",
@@ -104,7 +118,7 @@ function fixture() {
     historical_not_active_owners: [],
     active_entrypoints: [{ path: "app/index.html", surface: "fixture", reason: "active fixture" }],
     external_resource_policy_owner: { path: "tools/external-policy.mjs", symbol: "allowedExternalAssets" },
-    specialized_gate_owners: ["tools/secret-gate.sh"],
+    specialized_gate_owners: ["tools/secret-gate.sh", "tools/a11y-static-gate.mjs"],
     bootstrap_files: [],
   };
   put(root, "tools/canonical-source.json", JSON.stringify(manifest, null, 2) + "\n");
@@ -113,11 +127,11 @@ function fixture() {
   return { sandbox, root };
 }
 
-function preflight(root, mode = "pre-commit") {
+function preflight(root, mode = "pre-commit", extraEnv = null) {
   return spawnSync(
     process.execPath,
     [join(root, "tools/preflight.mjs"), "--root", root, "--mode", mode],
-    { cwd: root, encoding: "utf8", env: fixtureEnv() },
+    { cwd: root, encoding: "utf8", env: extraEnv ? { ...fixtureEnv(), ...extraEnv } : fixtureEnv() },
   );
 }
 
@@ -144,6 +158,10 @@ record("08 producto incorrecto bloqueado", "hook", false, ({ root }) => { const 
 record("09 instalador seguro", "installer", true, ({ root }) => { installHooks(root); const value = git(root, "config", "--local", "--get", "core.hooksPath"); return { status: value === ".githooks" ? 0 : 1, stdout: value, stderr: "" }; });
 record("10 instalador rechaza owner ajeno", "installer", false, ({ root }) => { git(root, "config", "--local", "core.hooksPath", "/tmp/foreign-hooks"); try { installHooks(root); return { status: 0, stdout: "", stderr: "" }; } catch (error) { return { status: 1, stdout: "", stderr: String(error.message) }; } }, "HOOKS_PATH_CONFLICT");
 
+record("11 pre-commit ejecuta el gate A11Y exactamente una vez", "hook", true, ({ root }) => { put(root, "app/main.js", "export const ready = 4;\n"); git(root, "add", "app/main.js"); const result = preflight(root); const executions = ((result.stdout || "").match(/A11Y_STATIC_GATE=PASS/g) || []).length; assert.equal(executions, 1, `A11Y_PRECOMMIT_EXECUTION_COUNT:${executions}`); return result; }, "A11Y_STATIC_SUITE_COUNT=4");
+record("12 pre-commit falla si el gate A11Y falla", "hook", false, ({ root }) => { put(root, "app/main.js", "export const ready = 5;\n"); git(root, "add", "app/main.js"); return preflight(root, "pre-commit", { A11Y_STATIC_GATE_FORCE_FAIL: "1" }); }, "A11Y_STATIC_GATE_FORCED_FAILURE");
+record("13 fast no ejecuta el gate A11Y", "standard", true, ({ root }) => { const result = preflight(root, "fast"); assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /A11Y_STATIC_GATE/, "FAST_OWNER_COUNT_NONZERO"); return result; }, "SAFE_TO_EDIT=YES");
+
 const workflow = readFileSync(join(REPO, ".github/workflows/frontend-gates.yml"), "utf8");
 assert.match(workflow, /pull_request:/);
 assert.match(workflow, /push:/);
@@ -152,7 +170,7 @@ assert.match(workflow, /fetch-depth:\s*0/);
 assert.match(workflow, /node tools\/preflight\.mjs --mode ci/);
 assert.doesNotMatch(workflow, /\$\{\{\s*secrets\./);
 assert.doesNotMatch(workflow, /\bsupabase\s+(?:db|functions|link|deploy)\b/i);
-results.push({ name: "11 workflow CI estático", category: "ci", pass: true });
+results.push({ name: "14 workflow CI estático", category: "ci", pass: true });
 
 const hookTests = results.filter((result) => result.category === "hook").length;
 console.log(`AUTOMATION_TESTS: PASS (${results.length}/${results.length})`);

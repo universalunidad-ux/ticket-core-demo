@@ -55,6 +55,12 @@ function runSpecializedGates(root) {
   for (const [executable, args] of commands) run(executable, args, { cwd: root });
 }
 
+// Owner unico del gate A11Y en pre-commit. En CI el owner es el step "Static accessibility gate"
+// de .github/workflows/frontend-gates.yml; preflight no debe reejecutarlo en ci, fast, test ni full.
+function runA11yStaticGate(root) {
+  run(process.execPath, [join(root, "tools/a11y-static-gate.mjs")], { cwd: root });
+}
+
 function validateIndexCandidate(root, env) {
   const candidate = mkdtempSync(join(tmpdir(), "canonical-index-"));
   try {
@@ -70,6 +76,8 @@ function validateIndexCandidate(root, env) {
     const secretGate = join(candidate, "tools/secret-gate.sh");
     if (!existsSync(secretGate)) throw new Error("INDEX_SECRET_GATE_MISSING");
     run("bash", [secretGate, candidate], { cwd: candidate });
+    // Se evalua el candidato staged, no el worktree: fail-closed si el gate falta o falla.
+    runA11yStaticGate(candidate);
     console.log("PRECOMMIT_INDEX_AWARE=YES");
     console.log("INDEX_CANDIDATE_VALID=YES");
   } finally {

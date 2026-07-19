@@ -42,6 +42,8 @@ jobs:
         run: node --experimental-strip-types tools/run-contract-tests.mjs .
       - name: Enforce admin UX functional closeout (U10)
         run: node tools/admin-ux-u10.test.mjs
+      - name: Static accessibility gate
+        run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)
         run: node tools/prestaging-authz-contract.test.mjs
       - name: Enforce SECURITY DEFINER inventory (U12A)
