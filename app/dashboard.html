@@ -57,6 +57,7 @@
         </div>
       </div>
       <div id="dashActividad" class="dash-act"><div class="dash-skel"></div><div class="dash-skel"></div><div class="dash-skel"></div></div>
+      <nav class="dash-act-dots" id="dashActDots" aria-label="Páginas de actividad"></nav>
     </article>
 
     <article class="panel" id="dashMiCarga">
@@ -75,14 +76,15 @@
 
   <section class="panel dash-admin-only hidden" id="dashAgents" style="margin-top:12px">
     <div class="section-head"><div><div class="section-kicker">Equipo</div><h2>Agentes de soporte</h2></div></div>
+    <p class="sr-only" id="dashSupervisionHelp">Tickets que fueron escalados y todavía requieren revisión administrativa.</p>
     <div class="dash-agent-grid" id="dashAgentGrid"><div class="dash-skel"></div></div>
   </section>
 
-  <div class="overlay" id="dashAgentModal" hidden>
-    <div class="modal dash-agent-modal" role="dialog" aria-modal="true" aria-labelledby="dashAgentTitle">
-      <div class="section-head"><div><div class="section-kicker">Carga operativa</div><h3 id="dashAgentTitle">Agente</h3></div><button class="icon-btn" id="dashAgentClose" type="button" aria-label="Cerrar">✕</button></div>
-      <div class="dash-agent-detail" id="dashAgentDetail"></div>
-      <div class="actions"><a class="btn btn-brand" id="dashAgentTickets" href="tickets.html">Abrir Tickets filtrado</a></div>
+  <div class="overlay" id="dashAgentModal" role="dialog" aria-modal="true" aria-labelledby="dashAgentTitle" aria-describedby="dashAgentMetricTitle" tabindex="-1" hidden>
+    <div class="modal dash-agent-modal">
+      <div class="section-head"><div><div class="section-kicker" id="dashAgentRole">Soporte</div><h3 id="dashAgentTitle">Agente</h3><p class="mut" id="dashAgentMetricTitle">Tickets · 0</p></div><button class="icon-btn" id="dashAgentClose" type="button" aria-label="Cerrar">✕</button></div>
+      <div class="dash-agent-detail" id="dashAgentDetail" aria-live="polite"></div>
+      <div class="dash-agent-pager"><button class="mini btn-ghost" id="dashAgentPrev" type="button">Anterior</button><span class="mut" id="dashAgentPage">Página 1 de 1</span><button class="mini btn-ghost" id="dashAgentNext" type="button">Siguiente</button></div>
     </div>
   </div>
 

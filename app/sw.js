@@ -2,10 +2,11 @@ const RELEASE="frontend-final-20260716-01";
 const STATIC_CACHE=`ticket-core-static-${RELEASE}`;
 const PAGE_CACHE=`ticket-core-pages-${RELEASE}`;
 const OWN_CACHE=/^(?:ticket-core-(?:static|pages)-|(?:static|pages)-tc-)/;
-const PAGE_SHELLS=["./","./index.html","./dashboard.html","./tickets.html","./ticket.html","./clientes.html","./cliente.html","./consolidacion-clientes.html","./alta-cliente.html","./soporte.html","./estado.html"];
+const PAGE_SHELLS=["./","./index.html","./dashboard.html","./bitacora-admin.html","./tickets.html","./ticket.html","./clientes.html","./cliente.html","./consolidacion-clientes.html","./alta-cliente.html","./soporte.html","./estado.html"];
 const STATIC_ASSETS=[
   "./global.css?v=frontend-final-20260716-01","./global.js?v=frontend-final-20260716-01",
   "./dashboard.css?v=frontend-final-20260716-01","./dashboard.js?v=frontend-final-20260716-01",
+  "./bitacora-admin.js?v=frontend-final-20260716-01",
   "./tickets.css?v=frontend-final-20260716-01","./tickets.js?v=frontend-final-20260716-01",
   "./ticket.css?v=frontend-final-20260716-01","./ticket.js?v=frontend-final-20260716-01",
   "./ticket-composer-polish.js?v=frontend-final-20260716-01","./ticket-assignment.js?v=frontend-final-20260716-01",
