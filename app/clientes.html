@@ -18,9 +18,9 @@
     </div>
     <div class="cl-summary" id="clSummary"></div>
     <div class="cl-toolbar">
-      <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off"></div>
-      <div class="cl-admin-only cl-admin-filter"><label class="sr-only" for="clAgentFilter">Filtrar por agente</label><select class="select" id="clAgentFilter"><option value="all">Todos los agentes</option><option value="unassigned">Sin agente</option></select></div>
-      <select class="select" id="clOrder" aria-label="Orden">
+      <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off" aria-label="Buscar clientes"></div>
+      <div class="cl-admin-only cl-admin-filter"><label class="sr-only" for="clAgentFilter">Filtrar por agente</label><select class="select" id="clAgentFilter" aria-label="Filtrar clientes por agente"><option value="all">Todos los agentes</option><option value="unassigned">Sin agente</option></select></div>
+      <select class="select" id="clOrder" aria-label="Ordenar clientes">
         <option value="actividad">Última actividad</option>
         <option value="tickets">Más tickets</option>
         <option value="abiertos">Más tickets abiertos</option>
@@ -40,8 +40,8 @@
             <label class="cl-filter-option"><input type="checkbox" value="sla" data-client-filter> Riesgo SLA</label>
             <label class="cl-filter-option"><input type="checkbox" value="consolidation" data-client-filter> Por consolidar</label>
           </div>
-          <div class="cl-equipment-field"><label class="lbl" for="clEquipmentInput">Equipo Janome</label><input class="input" id="clEquipmentInput" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clEquipmentList" autocomplete="off" placeholder="Familia o modelo de máquina"><div class="cl-equipment-list" id="clEquipmentList" role="listbox" hidden></div><span class="mut" id="clEquipmentFallback" hidden>Lectura de equipos no disponible; no se aplicará este filtro.</span></div>
-          <label class="cl-filter-size" for="clFilterPageSize"><span>Resultados por página</span><select class="select" id="clFilterPageSize"><option value="10">10</option><option value="20">20</option><option value="40">40</option></select></label>
+          <div class="cl-equipment-field"><label class="lbl" for="clEquipmentInput">Equipo Janome</label><input class="input" id="clEquipmentInput" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clEquipmentList" autocomplete="off" placeholder="Familia o modelo de máquina" aria-label="Filtrar por máquina o accesorio"><div class="cl-equipment-list" id="clEquipmentList" role="listbox" hidden></div><span class="mut" id="clEquipmentFallback" hidden>Lectura de equipos no disponible; no se aplicará este filtro.</span></div>
+          <label class="cl-filter-size" for="clFilterPageSize"><span>Resultados por página</span><select class="select" id="clFilterPageSize" aria-label="Clientes por página"><option value="10">10</option><option value="20">20</option><option value="40">40</option></select></label>
           <div class="mut cl-filter-status" id="clFilterStatus" aria-live="polite"></div>
           <div class="cl-filter-actions"><button class="btn btn-ghost" id="clFiltersClear" type="button">Limpiar</button><button class="btn btn-brand" id="clFiltersApply" type="button">Aplicar</button></div>
         </section>
