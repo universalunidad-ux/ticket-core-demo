@@ -1,5 +1,5 @@
 import{supabase as s,guardSession,getProfile,logAction,msg}from"./supabase.js";
-import{$,toast,esc,norm,openDialog,closeDialog,ensureAppShell,setAppRole,setRailOpenCount,pushRecentClient,setGlobalSearchData,setBreadcrumb,ticketStateKey,ticketStateLabel,ticketStateCls,prettyBytes}from"./global.js?v=frontend-final-20260716-01";
+import{$,toast,esc,norm,openDialog,closeDialog,ensureAppShell,setAppRole,setRailOpenCount,pushRecentClient,setGlobalSearchData,setBreadcrumb,setTicketPageContext,ticketStateKey,ticketStateLabel,ticketStateCls,prettyBytes}from"./global.js?v=frontend-final-20260716-01";
 import{montarFichaAgente}from"./janome/janome_ticket.js";
 import{qrTpl as qrTplShared,qrCanon,qrDefaults as qrDefaultsShared}from"./quick-replies.shared.js";
 import{JANOME_CATALOGO}from"./janome/janome_catalogo.js";
@@ -883,7 +883,7 @@ const renderMetaBits=()=>{renderClientSystems();applyNotifUi();saveTicketMute(ST
 
 const render=()=>{renderShellBits();renderThreadBits();renderMetaBits();applyAutoComposer();/* B17C16_CLOSED_RENDER_LOCK */try{applyTicketClosedComposerLock?.()}catch(e){}};
 
-const loadTicketCore=async()=>{if(!ID)return null;const tk=await s.from("tickets").select("*").eq("id",ID).single();if(tk.error||!tk.data)return null;return tk.data};
+const loadTicketCore=async()=>{if(!ID)return null;const tk=await s.from("tickets").select("*").eq("id",ID).single();if(tk.error||!tk.data)return null;setTicketPageContext(tk.data.titulo||"");return tk.data};
 const loadTicketContext=async()=>{const since365=new Date(Date.now()-365*864e5).toISOString();const[cl,legacyLogs,heatRows,legacyArchRows,eventRows,newArchRows]=await Promise.all([T?.cliente_id?s.from("clientes").select("id,nombre").eq("id",T.cliente_id).single():Promise.resolve({data:null}),s.from("bitacora").select("*").eq("detalle->>ticket_id",String(ID)).order("fecha",{ascending:true}),T?.cliente_id?s.from("tickets").select("id,prioridad,estado,fecha_creacion,fecha_actualizacion").eq("cliente_id",T.cliente_id).gte("fecha_creacion",since365):Promise.resolve({data:[]}),s.from("ticket_archivos").select("*").eq("ticket_id",ID).order("fecha_subida",{ascending:true}),s.from("ticket_eventos").select("*").eq("ticket_id",ID).order("created_at",{ascending:true}),s.from("archivos_ticket").select("*").eq("ticket_id",ID).order("creado_en",{ascending:true})]);C=cl.data||null;const ev=Array.isArray(eventRows?.data)?eventRows.data:[];const legacy=legacyLogs?.data||[];/* B19B: paridad de citas — eventos del portal con meta.reply_to (canónico) se normalizan
    a la convención ↪ existente SOLO para render (sin @thumb, sin URLs); un único parser. */
 const _rpLbl={cliente:"Cliente",soporte:"Soporte",sistema:"Sistema"};

@@ -13,6 +13,7 @@ body[data-shell=app] #pageMount,body[data-shell=app] main{margin-top:0!important
 .app-head-inner{height:100%;max-width:1440px;margin:0 auto;padding:0 18px 0 12px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px}
 .app-head-start,.app-history,.app-head-tools,.app-nav{display:flex;align-items:center}
 .app-head-start{gap:12px;min-width:0}
+.app-page-context{display:block;min-width:0;max-width:clamp(92px,14vw,220px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.09em;line-height:1;text-transform:uppercase}
 .app-history{gap:2px;flex:0 0 auto}
 .app-history-btn{width:34px;height:40px;padding:0;display:grid;place-items:center;border:0;border-radius:12px;background:transparent;color:var(--text)}
 .app-history-btn:hover:not(:disabled){background:var(--panel-2)}
@@ -68,8 +69,17 @@ html.app-drawer-open .app-drawer{transform:translateX(0)}
 .app-drawer-sub button{min-height:38px;border:1px solid var(--line);border-radius:13px;background:var(--panel-2);color:var(--text);font-weight:800;text-align:left;padding:0 12px}
 [data-role-only]{display:none}[data-role-only][hidden]{display:none!important}.rail-group[data-role-only]:not([hidden]){display:grid}
 @media(max-width:1180px){.app-search{width:122px}.app-nav-link{padding:0 8px}.app-head-inner{gap:9px}}
-@media(max-width:980px){body[data-shell=app]{padding-top:62px!important}.app-header{height:62px}.app-head-inner{padding:0 10px;gap:8px}.app-nav,.app-search,.app-theme-btn,.app-logout-btn{display:none!important}.app-burger{display:inline-flex}.app-brand img{width:36px;height:36px;flex-basis:36px}.app-brand strong{font-size:12px}.app-panel-left{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:min(76dvh,720px);border-radius:22px}.app-panel-backdrop,.app-dim{inset:62px 0 0}}
-@media(max-width:520px){.app-head-start{gap:7px}.app-history-btn{width:30px}.app-brand{gap:6px}.app-brand strong{letter-spacing:.09em}.app-drawer{width:min(94vw,390px)}.app-drawer-body{padding:8px}}
+@media(max-width:980px){body[data-shell=app]{padding-top:62px!important}.app-header{height:62px}.app-head-inner{padding:0 10px;gap:8px}.app-nav,.app-search,.app-theme-btn,.app-logout-btn{display:none!important}.app-burger{display:inline-flex}.app-brand img{width:36px;height:36px;flex-basis:36px}.app-brand strong{font-size:12px}.app-page-context{max-width:min(36vw,240px)}.app-panel-left{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:min(76dvh,720px);border-radius:22px}.app-panel-backdrop,.app-dim{inset:62px 0 0}}
+@media(max-width:520px){.app-head-start{gap:7px}.app-history-btn{width:30px}.app-brand{gap:6px}.app-brand strong{display:none}.app-page-context{max-width:calc(100vw - 178px);font-size:10px;letter-spacing:.07em}.app-drawer{width:min(94vw,390px)}.app-drawer-body{padding:8px}}
+
+/* U10 — owner visual compartido de formularios nativos. */
+.select,.theme-select{min-width:0;appearance:none;-webkit-appearance:none;background-color:var(--panel);background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:38px;text-overflow:ellipsis}
+.input,.select,.theme-select,.textarea,.area{min-width:0}
+.input:focus-visible,.select:focus-visible,.theme-select:focus-visible,.textarea:focus-visible,.area:focus-visible{border-color:color-mix(in srgb,var(--brand) 62%,var(--line));box-shadow:var(--focus)}
+.input:disabled,.select:disabled,.theme-select:disabled,.textarea:disabled,.area:disabled{opacity:.58;cursor:not-allowed;background-color:var(--panel-3)}
+.input[aria-invalid=true],.select[aria-invalid=true],.textarea[aria-invalid=true],.area[aria-invalid=true]{border-color:color-mix(in srgb,var(--danger) 62%,var(--line))}
+input[type=date].input{min-height:44px;color-scheme:light}
+html[data-theme=dark] input[type=date].input{color-scheme:dark}
 
 
 /* TC NOTIF SOUND TEST JANOME */
