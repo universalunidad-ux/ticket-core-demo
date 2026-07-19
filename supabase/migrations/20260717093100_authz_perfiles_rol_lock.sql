@@ -39,6 +39,10 @@ begin
 end
 $$;
 
+-- Trigger-only: no invocación directa desde Data API.
+revoke execute on function public.tc_prevent_rol_escalation()
+  from public, anon, authenticated;
+
 drop trigger if exists trg_perfiles_rol_lock on public.perfiles;
 create trigger trg_perfiles_rol_lock
   before update on public.perfiles

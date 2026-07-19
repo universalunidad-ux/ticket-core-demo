@@ -21,6 +21,11 @@ begin
 end
 $$;
 
+-- Trigger-only: CREATE OR REPLACE conserva ACL, pero se declara nuevamente
+-- para que esta migración sea autocontenida y auditable.
+revoke execute on function public.tc_prevent_rol_escalation()
+  from public, anon, authenticated;
+
 -- RPC admin: crear perfil (aprovisionamiento). Solo un admin autenticado puede llamar.
 create or replace function public.admin_create_profile(p_id uuid, p_rol text, p_nombre text default null)
 returns public.perfiles

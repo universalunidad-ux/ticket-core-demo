@@ -44,5 +44,7 @@ jobs:
         run: node tools/admin-ux-u10.test.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)
         run: node tools/prestaging-authz-contract.test.mjs
+      - name: Enforce SECURITY DEFINER inventory (U12A)
+        run: node tools/security-definer-contract.test.mjs
       - name: Reject whitespace and conflict-marker errors
         run: git diff --check HEAD^ HEAD
