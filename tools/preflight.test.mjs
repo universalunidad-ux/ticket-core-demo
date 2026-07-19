@@ -12,6 +12,15 @@ const REMOTE = "https://github.com/example/ticket-core-demo.git";
 const PRIVATE_CORE = "/Users/jaziel/Documents/EXPIRITI_REPOS/ticket-core";
 const results = [];
 
+function fixtureEnv() {
+  const env = { ...process.env };
+  delete env.CI;
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("GITHUB_")) delete env[key];
+  }
+  return env;
+}
+
 function put(root, path, content = "") {
   const target = join(root, path);
   mkdirSync(dirname(target), { recursive: true });
@@ -105,7 +114,11 @@ function fixture() {
 }
 
 function preflight(root, mode = "pre-commit") {
-  return spawnSync(process.execPath, [join(root, "tools/preflight.mjs"), "--root", root, "--mode", mode], { cwd: root, encoding: "utf8" });
+  return spawnSync(
+    process.execPath,
+    [join(root, "tools/preflight.mjs"), "--root", root, "--mode", mode],
+    { cwd: root, encoding: "utf8", env: fixtureEnv() },
+  );
 }
 
 function record(name, category, expectedPass, action, expectedText = "") {
@@ -126,7 +139,7 @@ record("03 staged usa analysis", "hook", false, ({ root }) => { put(root, "app/i
 record("04 staged usa backup", "hook", false, ({ root }) => { put(root, "app/index.html", '<script src="backup.js.bak"></script>'); put(root, "app/backup.js.bak", "void 0;\n"); git(root, "add", "."); return preflight(root); }, "ACTIVE_NONCANONICAL_SOURCE");
 record("05 staged referencia rota", "hook", false, ({ root }) => { put(root, "app/index.html", '<script src="missing.js"></script>'); git(root, "add", "app/index.html"); return preflight(root); }, "HTML_ACTIVE_REF_MISSING");
 record("06 unstaged no sustituye candidato", "hook", true, ({ root }) => { put(root, "docs/valid.txt", "valid\n"); git(root, "add", "docs/valid.txt"); put(root, "app/index.html", '<script src="unstaged-missing.js"></script>'); return preflight(root); }, "INDEX_CANDIDATE_VALID=YES");
-record("07 hook desde ruta _WORKTREES legítima", "hook", true, ({ root }) => { put(root, "app/main.js", "export const ready = 3;\n"); git(root, "add", "app/main.js"); return spawnSync(join(root, ".githooks/pre-commit"), [], { cwd: root, encoding: "utf8" }); }, "PRECOMMIT_INDEX_AWARE=YES");
+record("07 hook desde ruta _WORKTREES legítima", "hook", true, ({ root }) => { put(root, "app/main.js", "export const ready = 3;\n"); git(root, "add", "app/main.js"); return spawnSync(join(root, ".githooks/pre-commit"), [], { cwd: root, encoding: "utf8", env: fixtureEnv() }); }, "PRECOMMIT_INDEX_AWARE=YES");
 record("08 producto incorrecto bloqueado", "hook", false, ({ root }) => { const path = join(root, "tools/canonical-source.json"); const manifest = JSON.parse(readFileSync(path, "utf8")); manifest.product = "ticket-core"; writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n"); git(root, "add", "tools/canonical-source.json"); return preflight(root); }, "PRODUCT_MISMATCH");
 record("09 instalador seguro", "installer", true, ({ root }) => { installHooks(root); const value = git(root, "config", "--local", "--get", "core.hooksPath"); return { status: value === ".githooks" ? 0 : 1, stdout: value, stderr: "" }; });
 record("10 instalador rechaza owner ajeno", "installer", false, ({ root }) => { git(root, "config", "--local", "core.hooksPath", "/tmp/foreign-hooks"); try { installHooks(root); return { status: 0, stdout: "", stderr: "" }; } catch (error) { return { status: 1, stdout: "", stderr: String(error.message) }; } }, "HOOKS_PATH_CONFLICT");
