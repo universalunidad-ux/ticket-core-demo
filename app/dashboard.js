@@ -17,6 +17,7 @@
    ============================================================================ */
 import { supabase, esc } from "./supabase.js";
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
+import { evaluateAssignment, matchingRules, OUTCOME, REASON } from "./shared/assignment-rules.js?v=frontend-final-20260716-01";
 import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel } from "./global.js?v=frontend-final-20260716-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 
@@ -786,26 +787,26 @@ function rgRender() {
       </div>
     </div>`).join("") : '<div class="empty-state">Aún no hay reglas. Crea la primera con el formulario.</div>') + fallbackNote;
 }
+/* Vista previa: SOLO recolecta entradas y renderiza. La decisión pertenece por completo al
+   evaluador canónico (shared/assignment-rules.js); aquí no vive ninguna lógica de reglas. */
 function rgSimula() {
-  const maq = ($("#rgSimMaquina")?.value || "").trim().toLowerCase();
-  const caso = ($("#rgSimCaso")?.value || "").trim().toLowerCase();
-  const emp = ($("#rgSimEmpresa")?.value || "").trim().toLowerCase();
   const out = $("#rgSimOut"); if (!out) return;
-  const activas = RG_ROWS.filter(r => r.activo);
-  const matches = activas.filter(r => {
-    const v = String(r.valor || "").toLowerCase();
-    if (r.tipo_condicion === "tipo_maquina") return maq && maq.includes(v);
-    if (r.tipo_condicion === "tipo_caso") return caso && caso.includes(v);
-    if (r.tipo_condicion === "empresa") return emp && emp.includes(v);
-    if (r.tipo_condicion === "palabra_clave") return v && (maq.includes(v) || caso.includes(v) || emp.includes(v));
-    if (r.tipo_condicion === "cliente_nuevo") return false; /* no simulable sin dato real */
-    return false;
-  });
-  const nombreAg = id => AGENTES.find(a => a.id === id)?.nombre || "el agente configurado";
-  const match=matches[0];
-  out.innerHTML = match
-    ? `Regla ganadora: <b>${esc(match.nombre)}</b> (#${match.prioridad}) → <b>${esc(nombreAg(match.agente_id))}</b>.<br><span class="mut">Coinciden ${matches.length}: ${matches.map(r=>esc(r.nombre)).join(", ")}. La vista previa no asigna ni modifica tickets.</span>`
-    : `Ninguna regla activa coincide con esos datos.<br><span class="mut">La vista previa no asigna ni modifica tickets.</span>`;
+  const ticket = { tipoMaquina: $("#rgSimMaquina")?.value, tipoCaso: $("#rgSimCaso")?.value, empresa: $("#rgSimEmpresa")?.value };
+  const decision = evaluateAssignment({ ticket, rules: RG_ROWS, agents: AGENTES });
+  const matches = matchingRules({ ticket, rules: RG_ROWS });
+  const nombreAg = id => AGENTES.find(a => String(a.id) === String(id))?.nombre || "el agente configurado";
+  const nota = '<span class="mut">La vista previa no asigna ni modifica tickets.</span>';
+  const regla = `<b>${esc(decision.ruleName || "")}</b> (#${decision.priority})`;
+  if (decision.outcome === OUTCOME.ASSIGNED) {
+    out.innerHTML = `Regla ganadora: ${regla} → <b>${esc(nombreAg(decision.agentId))}</b>.<br><span class="mut">Coinciden ${matches.length}: ${matches.map(m => esc(m.rule.nombre || "")).join(", ")}. Criterio: ${esc(decision.matchedCondition)}.</span> ${nota}`;
+    return;
+  }
+  if (decision.reason === REASON.AGENT_DISABLED || decision.reason === REASON.AGENT_UNKNOWN) {
+    const motivo = decision.reason === REASON.AGENT_DISABLED ? "está deshabilitado" : "ya no existe en la lista de agentes";
+    out.innerHTML = `Coincide ${regla}, pero su agente ${motivo}: el caso quedaría <b>sin asignar</b>.<br>${nota}`;
+    return;
+  }
+  out.innerHTML = `Ninguna regla activa coincide con esos datos: el caso quedaría <b>sin asignar</b>.<br>${nota}`;
 }
 async function mountReglas(host) {
   host.innerHTML = '<div class="dash-skel"></div>';
