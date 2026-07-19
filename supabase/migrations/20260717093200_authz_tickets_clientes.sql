@@ -33,6 +33,17 @@ create policy clientes_manager_select_ticket_core
     and (
       exists (select 1 from public.tickets t where t.cliente_id = clientes.id)
       or exists (select 1 from public.solicitudes_soporte s where s.cliente_id = clientes.id)
+      or lower(coalesce(clientes.origen_registro, '')) = any (
+        array[
+          'ticket_core'::text,
+          'soporte_publico'::text,
+          'alta_cliente'::text,
+          'alta_interna'::text,
+          'alta_aprobada'::text,
+          'alta_publica'::text,
+          'registro_aprobado'::text
+        ]
+      )
     )
   );
 

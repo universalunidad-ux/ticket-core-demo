@@ -1,5 +1,26 @@
 -- AUTHZ U4 · perfiles: RLS + bloqueo de auto-escalada de `rol`.
 -- PREPARED_NOT_APPLIED. Aditiva/idempotente.
+
+-- Dominio canónico del rol interno.
+-- NULL representa acceso desactivado; no concede privilegios.
+alter table public.perfiles
+  alter column rol drop not null;
+alter table public.perfiles
+  drop constraint if exists perfiles_rol_check;
+alter table public.perfiles
+  add constraint perfiles_rol_check
+  check (
+    rol is null
+    or rol = any (
+      array[
+        'admin'::text,
+        'supervisor'::text,
+        'ventas'::text,
+        'soporte'::text
+      ]
+    )
+  );
+
 alter table public.perfiles enable row level security;
 
 -- Trigger: solo un admin puede cambiar `rol`. Un usuario no puede escalar su rol

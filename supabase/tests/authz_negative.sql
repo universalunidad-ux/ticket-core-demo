@@ -35,8 +35,9 @@ insert into public.perfiles (id, rol, nombre, tema) values
 on conflict (id) do nothing;
 -- Usuario 55555555 = autenticado SIN perfil (sin acceso autorizado).
 
-insert into public.clientes (id, nombre) values
- ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','Cliente Uno')
+insert into public.clientes (id, nombre, origen_registro) values
+ ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','Cliente Uno','ticket_core'),
+ ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','Cliente Alta Interna','alta_interna')
 on conflict (id) do nothing;
 
 insert into public.tickets (id, cliente_id, asignado_a, titulo, estado, prioridad, folio) values
@@ -90,6 +91,40 @@ begin
     ('ce111111-1111-1111-1111-111111111111','ce222222-2222-2222-2222-222222222222');
   if n <> 2 then raise exception 'FAIL: supervisor no ve todos los tickets (n=%)', n; end if;
   raise notice 'PASS: supervisor ve todos';
+end $$;
+select pg_temp.reset_su();
+
+-- ---- 3B) CLIENTE ORIGIN-ONLY: supervisor ve alta interna sin ticket ------------
+select pg_temp.act('22222222-2222-2222-2222-222222222222');
+do $$
+declare n int;
+begin
+  select count(*) into n
+  from public.clientes
+  where id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+  if n <> 1 then
+    raise exception 'FAIL: supervisor no ve cliente alta_interna sin ticket (n=%)', n;
+  end if;
+
+  raise notice 'PASS: supervisor ve cliente alta_interna sin ticket';
+end $$;
+select pg_temp.reset_su();
+
+-- ---- 3C) CLIENTE ORIGIN-ONLY: soporte no hereda acceso sin ticket asignado -----
+select pg_temp.act('33333333-3333-3333-3333-333333333333');
+do $$
+declare n int;
+begin
+  select count(*) into n
+  from public.clientes
+  where id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+  if n <> 0 then
+    raise exception 'FAIL: soporte ve cliente sin ticket asignado (n=%)', n;
+  end if;
+
+  raise notice 'PASS: soporte no ve cliente sin ticket asignado';
 end $$;
 select pg_temp.reset_su();
 
@@ -164,5 +199,24 @@ begin
   end;
 end $$;
 select pg_temp.reset_su();
+
+-- ---- 10) DISABLE ACCESS: admin puede dejar rol NULL; usuario queda sin acceso ---
+select pg_temp.act('11111111-1111-1111-1111-111111111111');
+select public.admin_disable_access('44444444-4444-4444-4444-444444444444');
+select pg_temp.reset_su();
+
+do $$
+declare current_role text;
+begin
+  select rol into current_role
+  from public.perfiles
+  where id='44444444-4444-4444-4444-444444444444';
+
+  if current_role is not null then
+    raise exception 'FAIL: admin_disable_access no dejó rol NULL (rol=%)', current_role;
+  end if;
+
+  raise notice 'PASS: acceso desactivado mediante rol NULL';
+end $$;
 
 rollback; -- no persistir fixtures
