@@ -1,0 +1,26 @@
+-- SUPERSEDED_NON_EXECUTABLE
+-- Former CLIENT_ROLE_FILTER_RLS_DRAFT.
+--
+-- This file intentionally contains no executable SQL.
+--
+-- Canonical reconciliation:
+--   role domain and disabled-access NULL state:
+--     supabase/migrations/20260717093100_authz_perfiles_rol_lock.sql
+--   authorization helpers:
+--     supabase/migrations/20260717093000_authz_functions.sql
+--   tickets/clientes/contactos/sistemas/aliases policies:
+--     supabase/migrations/20260717093200_authz_tickets_clientes.sql
+--   grants and anonymous revocations:
+--     supabase/migrations/20260717093400_authz_grants.sql
+--   admin provisioning and access disable:
+--     supabase/migrations/20260717094200_admin_profile_provisioning.sql
+--
+-- Required staging proof remains:
+--   policy_preflight.sql
+--   authz_negative.sql
+--   role-authenticated E2E
+--   Security Advisor
+--   rollback rehearsal
+--
+-- SUPERSEDED_BY=M02,M03,M04,M06,M10
+-- SAFE_TO_EXECUTE=NO

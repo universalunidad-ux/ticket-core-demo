@@ -19,7 +19,12 @@ Este contrato define una sola fuente de verdad para el número mostrado, el filt
 - Con JavaScript, activar o desactivar el indicador actualiza `kpi` mediante History API sin recargar.
 - Al abrir una URL directa, `applyUrlFilters` reconstruye el filtro y su estado seleccionado.
 - El tablero y cualquier contador contextual deben aplicar el mismo predicado canónico; no se permiten cifras codificadas en HTML.
-- La interfaz muestra `Filtro activo · …`; “Limpiar filtros” elimina también `kpi`.
+- El propio KPI comunica la selección con fondo activo, texto blanco y `aria-current`; no se crea una fila o pill redundante. “Limpiar filtros” elimina también `kpi`.
+- Cuando la entrada viene del Dashboard, Tickets conserva `from=dashboard` y muestra el contexto en línea con el título. No se recupera la fila grande “Filtro activo · …”. El retorno al Dashboard es un enlace icon-only con nombre accesible.
+- La URL de Tickets conserva el filtro canónico y la posición de lista: `layout`, `column` y `page` (página visible, base 1). Los filtros de búsqueda soportados también se serializan; `kpi` no se duplica con su predicado equivalente.
+- Al abrir un Ticket, la URL completa de regreso viaja en `return`. `ticket.html` sólo acepta un retorno same-origin cuyo destino sea `tickets.html`; el Back del detalle y el breadcrumb usan ese destino.
+- El recorrido esperado es `Dashboard → Tickets → Ticket → Tickets`: al volver se restauran origen, KPI, filtros, vista, columna y página. Cada vista pagina 10 tickets; los controles están al pie, alineados a la derecha.
+- Las filas de ticket y los controles de paginación son operables por teclado, tienen foco visible y exponen nombres/estado de página a tecnologías de asistencia.
 - Si otros filtros están activos, los indicadores se calculan sobre ese subconjunto. Sin filtros, se calculan sobre todos los tickets autorizados para la sesión.
 
 ## Propiedad y zona horaria

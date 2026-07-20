@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+root="$(git rev-parse --show-toplevel)" || {
+  echo "PREFLIGHT=FAIL" >&2
+  echo "SAFE_TO_EDIT=NO" >&2
+  echo "STOP_REASON=NOT_A_GIT_REPOSITORY" >&2
+  exit 1
+}
+
+exec node "$root/tools/preflight.mjs" --root "$root" --mode pre-commit

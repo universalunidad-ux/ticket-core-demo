@@ -1,0 +1,85 @@
+{
+  "legacy_to_drop": {
+    "public.cliente_sistemas": [
+      "cliente_sistemas_select_staff"
+    ],
+    "public.clientes": [
+      "clientes_admin_select_ticket_core"
+    ]
+  },
+  "recognized": {
+    "public.archivos_ticket": [
+      "archivos_ticket_staff_select",
+      "archivos_ticket_staff_insert",
+      "archivos_ticket_staff_delete"
+    ],
+    "public.avisos_globales": [
+      "avisos_globales_read",
+      "avisos_globales_admin_write"
+    ],
+    "public.bitacora": [
+      "bitacora_select_admin",
+      "bitacora_insert_self"
+    ],
+    "public.cliente_accesos": [
+      "cliente_accesos_staff_select",
+      "cliente_accesos_staff_insert",
+      "cliente_accesos_staff_update"
+    ],
+    "public.cliente_aliases": [
+      "cliente_aliases_select_scoped"
+    ],
+    "public.cliente_sistemas": [
+      "cliente_sistemas_select_scoped",
+      "cliente_sistemas_staff_insert",
+      "cliente_sistemas_staff_update",
+      "cliente_sistemas_staff_delete"
+    ],
+    "public.clientes": [
+      "clientes_manager_select_ticket_core",
+      "clientes_support_select_assigned"
+    ],
+    "public.clientes_contactos": [
+      "clientes_contactos_select_scoped"
+    ],
+    "public.perfiles": [
+      "perfiles_select_self",
+      "perfiles_update_self"
+    ],
+    "public.reglas_asignacion": [
+      "reglas_asignacion_staff_select",
+      "reglas_asignacion_admin_write"
+    ],
+    "public.site_config": [
+      "site_config_read",
+      "site_config_admin_write"
+    ],
+    "public.solicitudes_soporte": [
+      "solicitudes_manager_select",
+      "solicitudes_support_select_assigned"
+    ],
+    "public.ticket_archivos": [
+      "ticket_archivos_staff_select",
+      "ticket_archivos_staff_insert",
+      "ticket_archivos_staff_delete"
+    ],
+    "public.ticket_eventos": [
+      "ticket_eventos_staff_select",
+      "ticket_eventos_staff_insert"
+    ],
+    "public.ticket_respuestas_rapidas": [
+      "quick_replies_staff_select",
+      "quick_replies_admin_write"
+    ],
+    "public.tickets": [
+      "tickets_manager_select",
+      "tickets_support_select_assigned",
+      "tickets_admin_update",
+      "tickets_manager_assign"
+    ],
+    "storage.objects": [
+      "soporte_adjuntos_staff_read",
+      "certificados_staff_read"
+    ]
+  }
+}

@@ -4,8 +4,9 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Soporte Janome | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="soporte.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
+<link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="stylesheet" href="global.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01"><link rel="stylesheet" href="soporte.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
 
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body data-surface="client">
 <!-- B17C43C: header público Janome con logo real y número real. -->
@@ -13,7 +14,7 @@
   <a class="jn-back-pill" id="supportBack" href="dashboard.html" hidden>← Volver</a>
   <a class="jn-brand" href="soporte.html" aria-label="Janome Servicio al cliente"><img class="jn-brand-img" src="../IMG/janome.jpg" alt="Janome"><span class="jn-brand-sub">SERVICIO AL CLIENTE</span></a>
   <div class="jn-top-actions">
-    <a class="jn-wa-pill" id="jnWaPill" href="https://wa.me/525568437918" target="_blank" rel="noopener"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>55 6843 7918</span></a>
+    <a class="jn-wa-pill" id="jnWaPill" href="https://wa.me/525568437918" target="_blank" rel="noopener" aria-label="WhatsApp 55 6843 7918"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>55 6843 7918</span></a>
     <button class="mini jn-theme-btn" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
   </div>
 </div></header>
@@ -51,7 +52,7 @@
 </div>
 
 <div class="form-grid">
-  <div class="field span-2"><label class="lbl" for="spSystemSearch">Producto <span class="req">*</span></label><div class="jn-combo" id="spEquipoCombo"></div><select class="select" id="spSystem" hidden><option value="">Selecciona tu producto</option></select><input class="input hidden" id="spOtroModelo" placeholder="Escribe el nombre o modelo de tu producto"></div>
+  <div class="field span-2"><label class="lbl" for="spSystemSearch">Producto <span class="req">*</span></label><div class="jn-combo" id="spEquipoCombo" data-input-id="spSystemSearch"></div><select class="select" id="spSystem" hidden><option value="">Selecciona tu producto</option></select><input class="input hidden" id="spOtroModelo" placeholder="Escribe el nombre o modelo de tu producto"></div>
 
   <div class="field span-2"><label class="lbl" for="spTitle">¿Qué está pasando? <span class="req">*</span></label><input class="input" id="spTitle" maxlength="120" autocapitalize="sentences" spellcheck="true" placeholder="Resúmelo en una línea (ej. se rompe el hilo)"></div>
   <div class="field span-2"><label class="lbl" for="spDesc">Cuéntanos con detalle <span class="req">*</span></label><textarea class="area" id="spDesc" maxlength="3000" autocapitalize="sentences" spellcheck="true" placeholder="¿Qué hacías cuando pasó? ¿Qué tela e hilo usabas? ¿Ya intentaste re-enhebrar o cambiar la aguja?"></textarea><div class="panel inset hidden" id="spFaqBox"><div class="row-head"><h3 id="spFaqTitle">Sugerencia rápida</h3></div><div class="mut" id="spFaqText">—</div><div class="actions"><a class="btn btn-ghost" id="spFaqLink" href="#" target="_blank" rel="noopener">Ver ayuda</a><button class="btn" type="button" id="spFaqUse">Ya lo hice</button></div></div></div>
@@ -76,8 +77,8 @@
 
 <div class="field span-2 hidden" id="spTurnstileWrap">
   <label class="lbl">Validación de seguridad</label>
-  <div class="cf-turnstile" data-sitekey="0x4AAAAAAC_3a20019HrKmhm" data-theme="auto" data-response-field="false" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError"></div>
-  <div class="mut" id="spCaptchaStatus">Confirma la validación para enviar tu solicitud.</div>
+  <div class="cf-turnstile" data-sitekey="0x4AAAAAAD4NK1upg2cHkCuI" data-theme="auto" data-response-field="false" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError"></div>
+  <div class="mut" id="spCaptchaStatus" role="status" aria-live="polite">Confirma la validación para enviar tu solicitud.</div>
 </div>
 <div class="sp-consent" id="spConsentField"><input type="checkbox" id="spConsent" required aria-required="true" aria-describedby="spConsentError"><label for="spConsent">He leído y acepto el <a href="aviso-privacidad.html" target="_blank" rel="noopener">Aviso de privacidad</a> y los <a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a>.</label><div class="sp-field-error" id="spConsentError" aria-live="polite"></div></div>
 <div class="actions sp-send-actions"><button class="btn btn-brand" id="spSendBtn" type="submit">Enviar</button></div>

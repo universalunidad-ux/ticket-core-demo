@@ -8,8 +8,25 @@ const files=(dir,exts)=>fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>
 const assert=(ok,msg)=>{if(!ok)fail.push(msg)};
 const htmlFiles=files(APP,[".html"]),sourceFiles=files(APP,[".html",".js"]);
 const html=htmlFiles.map(file=>[file,fs.readFileSync(file,"utf8")]);
+const APP_ORIGIN="https://example.invalid";
 const activeRefs=html.flatMap(([file,text])=>[...text.matchAll(/(?:href|src)="([^"]+\.(?:css|js)(?:\?[^"#]*)?)"/g)].map(match=>({file,ref:match[1]})));
-activeRefs.forEach(({file,ref})=>assert(new URL(ref,"https://example.invalid/app/").searchParams.get("v")===RELEASE,`asset sin release única: ${path.relative(ROOT,file)} -> ${ref}`));
+const parsedActiveRefs=activeRefs.map(item=>({...item,url:new URL(item.ref,`${APP_ORIGIN}/app/`)}));
+const localActiveRefs=parsedActiveRefs.filter(({url})=>url.origin===APP_ORIGIN);
+const externalActiveRefs=parsedActiveRefs.filter(({url})=>url.origin!==APP_ORIGIN);
+localActiveRefs.forEach(({file,ref,url})=>assert(url.searchParams.get("v")===RELEASE,`asset local sin release única: ${path.relative(ROOT,file)} -> ${ref}`));
+const allowedExternalAssets=new Set([
+  "https://challenges.cloudflare.com/turnstile/v0/api.js"
+]);
+externalActiveRefs.forEach(({file,ref,url})=>{
+  const canonical=`${url.origin}${url.pathname}`;
+  assert(
+    url.protocol==="https:" &&
+    !url.username &&
+    !url.password &&
+    allowedExternalAssets.has(canonical),
+    `asset externo no autorizado: ${path.relative(ROOT,file)} -> ${ref}`
+  );
+});
 sourceFiles.forEach(file=>{const text=fs.readFileSync(file,"utf8");for(const match of text.matchAll(/\.(?:css|js)\?v=([^"'\s)>]+)/g))assert(match[1]===RELEASE,`query activa anterior: ${path.relative(ROOT,file)} -> ${match[1]}`)});
 const globalCssRefs=activeRefs.filter(x=>/(?:^|\/)global\.css\?/.test(x.ref));
 assert(globalCssRefs.length>=11,"faltan referencias global.css versionadas");

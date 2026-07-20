@@ -19,6 +19,16 @@ const $ = q => document.querySelector(q);
 const TABS = ["resumen", "contactos", "equipos", "tickets", "adjuntos", "bitacora", "consolidacion"];
 const ST = { sb: null, id: null, identidad: null, tab: "resumen", cache: {}, seq: {}, loading: {} };
 
+function clientListReturn() {
+  const requested = new URLSearchParams(location.search).get("return");
+  if (!requested) return "clientes.html";
+  try {
+    const url = new URL(requested, location.href);
+    if (url.origin !== location.origin || !url.pathname.endsWith("/clientes.html")) return "clientes.html";
+    return `clientes.html${url.search}`;
+  } catch { return "clientes.html"; }
+}
+
 /* Loaders por pestaña. adjuntos/consolidación reutilizan la cache de tickets. */
 const ticketsData = async () => {
   if (!ST.cache.tickets) { perfCountRequest(2); ST.cache.tickets = await loadTickets(ST.sb, ST.id); }
@@ -46,12 +56,20 @@ const RENDER = {
   consolidacion: d => UI.renderConsolidacion(d),
 };
 
-const markActive = () => document.querySelectorAll("#cfTabs .chat-tab").forEach(b => {
-  const on = b.dataset.tab === ST.tab;
-  b.classList.toggle("is-active", on);
-  b.setAttribute("aria-selected", on ? "true" : "false");
-  if (on) b.scrollIntoView({ block: "nearest", inline: "nearest" }); /* tab activa visible en scroll horizontal */
-});
+const markActive = () => {
+  let activeTab = null;
+  document.querySelectorAll("#cfTabs .chat-tab").forEach(b => {
+    const on = b.dataset.tab === ST.tab;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+    b.tabIndex = on ? 0 : -1;
+    if (on) {
+      activeTab = b;
+      b.scrollIntoView({ block: "nearest", inline: "nearest" }); /* tab activa visible en scroll horizontal */
+    }
+  });
+  if (activeTab?.id) $("#cfBody")?.setAttribute("aria-labelledby", activeTab.id);
+};
 
 const syncCounts = () => {
   const k = ST.identidad?.kpis || {};
@@ -90,9 +108,38 @@ async function openTab(tab, push = true) {
   } finally { ST.loading[tab] = false; }
 }
 
+const bindClientTabs = () => {
+  const tablist = $("#cfTabs");
+  if (!tablist || tablist.dataset.clientTabsBound === "1") return;
+  tablist.dataset.clientTabsBound = "1";
+  tablist.addEventListener("click", e => {
+    const tab = e.target.closest?.(".chat-tab");
+    if (tab) openTab(tab.dataset.tab);
+  });
+  tablist.addEventListener("keydown", e => {
+    const current = e.target.closest?.(".chat-tab[role='tab']");
+    if (!current || !tablist.contains(current)) return;
+    const tabs = [...tablist.querySelectorAll(".chat-tab[role='tab']")];
+    const currentIndex = tabs.indexOf(current);
+    if (currentIndex < 0) return;
+    let targetIndex;
+    if (e.key === "Home") targetIndex = 0;
+    else if (e.key === "End") targetIndex = tabs.length - 1;
+    else if (e.key === "ArrowRight") targetIndex = (currentIndex + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    else return;
+    e.preventDefault();
+    const target = tabs[targetIndex];
+    target.focus({ preventScroll: true });
+    openTab(target.dataset.tab);
+  });
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
+  const returnTo = clientListReturn();
+  $("#cfBack").href = returnTo;
   const id = new URLSearchParams(location.search).get("id");
-  if (!id) { location.replace("clientes.html"); return; }
+  if (!id) { location.replace(returnTo); return; }
   const ctx = await mountNav("cliente");
   if (!ctx) return;
   ST.sb = ctx.sb; ST.id = id;
@@ -107,7 +154,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const e = mapError(ex, notFound ? "CLIENT_NOT_FOUND" : "CLIENT_DETAIL_LOAD_FAILED");
     devLog("cliente", "identidad", e.code + ":" + e.kind);
     $("#cfNombre").textContent = notFound ? "Cliente no encontrado" : "No se pudo cargar la ficha";
-    $("#cfBody").innerHTML = `<div class="cf-empty"><div class="cf-empty-t">${notFound ? "Verifica el enlace o vuelve al listado" : "No se pudo consultar la información"}</div><div class="cf-empty-d">${notFound ? "El cliente pudo haberse consolidado con otro registro." : e.human}</div><div class="actions">${notFound ? "" : '<button class="btn btn-ghost" type="button" id="cfRetryAll">Reintentar</button>'}<a class="btn btn-ghost" href="clientes.html">Volver a clientes</a></div></div>`;
+    $("#cfBody").innerHTML = `<div class="cf-empty"><div class="cf-empty-t">${notFound ? "Verifica el enlace o vuelve al listado" : "No se pudo consultar la información"}</div><div class="cf-empty-d">${notFound ? "El cliente pudo haberse consolidado con otro registro." : e.human}</div><div class="actions">${notFound ? "" : '<button class="btn btn-ghost" type="button" id="cfRetryAll">Reintentar</button>'}<a class="btn btn-ghost" href="${returnTo}">Volver a clientes</a></div></div>`;
     document.getElementById("cfRetryAll")?.addEventListener("click", () => location.reload());
     return;
   }
@@ -118,10 +165,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   perfPageReady();
   perfSecondaryDone();
 
-  $("#cfTabs").addEventListener("click", e => {
-    const b = e.target.closest?.(".chat-tab");
-    if (b) openTab(b.dataset.tab);
-  });
+  bindClientTabs();
   $("#cfBody").addEventListener("click", e => {
     const rt = e.target.closest?.("[data-tab-retry]");
     if (rt) { delete ST.cache[rt.dataset.tabRetry]; openTab(rt.dataset.tabRetry, false); return; }

@@ -6,26 +6,46 @@
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="clientes.css?v=frontend-final-20260716-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
-<!-- B19D: cabecera con resumen (counts head baratos), pill bar de clasificación
-     por rol, vista tabla/cards con estado en URL. Los filtros de página se
-     aplican sobre lo cargado; los globales llegarán con la vista B19B. -->
+<!-- CLIENTES: filtros, orden y paginación exactos dentro del conjunto autorizado
+     por RLS. Contactos, sistemas y supervisor siguen bloqueados por contrato. -->
 </head>
 <body data-surface="admin" data-shell="app" data-page="clientes">
 <div id="appShell"></div>
 <main class="wrap">
   <section class="panel">
     <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Clientes</h1></div>
-      <div class="actions cl-admin-only"><a class="btn btn-brand" href="alta-cliente.html">Alta interna de cliente</a></div>
+      <div class="actions cl-admin-only"><a class="btn btn-brand" href="alta-cliente.html">Cliente nuevo</a></div>
     </div>
     <div class="cl-summary" id="clSummary"></div>
-    <div class="cl-pills" id="clPills" role="toolbar" aria-label="Clasificación"></div>
     <div class="cl-toolbar">
-      <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off"></div>
-      <select class="select" id="clOrder" aria-label="Orden">
-        <option value="actividad">Actividad reciente</option>
-        <option value="nombre">Nombre</option>
-        <option value="abiertos">Tickets abiertos</option>
+      <div class="searchbox"><span aria-hidden="true">🔎</span><input id="clSearch" placeholder="Buscar por nombre de cliente…" autocomplete="off" aria-label="Buscar clientes"></div>
+      <div class="cl-admin-only cl-admin-filter"><label class="sr-only" for="clAgentFilter">Filtrar por agente</label><select class="select" id="clAgentFilter" aria-label="Filtrar clientes por agente"><option value="all">Todos los agentes</option><option value="unassigned">Sin agente</option></select></div>
+      <select class="select" id="clOrder" aria-label="Ordenar clientes">
+        <option value="actividad">Última actividad</option>
+        <option value="tickets">Más tickets</option>
+        <option value="abiertos">Más tickets abiertos</option>
+        <option value="az">Nombre A–Z</option>
+        <option value="za">Nombre Z–A</option>
       </select>
+      <div class="cl-filter-wrap">
+        <button class="mini btn-ghost cl-filter-trigger" id="clFiltersBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="clFiltersPanel">Filtros <span class="cl-filter-count" id="clFilterCount" hidden>0</span></button>
+        <section class="cl-filter-panel" id="clFiltersPanel" role="dialog" aria-label="Filtros de clientes" hidden>
+          <div class="cl-filter-head"><div><b>Filtros</b><span>Se aplican al directorio autorizado completo.</span></div><button class="icon-btn" type="button" id="clFiltersClose" aria-label="Cerrar filtros">×</button></div>
+          <div class="cl-filter-options" role="group" aria-label="Clasificación del cliente">
+            <button class="cl-filter-option is-active" id="clFilterAll" type="button">Todos</button>
+            <label class="cl-filter-option"><input type="checkbox" value="recent" data-client-filter> Recientes</label>
+            <label class="cl-filter-option"><input type="checkbox" value="open" data-client-filter> Con tickets abiertos</label>
+            <label class="cl-filter-option"><input type="checkbox" value="waiting" data-client-filter> Esperando cliente</label>
+            <label class="cl-filter-option"><input type="checkbox" value="priority" data-client-filter> Prioridad alta</label>
+            <label class="cl-filter-option"><input type="checkbox" value="sla" data-client-filter> Riesgo SLA</label>
+            <label class="cl-filter-option"><input type="checkbox" value="consolidation" data-client-filter> Por consolidar</label>
+          </div>
+          <div class="cl-equipment-field"><label class="lbl" for="clEquipmentInput">Equipo Janome</label><input class="input" id="clEquipmentInput" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clEquipmentList" autocomplete="off" placeholder="Familia o modelo de máquina" aria-label="Filtrar por máquina o accesorio"><div class="cl-equipment-list" id="clEquipmentList" role="listbox" hidden></div><span class="mut" id="clEquipmentFallback" hidden>Lectura de equipos no disponible; no se aplicará este filtro.</span></div>
+          <label class="cl-filter-size" for="clFilterPageSize"><span>Resultados por página</span><select class="select" id="clFilterPageSize" aria-label="Clientes por página"><option value="10">10</option><option value="20">20</option><option value="40">40</option></select></label>
+          <div class="mut cl-filter-status" id="clFilterStatus" aria-live="polite"></div>
+          <div class="cl-filter-actions"><button class="btn btn-ghost" id="clFiltersClear" type="button">Limpiar</button><button class="btn btn-brand" id="clFiltersApply" type="button">Aplicar</button></div>
+        </section>
+      </div>
       <div class="cl-viewtoggle" role="group" aria-label="Vista">
         <button class="mini btn-ghost" id="clVistaTabla" type="button">Tabla</button>
         <button class="mini btn-ghost" id="clVistaCards" type="button">Tarjetas</button>
@@ -35,7 +55,7 @@
   </section>
   <section class="panel" id="clPanel">
     <div id="clList"><div class="cl-skel"></div><div class="cl-skel"></div><div class="cl-skel"></div></div>
-    <div class="cl-pager"><button class="btn btn-ghost" id="clMore" type="button" hidden>Cargar más</button><span class="mut" id="clCount"></span></div>
+    <div class="cl-pager"><span class="mut" id="clCount" aria-live="polite"></span><nav class="cl-pagination" id="clPagination" aria-label="Paginación de clientes"></nav></div>
   </section>
 </main>
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>

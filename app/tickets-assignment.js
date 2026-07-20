@@ -1,4 +1,5 @@
 import { supabase as s } from "./supabase.js";
+import { openDialog, closeDialog } from "./global.js?v=frontend-final-20260716-01";
 
 const esc = v => String(v ?? "").replace(/[&<>"']/g, m => ({
   "&":"&amp;",
@@ -179,7 +180,7 @@ function mountViewButton(){
   btn.setAttribute("title", "Vista: todos / mis tickets / sin asignar");
   btn.innerHTML = VIEW_ICON;
   // B.1: listener DIRECTO (pointerdown), no document-capture → sin carrera.
-  btn.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); openView(); });
+  btn.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); openView(btn); });
   host.prepend(btn);
 }
 
@@ -189,8 +190,14 @@ function mountViewModal(){
   const ov = document.createElement("div");
   ov.id = "tcViewOverlay";
   ov.className = "overlay";
+  ov.hidden = true;
+  ov.setAttribute("role", "dialog");
+  ov.setAttribute("aria-modal", "true");
+  ov.setAttribute("aria-label", "Vista de tickets");
+  ov.setAttribute("aria-hidden", "true");
+  ov.setAttribute("tabindex", "-1");
   ov.innerHTML = `
-    <div class="modal tcViewModal" role="dialog" aria-modal="true" aria-label="Vista de tickets">
+    <div class="modal tcViewModal">
       <div class="tcViewModal__head">
         <div><div class="tcViewModal__kicker">Vista</div><h3>¿Qué tickets quieres ver?</h3></div>
         <button type="button" class="tcViewModal__x" id="tcViewClose" aria-label="Cerrar">×</button>
@@ -216,13 +223,13 @@ function mountViewModal(){
   });
 }
 
-function openView(){
+function openView(trigger){
   if(!IS_ADMIN) return;
   mountViewModal();
   syncViewPills();
-  $("#tcViewOverlay")?.classList.add("open");
+  openDialog("#tcViewOverlay", { trigger, initialFocus:"#tcViewClose", onCloseRequest:closeView });
 }
-function closeView(){ $("#tcViewOverlay")?.classList.remove("open"); }
+function closeView(){ closeDialog("#tcViewOverlay"); }
 
 /* ---- Modal de asignación (centrado) ---- */
 function mountAssignModal(){
@@ -230,8 +237,14 @@ function mountAssignModal(){
   const ov = document.createElement("div");
   ov.id = "tcAssignOverlay";
   ov.className = "overlay";
+  ov.hidden = true;
+  ov.setAttribute("role", "dialog");
+  ov.setAttribute("aria-modal", "true");
+  ov.setAttribute("aria-label", "Asignar ticket");
+  ov.setAttribute("aria-hidden", "true");
+  ov.setAttribute("tabindex", "-1");
   ov.innerHTML = `
-    <div class="modal tcAssignModal" role="dialog" aria-modal="true" aria-label="Asignar ticket">
+    <div class="modal tcAssignModal">
       <div class="tcAssignModal__head">
         <div><div class="tcAssignModal__kicker">Asignación</div><h3 id="tcAssignModalTitle">Ticket</h3></div>
         <button type="button" class="tcAssignModal__x" id="tcAssignClose" aria-label="Cerrar">×</button>
@@ -252,7 +265,7 @@ function mountAssignModal(){
   $("#tcAssignSave").onclick = () => saveAssignment();
 }
 
-function openAssign(id){
+function openAssign(id, trigger){
   if(!IS_ADMIN) return;
   const t = ticketById(id);
   if(!t) return;
@@ -265,9 +278,9 @@ function openAssign(id){
     `<option value="">Sin asignar</option>`,
     ...AGENTS.map(a => `<option value="${esc(a.id)}" ${String(a.id)===String(assigned)?"selected":""}>${esc(agentLabel(a))} · ${esc(a.rol || "")}</option>`)
   ].join("");
-  ov.classList.add("open");
+  openDialog(ov, { trigger, initialFocus:"#tcAssignSelect", onCloseRequest:closeAssign });
 }
-function closeAssign(){ $("#tcAssignOverlay")?.classList.remove("open"); }
+function closeAssign(){ closeDialog("#tcAssignOverlay"); }
 
 async function saveAssignment(){
   if(!IS_ADMIN){ closeAssign(); return; }
@@ -319,7 +332,7 @@ function ensureCardAssignButton(card, t){
   badge.dataset.assignOpen = id;
   // B.1: apertura por listener DIRECTO en el badge (pointerdown), NO por
   // document-click-capture (que competía con los stopImmediatePropagation de tickets.js).
-  badge.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); openAssign(id); });
+  badge.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); openAssign(id, badge); });
 
   // B.2/B.2.2: el badge de agente va en la ZONA DE IDENTIDAD (junto al nombre/remitente).
   // B2_2_KANBAN_ASSIGN_BADGE_INLINE: kanban también va junto al nombre/remitente, no en acciones.
@@ -449,16 +462,6 @@ function bind(){
   // B.1: NO se usa document-click-capture para abrir (esa era la carrera con
   // los stopImmediatePropagation de tickets.js). La apertura ahora está en
   // listeners DIRECTOS (pointerdown) sobre cada badge y sobre el icono de vista.
-
-  // Escape cierra el modal abierto (listener único global; permitido). No interfiere al teclear.
-  if(!document.documentElement.dataset.tcAssignKeydownBound){
-    document.documentElement.dataset.tcAssignKeydownBound = "1";
-    document.addEventListener("keydown", e => {
-      if(e.key !== "Escape") return;
-      if($("#tcAssignOverlay")?.classList.contains("open")) return closeAssign();
-      if($("#tcViewOverlay")?.classList.contains("open")) return closeView();
-    });
-  }
 
   // Re-decorar cuando el board re-renderiza (debounce). El observer se
   // desconecta dentro de applyAssignmentDecorations para no auto-dispararse.

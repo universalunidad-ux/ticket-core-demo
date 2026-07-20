@@ -15,16 +15,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+      - name: Enforce canonical source and anti-drift context
+        run: node tools/preflight.mjs --mode ci
+      - name: Run deterministic assignment evaluator tests
+        run: node tools/assignment-engine.test.mjs
+      - name: Validate support product combobox accessibility
+        run: node tools/support-product-combobox-a11y.test.mjs
+      - name: Validate legal page precache contract
+        run: node tools/sw-legal-shells.test.mjs
+      - name: Enforce assignment test ownership
+        run: node tools/ci-assignment-ownership.test.mjs
       - name: Validate final Pages artifact
         run: node tools/frontend-gates.mjs .
       - name: Scan forbidden secrets and local config
         run: bash tools/secret-gate.sh .
+      - name: Test secret scanner fail-closed behavior
+        run: bash tools/secret-gate-test.sh
       - name: Reject real-looking PII fixtures
         run: node tools/pii-gate.mjs .
       - name: Keep company optional in public support
         run: node tools/support-company-gate.mjs .
       - name: Block stored XSS in ticket renderers
         run: node tools/xss-gate.mjs .
+      - name: Block anonymous CRM disclosure in support Edge (U1)
+        run: node tools/edge-anon-response-gate.mjs .
+      - name: Block client-side role provisioning (U2)
+        run: node tools/client-role-write-gate.mjs .
+      - name: Enforce private/safe storage upload contract (U5)
+        run: node tools/storage-safety-gate.mjs .
+      - name: Enforce Turnstile config before production (V2-7)
+        run: node tools/turnstile-deploy-gate.mjs .
+      - name: Run upload-contract unit tests (V2-10)
+        run: node --experimental-strip-types tools/run-contract-tests.mjs .
+      - name: Enforce admin UX functional closeout (U10)
+        run: node tools/admin-ux-u10.test.mjs
+      - name: Static accessibility gate
+        run: node tools/a11y-static-gate.mjs
+      - name: Enforce pre-staging AuthZ reconciliation (U11)
+        run: node tools/prestaging-authz-contract.test.mjs
+      - name: Enforce SECURITY DEFINER inventory (U12A)
+        run: node tools/security-definer-contract.test.mjs
+      - name: Enforce synthetic staging seed contract (U12B)
+        run: node tools/staging-synthetic-seed-contract.test.mjs
       - name: Reject whitespace and conflict-marker errors
         run: git diff --check HEAD^ HEAD

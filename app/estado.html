@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Seguimiento de ticket | Ticket Core</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="stylesheet" href="global.css?v=frontend-final-20260716-01">
-<link rel="stylesheet" href="estado.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
+<link rel="stylesheet" href="global.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01">
+<link rel="stylesheet" href="estado.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01"><link rel="stylesheet" href="janome/janome.css?v=frontend-final-20260716-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B17C45: theme.js removido — global.js (importado por estado.js) ya ejecuta
      initTheme()+initThemeToggle(); tener ambos duplicaba el listener y cada
@@ -18,7 +18,7 @@
   <a class="jn-brand" href="soporte.html" aria-label="Janome Servicio al cliente"><img class="jn-brand-img" src="../IMG/janome.jpg" alt="Janome"><span class="jn-brand-sub">SERVICIO AL CLIENTE</span></a>
   <div class="jn-top-actions">
     <button class="mini st-notify-btn" id="stChatNotifyBtn" type="button" aria-label="Abrir notificaciones" aria-controls="stNotifyPanel" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="st-notify-count hidden" id="stNotifyCount" aria-hidden="true"></span></button>
-    <a class="jn-wa-pill" href="https://wa.me/525568437918" target="_blank" rel="noopener"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>55 6843 7918</span></a>
+    <a class="jn-wa-pill" href="https://wa.me/525568437918" target="_blank" rel="noopener" aria-label="WhatsApp 55 6843 7918"><img src="../IMG/whatsapp.svg" alt="" width="18" height="18"><span>55 6843 7918</span></a>
     <button class="mini jn-theme-btn" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>
   </div>
 </div></header>
@@ -38,9 +38,12 @@
         <div class="estado-summary-head">
           <div class="section-kicker">Seguimiento de tu caso</div>
           <div class="estado-summary-title">
-            <h2 id="stTitle">—</h2>
+            <h1 id="stTitle">—</h1>
             <span class="estado-status-pill" id="stHeroStatus">Cargando…</span>
           </div>
+        </div>
+        <div class="estado-next hidden" id="stNextStepBox" role="status" aria-live="polite" aria-atomic="true">
+          <span class="estado-next-v" id="stNextStep"></span>
         </div>
         <div class="estado-kpis">
           <div class="estado-kpi"><div class="k">Folio</div><div class="v" id="stFolio" title="Clic para copiar">—</div></div>
@@ -88,7 +91,7 @@
       <article class="estado-card estado-last hidden" id="stLastSupportCard">
         <div class="section-head">
           <div>
-            <div class="section-kicker">Último mensaje</div>
+            <div class="section-kicker">Último mensaje del equipo</div>
           </div>
         </div>
         <div class="estado-last-copy" id="stLastSupportText">—</div>
@@ -126,6 +129,7 @@
   </div>
 
   <div class="chat-reply-help hidden" id="stChatReplyHelp" role="region" aria-label="Ayuda para responder">
+    <span>Puedes escribir aquí si tienes un dato nuevo, evidencia adicional o una aclaración útil para soporte. Máximo 2 mensajes seguidos del cliente.</span>
     <strong>Hasta 3 fotos y 1 PDF (máx. 20 MB por archivo).</strong>
     <span class="chat-video-future" aria-disabled="true">Video: próximamente</span>
   </div>
@@ -154,7 +158,7 @@
       <div class="chat-quote-copy"><div class="chat-quote-meta">Respondiendo a <span id="stReplyQuoteMeta">—</span></div><div class="chat-quote-prev" id="stReplyQuotePrev"></div></div>
       <button class="chat-pick-rm" id="stReplyQuoteX" type="button" aria-label="Cancelar cita">×</button>
     </div>
-    <input class="sr-only" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
+    <input class="sr-only" id="stReplyFilesPop" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" aria-label="Adjuntar archivos al mensaje" tabindex="-1">
     <div class="chat-file-chips hidden" id="stFileChips"></div>
     <!-- B17C46: cápsula única con paridad al compositor de ticket.html
          (adjuntar izquierda · textarea · enviar derecha con IMG/enviar.png). -->
@@ -198,9 +202,6 @@
   <button class="st-viewer-btn st-viewer-prev hidden" id="stViewerPrev" type="button" aria-label="Anterior">‹</button>
   <button class="st-viewer-btn st-viewer-next hidden" id="stViewerNext" type="button" aria-label="Siguiente">›</button>
 </div>
-
-<audio id="stSoftPing" preload="auto"></audio>
-<audio id="stStrongPing" preload="auto"></audio>
 
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
 <!-- B19C: config-loader.js retirado. Era el origen del 404 a /rest/v1/site_config

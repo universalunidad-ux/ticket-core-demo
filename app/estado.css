@@ -24,12 +24,12 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-card .section-head h2,.estado-card .section-head h3{margin:0;text-wrap:balance}
 .estado-summary-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:6px 16px;min-width:0}
 .estado-summary-head .section-kicker{align-self:baseline}
-/* B17C46: título + badge en flujo inline robusto. El h2 es inline y el badge
+/* B17C46: título + badge en flujo inline robusto. El h1 es inline y el badge
    inline-flex continúa tras el último carácter del título; si el título envuelve,
    el badge baja con él dentro de la columna derecha (nunca inicia fila propia,
    sin position:absolute ni márgenes negativos). */
 .estado-summary-title{min-width:0}
-.estado-summary-title h2{display:inline;margin:0;font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
+.estado-summary-title h1{display:inline;margin:0;font-size:clamp(18px,2vw,24px);overflow-wrap:anywhere}
 .estado-summary-title .estado-status-pill{margin-left:8px;vertical-align:middle}
 .estado-summary-card{gap:16px}
 .estado-summary-card .estado-next-actions.hidden{display:none}
@@ -65,7 +65,8 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-last-meta{font-size:12px;opacity:.76}
 .estado-last-actions{display:flex;gap:10px;flex-wrap:wrap}
 .preview-card .v,#stReplyStatus,#stReplyFilesMeta{overflow-wrap:anywhere}
-.help-dot{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel-2) 92%,transparent);font-weight:900;cursor:pointer;box-shadow:var(--st-shadow-soft)}
+.help-dot{position:relative;display:inline-grid;place-items:center;width:36px;height:36px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel-2) 92%,transparent);font-weight:900;cursor:pointer;box-shadow:var(--st-shadow-soft)}
+.help-dot::after{content:"";position:absolute;inset:-4px}
 .help-dot:hover{transform:translateY(-1px)}
 .help-pop{position:fixed;right:22px;top:92px;z-index:95;display:grid;gap:12px;width:min(360px,calc(100vw - 24px));padding:16px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--panel) 97%,transparent);backdrop-filter:blur(var(--st-blur));box-shadow:0 26px 60px rgba(2,6,23,.22)}
 .help-pop.hidden{display:none}
@@ -282,20 +283,6 @@ body.st-chat-open .chat-fab{opacity:0;pointer-events:none}
   body[data-surface="client"] .estado-actions .btn{width:100%!important}
   body[data-surface="client"] .chat-pop{left:0!important;right:0!important;width:100vw!important;max-width:none!important;border-radius:0!important}
 }
-
-/* ====== B17C44 — header público Janome (mismo lenguaje que soporte.html).
-   Estos estilos son copia local porque estado.html no carga soporte.css
-   (fuente canónica: soporte.css; soporte está en cierre y no se toca). ====== */
-.jn-topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.jn-topbar-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px}
-.jn-brand{display:flex;align-items:center;gap:10px}
-.jn-brand-img{height:32px;width:auto;border-radius:6px}
-.jn-brand-sub{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.jn-top-actions{display:flex;align-items:center;gap:8px}
-.jn-wa-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;background:#22c55e;color:#fff;font-weight:800;font-size:13.5px;text-decoration:none;box-shadow:0 4px 12px rgba(34,197,94,.28)}
-.jn-wa-pill:hover{background:#16a34a}
-.jn-wa-pill img{display:block;filter:brightness(0) invert(1)}
-@media(max-width:599px){.jn-wa-pill span{display:none}.jn-wa-pill{padding:8px}}
 
 /* ====== B17C44 — footer compacto + reserva para el FAB Conversación.
    .jn-footer base vive en janome.css (read-only); override scoped a estado. ====== */

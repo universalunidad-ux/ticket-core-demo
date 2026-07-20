@@ -17,35 +17,45 @@
    ============================================================================ */
 import { supabase, esc } from "./supabase.js";
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
-import { ticketStateLabel, ticketStateCls, ago, prettyBytes, setRailOpenCount } from "./global.js?v=frontend-final-20260716-01";
+import { evaluateAssignment, matchingRules, OUTCOME, REASON } from "./shared/assignment-rules.js?v=frontend-final-20260716-01";
+import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel } from "./global.js?v=frontend-final-20260716-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 
 const $ = (q, c = document) => c.querySelector(q);
 const OPEN_STATES = ["abierto", "en_proceso", "esperando_cliente"];
 const CTX = { rol: "soporte", isAdmin: false, me: null, nombre: "" };
 const busy = new Set(); // guardas anti doble-submit por acción
-let AGENT_ROWS = [];
-const metricValue=(row,...keys)=>{for(const k of keys)if(row?.[k]!==undefined&&row?.[k]!==null)return row[k];return null};
+let AGENT_ROWS = [], AGENT_MODAL_STATE={agent:null,metric:null,page:0,trigger:null};
+const AGENT_PAGE_SIZE=10;
 const AGENT_METRICS = [
-  ["Tickets activos","tickets_abiertos"],
-  ["Abiertos","abiertos"],
-  ["En proceso","en_proceso"],
-  ["Esperando cliente","esperando_cliente"],
-  ["Cerrados / resueltos","cerrados_o_resueltos"],
-  ["Alta / urgente","alta_urgente_abiertos"],
-  ["SLA 1ª respuesta vencida","primera_respuesta_vencida"],
-  ["SLA resolución vencida","resolucion_vencida"],
-  ["Supervisiones pendientes","pendientes_supervision"]
+  {key:"ACTIVE",label:"Tickets activos",help:"Tickets que todavía requieren atención.",match:t=>OPEN_STATES.includes(ticketStateKey(t.estado))},
+  {key:"OPEN",label:"Abiertos",match:t=>ticketStateKey(t.estado)==="abierto"},
+  {key:"IN_PROGRESS",label:"En proceso",match:t=>ticketStateKey(t.estado)==="en_proceso"},
+  {key:"WAITING_CUSTOMER",label:"Esperando cliente",match:t=>ticketStateKey(t.estado)==="esperando_cliente"},
+  {key:"CLOSED_RESOLVED",label:"Cerrados / resueltos",match:t=>["cerrado","resuelto"].includes(ticketStateKey(t.estado))},
+  {key:"HIGH_URGENT",label:"Alta / urgente",match:t=>["alta","urgente"].includes(String(t.prioridad||"").toLowerCase())},
+  {key:"FIRST_RESPONSE_BREACHED",label:"SLA 1ª respuesta vencida",match:t=>t.sla_breached_first_response===true},
+  {key:"RESOLUTION_BREACHED",label:"SLA resolución vencida",match:t=>t.sla_breached_resolution===true},
+  {key:"SUPERVISION_PENDING",label:"Casos por supervisar",help:"Tickets que fueron escalados y todavía requieren revisión administrativa.",match:t=>t.requiere_supervision===true}
 ];
-const agentMetricHtml=(row,def)=>{const v=metricValue(row,...def.slice(1));return `<span class="dash-agent-metric"><span>${esc(String(def[0]??""))}</span><b>${v==null?"—":esc(String(v))}</b></span>`};
-
-function openAgent(row){
-  if(!CTX.isAdmin)return;
-  $("#dashAgentTitle").textContent=row.agente_nombre||"Agente";
-  $("#dashAgentDetail").innerHTML=AGENT_METRICS.map(d=>agentMetricHtml(row,d)).join("");
-  const id=row.agente_id||row.id||row.perfil_id;
-  $("#dashAgentTickets").href=id?`tickets.html?assignee=${encodeURIComponent(id)}`:"tickets.html";
-  $("#dashAgentModal").hidden=false;
+const agentMetricRows=(row,metric)=>Array.isArray(row?.tickets)?row.tickets.filter(metric.match):[];
+const agentMetricHtml=(row,def)=>{const count=agentMetricRows(row,def).length,name=row.agente_nombre||"Agente";return `<button class="dash-agent-metric" type="button" data-agent-metric="${esc(def.key)}" aria-label="${esc(`${name}: ${def.label}, ${count} tickets`)}"${def.help?` aria-describedby="dashSupervisionHelp"`:""}><span>${esc(def.label)}</span><b>${count}</b></button>`};
+const agentTicketRow=t=>`<article class="dash-agent-ticket"><span class="tag ${ticketPriorityCls(t.prioridad)}">${esc(t.prioridad||"media")}</span><div><b>${esc(t.empresa_capturada||t.clientes?.nombre||"Sin cliente")}</b><span>${esc(t.folio||"—")} · ${esc(t.titulo||"Sin título")}</span><small>${esc(ticketStateLabel(t.estado))} · ${esc(ago(t.fecha_actualizacion||t.fecha_creacion))}${t.sla_breached_first_response||t.sla_breached_resolution?" · SLA vencido":""}${t.requiere_supervision?" · Supervisión":""}</small></div><a class="mini btn-ghost" href="ticket.html?id=${encodeURIComponent(t.id)}">Ver ticket</a></article>`;
+function renderAgentModal(){
+  const {agent,metric,page}=AGENT_MODAL_STATE;if(!agent||!metric)return;
+  const rows=agentMetricRows(agent,metric),pages=Math.max(1,Math.ceil(rows.length/AGENT_PAGE_SIZE)),safePage=Math.min(page,pages-1),shown=rows.slice(safePage*AGENT_PAGE_SIZE,(safePage+1)*AGENT_PAGE_SIZE);
+  AGENT_MODAL_STATE.page=safePage;
+  $("#dashAgentTitle").textContent=agent.agente_nombre||"Agente";
+  $("#dashAgentRole").textContent=agent.agente_rol||"soporte";
+  $("#dashAgentMetricTitle").textContent=`${metric.label} · ${rows.length}`;
+  $("#dashAgentDetail").innerHTML=shown.length?shown.map(agentTicketRow).join(""):'<div class="empty-state">No hay tickets en esta métrica.</div>';
+  $("#dashAgentPage").textContent=rows.length?`Página ${safePage+1} de ${pages}`:"Página 1 de 1";
+  $("#dashAgentPrev").disabled=safePage===0;$("#dashAgentNext").disabled=safePage>=pages-1;
+}
+function openAgentMetric(row,metricKey,trigger){
+  if(!CTX.isAdmin)return;const metric=AGENT_METRICS.find(x=>x.key===metricKey);if(!metric)return;
+  AGENT_MODAL_STATE={agent:row,metric,page:0,trigger};renderAgentModal();
+  openDialog("#dashAgentModal",{trigger,initialFocus:"#dashAgentClose",fallbackFocus:trigger,onCloseRequest:()=>closeDialog("#dashAgentModal")});
 }
 
 async function loadAgentSummary(){
@@ -53,10 +63,12 @@ async function loadAgentSummary(){
   const box=$("#dashAgentGrid");
   try{
     perfCountRequest();
-    const {data,error}=await supabase.from("v_tickets_agente_resumen").select("*").order("agente_nombre",{ascending:true});
-    if(error)throw error;
-    AGENT_ROWS=(data||[]).filter(r=>String(r.agente_rol||"").toLowerCase()==="soporte");
-    box.innerHTML=AGENT_ROWS.length?AGENT_ROWS.map((r,i)=>`<button class="dash-agent-card" type="button" data-agent-row="${i}"><span class="dash-agent-head"><b>${esc(r.agente_nombre||"Agente")}</b><span class="tag">${esc(r.agente_rol||"—")}</span></span><span class="dash-agent-metrics">${AGENT_METRICS.map(d=>agentMetricHtml(r,d)).join("")}</span></button>`).join(""):'<div class="empty-state">Sin agentes en el resumen.</div>';
+    const profiles=await supabase.from("perfiles").select("id,nombre,rol").eq("rol","soporte").order("nombre",{ascending:true});
+    if(profiles.error)throw profiles.error;
+    const ids=(profiles.data||[]).map(x=>x.id),tickets=[];
+    if(ids.length)for(let from=0;;from+=500){const result=await supabase.from("tickets").select("id,folio,titulo,estado,prioridad,asignado_a,cliente_id,empresa_capturada,fecha_creacion,fecha_actualizacion,sla_breached_first_response,sla_breached_resolution,requiere_supervision,clientes(nombre)").in("asignado_a",ids).order("fecha_actualizacion",{ascending:false}).range(from,from+499);if(result.error)throw result.error;tickets.push(...(result.data||[]));if((result.data||[]).length<500)break}
+    AGENT_ROWS=(profiles.data||[]).map(p=>({agente_id:p.id,agente_nombre:p.nombre||"Agente",agente_rol:p.rol||"soporte",tickets:tickets.filter(t=>String(t.asignado_a)===String(p.id))}));
+    box.innerHTML=AGENT_ROWS.length?AGENT_ROWS.map((r,i)=>`<article class="dash-agent-card" data-agent-row="${i}"><span class="dash-agent-head"><b>${esc(r.agente_nombre||"Agente")}</b><span class="tag">${esc(r.agente_rol||"—")}</span></span><span class="dash-agent-metrics">${AGENT_METRICS.map(d=>agentMetricHtml(r,d)).join("")}</span></article>`).join(""):'<div class="empty-state">Sin agentes en el resumen.</div>';
   }catch(e){box.innerHTML='<div class="empty-state">No se pudo cargar el resumen de agentes.</div>';console.error("AGENT_SUMMARY_LOAD_ERROR",e)}
 }
 
@@ -91,8 +103,8 @@ const KPI_DEF = {
   hoyN:       { label: "Creados hoy" },
   semana:     { label: "Creados<br>esta semana" },
   consolidar: { label: "Por consolidar", href: "consolidacion-clientes.html", warnIf: v => v > 0 },
-  slaPR:      { label: "SLA 1ª respuesta<br>vencido", badIf: v => v > 0 },
-  slaRes:     { label: "SLA resolución<br>vencido", badIf: v => v > 0 },
+  slaPR:      { label: "SLA 1ª vencida", badIf: v => v > 0 },
+  slaRes:     { label: "SLA vencido", badIf: v => v > 0 },
   misAbiertos:  { label: "Mis tickets<br>abiertos", href: "tickets.html" },
   misEsperando: { label: "Esperando<br>cliente", href: "tickets.html?state=esperando_cliente" },
   misUrgentes:  { label: "Alta / urgente", href: "tickets.html?priority=urgente", warnIf: v => v > 0 },
@@ -115,8 +127,56 @@ const kpiHtml = (key, v, skel = false) => {
 
 const renderRail = (keys, M, skel = false) => {
   const rail = $("#kpiRail");
-  if (rail) rail.innerHTML = keys.map(k => kpiHtml(k, skel ? null : M?.[k] ?? null, skel)).join("");
+  if (!rail) return;
+  rail.innerHTML = keys.map(k => kpiHtml(k, skel ? null : M?.[k] ?? null, skel)).join("");
+  bindKpiRail();
+  /* Sync inmediato (leer scrollWidth fuerza layout): en pestañas en segundo
+     plano rAF queda suspendido y las flechas quedarían ocultas hasta el primer
+     scroll/resize. El rAF posterior re-verifica tras el primer paint. */
+  syncRailArrows();
+  requestAnimationFrame(syncRailArrows);
 };
+
+/* ---------- KPI rail: desplazamiento accesible (B21) ----------
+   Owner único del scroller: flechas prev/next + swipe/trackpad/rueda nativos
+   (overflow-x + scroll-snap en CSS) + teclado (←/→/Home/End con el rail
+   enfocado). Las flechas se ocultan si no hay overflow y se deshabilitan en
+   los extremos. Singleton: sin listeners duplicados aunque renderRail corra
+   varias veces (skeleton → datos → cache). */
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+function syncRailArrows() {
+  const rail = $("#kpiRail"), prev = $("#kpiRailPrev"), next = $("#kpiRailNext");
+  if (!rail || !prev || !next) return;
+  const max = rail.scrollWidth - rail.clientWidth;
+  const overflow = max > 4;
+  prev.hidden = next.hidden = !overflow;
+  if (!overflow) return;
+  prev.disabled = rail.scrollLeft <= 4;
+  next.disabled = rail.scrollLeft >= max - 4;
+}
+function bindKpiRail() {
+  if (document.documentElement.dataset.kpiRailBound === "1") return;
+  document.documentElement.dataset.kpiRailBound = "1";
+  const rail = $("#kpiRail"), prev = $("#kpiRailPrev"), next = $("#kpiRailNext");
+  if (!rail || !prev || !next) return;
+  const behavior = () => (reducedMotion() ? "auto" : "smooth");
+  const step = dir => rail.scrollBy({ left: dir * Math.max(rail.clientWidth * 0.8, 140), behavior: behavior() });
+  prev.addEventListener("click", () => step(-1));
+  next.addEventListener("click", () => step(1));
+  /* Sync directo en scroll (sin rAF): el navegador ya emite scroll una vez
+     por frame en primer plano, y en pestañas ocluidas rAF queda suspendido y
+     dejaría los estados de flecha desactualizados. El sync es barato. */
+  rail.addEventListener("scroll", syncRailArrows, { passive: true });
+  rail.addEventListener("keydown", e => {
+    if (e.target !== rail) return; /* no interceptar el foco de los enlaces KPI */
+    if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+    else if (e.key === "Home") { e.preventDefault(); rail.scrollTo({ left: 0, behavior: behavior() }); }
+    else if (e.key === "End") { e.preventDefault(); rail.scrollTo({ left: rail.scrollWidth, behavior: behavior() }); }
+  });
+  if ("ResizeObserver" in window) new ResizeObserver(syncRailArrows).observe(rail);
+  else window.addEventListener("resize", syncRailArrows);
+}
 
 /* ---------- métricas por rol ---------- */
 async function loadMetrics() {
@@ -178,19 +238,46 @@ function renderMiCarga(M) {
   if (!CTX.isAdmin) $("#dashMiCarga .section-head h2") && ($("#dashMiCarga .section-head h2").textContent = "Mi resumen");
 }
 
-/* ---------- Actividad reciente (1 consulta pequeña + nombres de agentes en lote) ---------- */
+/* ---------- Actividad reciente (1 consulta pequeña + nombres de agentes en lote) ----------
+   B21: 7 eventos por página con flechas en la cabecera (owner único de la
+   paginación). Se piden PAGE+1 filas por rango para saber si hay página
+   siguiente sin un count adicional. Singleton en los listeners. */
+const ACT_PAGE_SIZE = 7;
+let ACT_PAGE = 0;
+let ACT_PAGES = 1;
+function renderActividadDots(){
+  const host=$("#dashActDots");if(!host)return;
+  host.innerHTML=Array.from({length:ACT_PAGES},(_,i)=>`<button class="dash-act-dot${i===ACT_PAGE?" is-active":""}" type="button" data-act-page="${i}" aria-label="Ir a actividad ${i+1}"${i===ACT_PAGE?' aria-current="true"':""}><span></span></button>`).join("");
+}
+function bindActividadNav() {
+  if (document.documentElement.dataset.actNavBound === "1") return;
+  document.documentElement.dataset.actNavBound = "1";
+  $("#dashActPrev")?.addEventListener("click", () => { if (ACT_PAGE > 0) { ACT_PAGE--; loadActividad(); } });
+  $("#dashActNext")?.addEventListener("click", () => { if(ACT_PAGE<ACT_PAGES-1){ACT_PAGE++;loadActividad()} });
+  $("#dashActDots")?.addEventListener("click",e=>{const dot=e.target.closest("[data-act-page]");if(!dot)return;ACT_PAGE=Number(dot.dataset.actPage)||0;loadActividad()});
+  let startX=0,startY=0;
+  $("#dashActividad")?.addEventListener("touchstart",e=>{const p=e.touches?.[0];if(p){startX=p.clientX;startY=p.clientY}},{passive:true});
+  $("#dashActividad")?.addEventListener("touchend",e=>{const p=e.changedTouches?.[0];if(!p)return;const dx=p.clientX-startX,dy=p.clientY-startY;if(Math.abs(dx)<48||Math.abs(dx)<Math.abs(dy))return;const next=Math.max(0,Math.min(ACT_PAGES-1,ACT_PAGE+(dx<0?1:-1)));if(next!==ACT_PAGE){ACT_PAGE=next;loadActividad()}},{passive:true});
+  window.addEventListener("resize",renderActividadDots,{passive:true});
+}
 async function loadActividad() {
   const box = $("#dashActividad");
   if (!box) return;
+  bindActividadNav();
+  const prevBtn = $("#dashActPrev"), nextBtn = $("#dashActNext");
   try {
     perfCountRequest();
     let q = supabase.from("tickets")
-      .select("id,folio,titulo,estado,asignado_a,fecha_actualizacion")
-      .order("fecha_actualizacion", { ascending: false }).limit(8);
+      .select("id,folio,titulo,estado,asignado_a,fecha_actualizacion",{count:"exact"})
+      .order("fecha_actualizacion", { ascending: false })
+      .range(ACT_PAGE * ACT_PAGE_SIZE, ACT_PAGE * ACT_PAGE_SIZE + ACT_PAGE_SIZE); /* PAGE+1 filas */
     if (!CTX.isAdmin && CTX.me) q = q.eq("asignado_a", CTX.me); // actividad propia para soporte
-    const { data, error } = await q;
+    const { data, error, count } = await q;
     if (error) throw error;
-    const rows = data || [];
+    ACT_PAGES=Math.max(1,Math.ceil((count??0)/ACT_PAGE_SIZE));
+    if(ACT_PAGE>=ACT_PAGES){ACT_PAGE=ACT_PAGES-1;return loadActividad()}
+    const hasMore = (data || []).length > ACT_PAGE_SIZE;
+    const rows = (data || []).slice(0, ACT_PAGE_SIZE);
     let agentes = {};
     const aids = [...new Set(rows.map(x => x.asignado_a).filter(Boolean))];
     if (CTX.isAdmin && aids.length) {
@@ -204,10 +291,16 @@ async function loadActividad() {
         <span class="dash-act-title">${esc(x.titulo || "Sin título")}${CTX.isAdmin && x.asignado_a ? `<span class="mut"> · ${esc(agentes[x.asignado_a] || "Agente")}</span>` : ""}</span>
         <span class="dash-act-meta"><span class="tag ${ticketStateCls(x.estado)}">${esc(ticketStateLabel(x.estado))}</span><span class="dash-act-when">${esc(ago(x.fecha_actualizacion))}</span></span>
       </a>`).join("")
-      : `<div class="empty-state">${CTX.isAdmin ? "Sin actividad reciente." : "Aún no tienes tickets asignados con actividad."}</div>`;
+      : `<div class="empty-state">${ACT_PAGE > 0 ? "No hay más actividad." : CTX.isAdmin ? "Sin actividad reciente." : "Aún no tienes tickets asignados con actividad."}</div>`;
+    if (prevBtn) prevBtn.disabled = ACT_PAGE === 0;
+    if (nextBtn) nextBtn.disabled = !hasMore;
+    renderActividadDots();
   } catch {
     box.innerHTML = '<div class="empty-state">No se pudo cargar la actividad. <button class="mini btn-ghost" id="dashActRetry" type="button">Reintentar</button></div>';
     $("#dashActRetry")?.addEventListener("click", loadActividad);
+    if (prevBtn) prevBtn.disabled = ACT_PAGE === 0;
+    if (nextBtn) nextBtn.disabled = true;
+    ACT_PAGES=1;ACT_PAGE=0;renderActividadDots();
   }
 }
 
@@ -241,8 +334,10 @@ async function loadSupervision(){
 const VIEW_CAP_KEY = "tc_cap_dashviews";
 async function loadViewMetrics() {
   if (!CTX.isAdmin) return;
-  const rail = $("#kpiRail");
-  if (!rail) return;
+  /* B21: las notas van a #kpiRailNotes (fuera del scroller), nunca como
+     tarjeta dentro del rail. */
+  const notes = $("#kpiRailNotes");
+  if (!notes) return;
   let cap = null;
   try { cap = sessionStorage.getItem(VIEW_CAP_KEY); } catch { /* noop */ }
   if (cap === "0") { renderViewsPending(); return; }
@@ -255,7 +350,7 @@ async function loadViewMetrics() {
       const el = document.createElement("div");
       el.className = "kpi-pending";
       el.innerHTML = `<b>Carga por agente:</b> ${r.data.map(a => `${esc(a.nombre || "Agente")} ${a.abiertos ?? 0}`).join(" · ")}`;
-      rail.appendChild(el);
+      notes.appendChild(el);
     }
   } catch {
     try { sessionStorage.setItem(VIEW_CAP_KEY, "0"); } catch { /* noop */ }
@@ -264,19 +359,19 @@ async function loadViewMetrics() {
 }
 function renderViewsPending() {
   /* Estado administrativo discreto: nunca un KPI roto ni jerga de BD al usuario. */
-  const rail = $("#kpiRail");
-  if (!rail || rail.querySelector("[data-views-pending]")) return;
+  const notes = $("#kpiRailNotes");
+  if (!notes || notes.querySelector("[data-views-pending]")) return;
   const el = document.createElement("div");
   el.className = "kpi-pending";
   el.setAttribute("data-views-pending", "1");
   el.textContent = "Las métricas complementarias estarán disponibles al completar su integración operativa.";
-  rail.appendChild(el);
+  notes.appendChild(el);
 }
 
 /* ============================================================================
    ADMINISTRACIÓN — tabs lazy con estado en hash (#admin/<tab>)
    ============================================================================ */
-const ADM = { current: "", mounted: {} };
+const ADM = { current: "", mounted: {}, dirty:false };
 const admHash = tab => `#admin${tab ? "/" + tab : ""}`;
 
 function openAdmin(tab, push = true) {
@@ -284,27 +379,46 @@ function openAdmin(tab, push = true) {
   const sec = $("#dashAdmin");
   sec?.classList.remove("hidden");
   tab = ["avisos", "personalizacion", "reglas", "bitacora"].includes(tab) ? tab : "avisos";
+  if(ADM.current==="personalizacion"&&tab!==ADM.current&&ADM.dirty&&!confirm("Hay cambios sin guardar en la vista previa. ¿Salir de Personalización y descartarlos?"))return;
+  if(tab!=="personalizacion")ADM.dirty=false;
   ADM.current = tab;
-  document.querySelectorAll("#admTabs .adm-tab").forEach(b => {const active=b.dataset.adm===tab;b.classList.toggle("is-active",active);b.setAttribute("aria-selected",String(active));b.tabIndex=active?0:-1});
-  document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.admPanel !== tab));
+  setPageContextLabel(({avisos:"AVISOS DEL SITIO",personalizacion:"PERSONALIZACIÓN",reglas:"REGLAS DE ASIGNACIÓN",bitacora:"BITÁCORA ADMINISTRATIVA"})[tab]);
+  let activeBtn = null;
+  document.querySelectorAll("#admTabs .adm-tab").forEach(b => {const active=b.dataset.adm===tab;b.classList.toggle("is-active",active);b.setAttribute("aria-selected",String(active));b.tabIndex=active?0:-1;if(active)activeBtn=b});
+  if (activeBtn?.id) $("#admPanel")?.setAttribute("aria-labelledby", activeBtn.id);
+  document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => {const active=p.dataset.admPanel===tab;p.classList.toggle("hidden",!active);p.hidden=!active;p.inert=!active});
   if (!ADM.mounted[tab]) {
     ADM.mounted[tab] = true;
     const host = document.createElement("div");
     host.dataset.admPanel = tab;
     if ($("#admPanel > .mut")) $("#admPanel").innerHTML = "";
     $("#admPanel").appendChild(host);
-    document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.admPanel !== tab));
+    document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => {const active=p.dataset.admPanel===tab;p.classList.toggle("hidden",!active);p.hidden=!active;p.inert=!active});
     ({ avisos: mountAvisos, personalizacion: mountConfig, reglas: mountReglas, bitacora: mountBitacora }[tab])(host);
   }
+  /* replaceState: el hash refleja la tab sin crear historial ni provocar
+     scroll-jump (nunca location.hash= ni anchors reales). */
   if (push && location.hash !== admHash(tab)) history.replaceState(null, "", admHash(tab));
 }
 
 function bindAdmin() {
-  if (document.documentElement.dataset.adminTabsBound === "1") return;
+  if (document.documentElement.dataset.adminTabsBound === "1") return; /* singleton: sin listeners duplicados */
   document.documentElement.dataset.adminTabsBound = "1";
   $("#admTabs")?.addEventListener("click", e => {
     const b = e.target.closest(".adm-tab");
-    if (b) openAdmin(b.dataset.adm);
+    if (b) { openAdmin(b.dataset.adm); b.focus({ preventScroll: true }); } /* conserva foco y scroll */
+  });
+  /* Teclado (patrón WAI-ARIA tabs): ←/→/Home/End mueven foco+selección. */
+  $("#admTabs")?.addEventListener("keydown", e => {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(e.key)) return;
+    const tabs = [...document.querySelectorAll("#admTabs .adm-tab")];
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const j = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    openAdmin(tabs[j].dataset.adm);
+    tabs[j].focus({ preventScroll: true });
   });
   window.addEventListener("hashchange", () => {
     const m = location.hash.match(/^#admin(?:\/(\w+))?/);
@@ -342,6 +456,7 @@ const avSyncPreview = () => {
   const cm = $("#avMensajeCount"); if (cm) cm.textContent = `${($("#avMensaje")?.value || "").length}/${LIM.mensaje}`;
 };
 
+let AV_ROWS = []; /* última lista leída (para la regla de un solo aviso activo) */
 async function avListar() {
   perfCountRequest();
   const { data, error } = await supabase.from("avisos_globales")
@@ -350,35 +465,60 @@ async function avListar() {
   if (error) return { error };
   return { data: data || [] };
 }
+const avActivoActual = exceptId => AV_ROWS.find(a => a.activo && String(a.id) !== String(exceptId || "")) || null;
+/* Tarjeta profesional: [icono] [título] [badge Activo/Inactivo] [icono borrar]
+   y debajo el contenido. Sin “Visible en soporte” (redundante para el admin).
+   Inactivo = opacidad moderada, legible y recuperable (botón Publicar). */
+const avCardHtml = a => `<article class="av-card ${CLASE[a.tipo] || "info"}${a.activo ? " is-active" : " is-inactive"}" data-av-id="${a.id}">
+    <div class="av-card-head">
+      <span class="notice-ic" aria-hidden="true">${ICON[a.tipo] || "ℹ️"}</span>
+      <span class="av-card-title">${esc(a.titulo || "Sin título")}</span>
+      ${a.activo ? '<span class="tag ok">Activo</span>' : '<span class="tag">Inactivo</span>'}
+      <button class="av-del-btn" type="button" data-av-del="${a.id}" aria-label="Eliminar aviso «${esc(a.titulo || "sin título")}»" title="Eliminar aviso"><img src="../IMG/borrar.webp" alt="" aria-hidden="true"></button>
+    </div>
+    <p class="av-card-body">${esc(a.contenido || "")}</p>
+    <div class="av-item-meta">
+      ${a.activo
+        ? `<button class="mini btn-ghost" type="button" data-av-toggle="${a.id}" data-on="1">Deshacer</button>`
+        : `<button class="mini btn-ghost" type="button" data-av-toggle="${a.id}" data-on="0">Publicar</button>`}
+    </div>
+  </article>`;
 async function avRefrescar() {
   const cont = $("#avLista"); if (!cont) return;
-  cont.innerHTML = '<div class="dash-skel"></div>';
+  cont.innerHTML = '<div class="dash-skel"></div><div class="dash-skel"></div>';
   const r = await avListar();
-  if (r.error) { cont.innerHTML = `<div class="empty-state">${esc(errText(r.error, "leer los avisos"))} <button class="mini btn-ghost" id="avRetry" type="button">Reintentar</button></div>`; $("#avRetry")?.addEventListener("click", avRefrescar); return; }
-  cont.innerHTML = r.data.length ? r.data.map(a => `<div class="av-item">
-      <div class="support-global-notice ${CLASE[a.tipo] || "info"}" style="margin:0"><div class="notice-ic">${ICON[a.tipo] || "ℹ️"}</div>
-        <div class="notice-copy"><div class="notice-title">${esc(a.titulo || "")}</div><div class="notice-text">${esc(a.contenido || "")}</div></div></div>
-      <div class="av-item-meta">${a.activo ? '<span class="tag ok">Activo</span>' : '<span class="tag">Inactivo</span>'}<span class="tag">${a.mostrar_en_soporte ? "Visible en soporte" : "Oculto"}</span>
-        <button class="mini btn-ghost" type="button" data-av-toggle="${a.id}" data-on="${a.activo ? 1 : 0}">${a.activo ? "Desactivar" : "Activar"}</button>
-        <button class="mini btn-ghost" type="button" data-av-del="${a.id}">Eliminar</button></div>
-    </div>`).join("") : '<div class="empty-state">Aún no hay avisos. Crea el primero con el formulario.</div>';
+  if (r.error) { cont.innerHTML = `<div class="empty-state av-state-error">${esc(errText(r.error, "leer los avisos"))} <button class="mini btn-ghost" id="avRetry" type="button">Reintentar</button></div>`; $("#avRetry")?.addEventListener("click", avRefrescar); return; }
+  AV_ROWS = r.data;
+  cont.innerHTML = AV_ROWS.length ? AV_ROWS.map(avCardHtml).join("") : '<div class="empty-state">Aún no hay avisos publicados.<br><span class="mut">Crea el primero con el formulario de la izquierda.</span></div>';
+}
+/* Regla de un solo aviso activo: si hay otro activo, se pide confirmación y
+   se despublica el actual ANTES de publicar el nuevo. Solo se reporta éxito
+   tras confirmación 2xx del servidor (nunca DOM fingiendo persistencia). */
+async function avDespublicarActual(activo) {
+  const { error } = await supabase.from("avisos_globales").update({ activo: false }).eq("id", activo.id);
+  return error || null;
 }
 async function avPublicar() {
   if (busy.has("avPub")) return;
   const titulo = ($("#avTitulo")?.value || "").trim();
   const contenido = ($("#avMensaje")?.value || "").trim();
   const tipo = $("#avColor")?.value || "info";
-  const mostrar = !!$("#avMostrar")?.checked;
   if (!titulo) return avToast("Escribe un título.", "bad");
   if (!contenido) return avToast("Escribe el mensaje: no se publica un aviso vacío.", "bad");
   if (titulo.length > LIM.titulo) return avToast(`El título no debe pasar de ${LIM.titulo} caracteres.`, "bad");
   if (contenido.length > LIM.mensaje) return avToast(`El mensaje no debe pasar de ${LIM.mensaje} caracteres.`, "bad");
+  const activo = avActivoActual();
+  if (activo && !confirm("Ya existe un aviso activo. Para publicar este aviso, primero se despublicará el actual.")) return;
   busy.add("avPub"); const btn = $("#avPublicar"); if (btn) btn.disabled = true;
   avToast("Publicando…");
   try {
-    const row = { titulo, contenido, mensaje: contenido, tipo, activo: true, mostrar_en_soporte: mostrar, starts_at: new Date().toISOString(), ends_at: null };
+    if (activo) {
+      const offErr = await avDespublicarActual(activo);
+      if (offErr) return avToast(errText(offErr, "despublicar el aviso actual"), "bad");
+    }
+    const row = { titulo, contenido, mensaje: contenido, tipo, activo: true, mostrar_en_soporte: true, starts_at: new Date().toISOString(), ends_at: null };
     const { error } = await supabase.from("avisos_globales").insert(row);
-    if (error) return avToast(errText(error, "publicar el aviso"), "bad"); /* el formulario NO se pierde */
+    if (error) { avRefrescar(); return avToast(errText(error, "publicar el aviso"), "bad"); } /* el formulario NO se pierde */
     try {
       const uid = (await supabase.auth.getUser()).data.user?.id || null;
       await supabase.from("bitacora").insert({ usuario_id: uid, accion: "aviso_publicado", tipo: "nota_interna", detalle: { titulo } });
@@ -391,12 +531,18 @@ async function avPublicar() {
 async function avClick(e) {
   const tg = e.target.closest("[data-av-toggle]");
   if (tg && !busy.has("avTg")) {
+    const on = tg.dataset.on === "1";
+    const activo = on ? null : avActivoActual(tg.dataset.avToggle);
+    if (activo && !confirm("Ya existe un aviso activo. Para publicar este aviso, primero se despublicará el actual.")) return;
     busy.add("avTg"); tg.disabled = true;
     try {
-      const on = tg.dataset.on === "1";
+      if (activo) {
+        const offErr = await avDespublicarActual(activo);
+        if (offErr) return avToast(errText(offErr, "despublicar el aviso actual"), "bad");
+      }
       const { error } = await supabase.from("avisos_globales").update({ activo: !on }).eq("id", tg.dataset.avToggle);
-      if (error) return avToast(errText(error, "actualizar el aviso"), "bad");
-      avToast(on ? "Aviso desactivado." : "Aviso activado.", "ok");
+      if (error) { avRefrescar(); return avToast(errText(error, "actualizar el aviso"), "bad"); }
+      avToast(on ? "Aviso despublicado." : "Aviso publicado.", "ok");
       avRefrescar();
     } finally { busy.delete("avTg"); tg.disabled = false; }
     return;
@@ -415,7 +561,7 @@ async function avClick(e) {
 }
 function mountAvisos(host) {
   host.innerHTML = `
-    <p class="mut">Publica un aviso visible para los clientes en la página de soporte (mantenimiento, demoras, promociones). Solo administradores.</p>
+    <p class="mut">Publica avisos visibles para los visitantes de la página de soporte (demoras, promociones, etc.). Solo administradores.</p>
     <div class="av-grid" style="margin-top:10px">
       <div class="av-form">
         <div class="field"><label class="lbl" for="avTitulo">Título <span id="avTituloCount" class="av-count">0/${LIM.titulo}</span></label>
@@ -424,9 +570,8 @@ function mountAvisos(host) {
           <textarea class="area" id="avMensaje" maxlength="${LIM.mensaje}" placeholder="Ej. El taller estará cerrado el 16 de septiembre. Tu caso será atendido al día siguiente."></textarea></div>
         <div class="field"><label class="lbl" for="avColor">Color</label>
           <select class="select" id="avColor">${COLORS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
-        <label class="lbl" style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0"><input type="checkbox" id="avMostrar" checked> Mostrar en la página de soporte</label>
         <div class="actions"><button class="btn btn-brand" type="button" id="avPublicar">Publicar aviso</button></div>
-        <div class="mut" id="avMsg">El aviso aparece arriba del formulario de soporte para todos los visitantes.</div>
+        <div class="mut" id="avMsg" aria-live="polite">Solo puede existir un aviso activo a la vez; al publicar uno nuevo se despublica el anterior (con confirmación).</div>
       </div>
       <div class="av-preview-wrap">
         <div class="lbl">Vista previa</div>
@@ -477,23 +622,23 @@ let CFGMOD = null; /* módulo config-loader importado bajo demanda */
 async function mountConfig(host) {
   host.innerHTML = '<div class="dash-skel"></div><div class="dash-skel"></div>';
   CFGMOD = CFGMOD || await import("./config-loader.js");
-  const disponible = await CFGMOD.probeSiteConfig(); /* 1 request máx. por sesión */
+  const readable = await CFGMOD.probeSiteConfig(); /* 1 request máx. por sesión */
+  const workflowAvailable = false; /* falta contrato remoto draft/publish/version atómico */
   const cfg = CFGMOD.cfg, defaults = CFGMOD.configDefaults();
-  if (!disponible) {
-    host.innerHTML = `<div class="sc-disabled-note"><b>Personalización pendiente de activación</b><span>Los textos públicos continúan usando valores locales seguros. No hay acciones de guardado disponibles hasta completar la activación administrativa.</span></div><button class="mini btn-ghost" id="scShowCurrent" type="button" aria-expanded="false">Ver valores actuales</button><div id="scCurrentValues" class="sc-preview hidden">${CFG_GROUPS.map(g=>`<section class="sc-mock"><b>${esc(g.titulo)}</b>${g.keys.map(k=>`<p><span class="mut">${esc(k.label)}:</span> ${esc(cfg(k.clave,"")||defaults[k.clave]||"—")}</p>`).join("")}</section>`).join("")}</div><details><summary>Detalle técnico</summary><p class="mut">Requiere desplegar la migración revisable de site_config con RLS, grants y bitácora.</p></details>`;
-    $("#scShowCurrent")?.addEventListener("click",e=>{const box=$("#scCurrentValues"),open=box?.classList.contains("hidden");box?.classList.toggle("hidden",!open);e.currentTarget.setAttribute("aria-expanded",String(!!open));e.currentTarget.textContent=open?"Ocultar valores actuales":"Ver valores actuales"});
-    return;
-  }
 
+  /* Workspace único para ambos estados (B20-FABLE-01): cuando el backend no
+     existe, MISMA interfaz con controles disabled + estado informativo refinado
+     (estado READ_ONLY_REMOTE_UNAVAILABLE, detalle técnico colapsado).
+     Nunca se afirma que puede guardarse sin backend. */
   const fieldHtml = (k) => {
     const val = cfg(k.clave, "");
     const id = "sc_" + k.clave.replace(/[^a-z0-9]/gi, "_");
     const ctrl = k.multi
-      ? `<textarea class="area" id="${id}" data-cfg-key="${k.clave}" rows="3" maxlength="${k.max}" ${disponible ? "" : "disabled"}>${esc(val)}</textarea>`
-      : `<input class="input" id="${id}" data-cfg-key="${k.clave}" maxlength="${k.max}" value="${esc(val)}" ${disponible ? "" : "disabled"}>`;
+      ? `<textarea class="area" id="${id}" data-cfg-key="${k.clave}" rows="3" maxlength="${k.max}">${esc(val)}</textarea>`
+      : `<input class="input" id="${id}" data-cfg-key="${k.clave}" maxlength="${k.max}" value="${esc(val)}">`;
     return `<div class="sc-field" data-sc-field="${k.clave}">
       <div class="sc-field-head"><label class="lbl" for="${id}">${esc(k.label)} <span class="sc-dirty" title="Cambio sin guardar"></span></label>
-        <span><span class="av-count" data-sc-count="${k.clave}">0/${k.max}</span>${disponible ? `<button class="sc-reset" type="button" data-sc-reset="${k.clave}">Restablecer</button>` : ""}</span></div>
+        <span>${workflowAvailable ? "" : '<span class="tag sc-availability">Solo vista previa</span>'}<span class="av-count" data-sc-count="${k.clave}">0/${k.max}</span><button class="sc-reset" type="button" data-sc-reset="${k.clave}">Restablecer</button></span></div>
       <div class="sc-help">${esc(k.help)} <b>Valor por defecto:</b> “${esc(defaults[k.clave] || "—")}”</div>
       ${ctrl}
     </div>`;
@@ -501,19 +646,21 @@ async function mountConfig(host) {
 
   host.innerHTML = `
     <p class="mut">Edita los textos públicos sin tocar código. Cada cambio queda en bitácora. Texto plano: no se permite HTML ni enlaces con script.</p>
-    ${disponible ? "" : `<div class="sc-disabled-note" style="margin-top:10px">
-        <b>La personalización remota aún no está activada.</b>
-        <span>Los textos públicos usan los valores por defecto locales (idénticos a lo que hoy ven los clientes). La activación requiere crear la tabla <code>site_config</code> en la base de datos — es una tarea administrativa de backend planificada (DDL DRAFT en docs/B20A_SITE_CONFIG_DRAFT.sql); no se hace desde esta pantalla.</span>
+    ${workflowAvailable ? "" : `<div class="sc-disabled-note" style="margin-top:10px" role="status">
+        <b>Edición remota no disponible</b>
+        <span>La vista previa funciona con texto plano y defaults seguros. Guardar borrador y publicar permanecen bloqueados porque el backend actual no ofrece versión, conflicto ni publicación atómica.</span>
+        <details><summary>Detalle técnico</summary><p class="mut">Estado: READ_ONLY_REMOTE_UNAVAILABLE. La tabla de lectura ${readable?"responde":"no responde"}; falta desplegar el contrato draft/published y sus RPC.</p></details>
       </div>`}
     <div class="av-grid" style="margin-top:12px">
       <div class="av-form" id="scForm">
         ${CFG_GROUPS.map(g => `<div class="sc-group"><h4>${esc(g.titulo)}</h4><div class="sc-help">${esc(g.desc)}</div>${g.keys.map(fieldHtml).join("")}</div>`).join("")}
         <div class="actions">
-          <button class="btn btn-brand" type="button" id="scGuardar" ${disponible ? "" : "disabled"}>Guardar cambios</button>
-          <button class="btn btn-ghost" type="button" id="scDescartar" ${disponible ? "" : "disabled"}>Descartar</button>
-          <button class="btn btn-ghost" type="button" id="scReset" ${disponible ? "" : "disabled"}>Restaurar todos los valores por defecto</button>
+          <button class="btn btn-ghost" type="button" id="scBorrador" disabled title="El backend actual no ofrece borradores versionados">Guardar borrador</button>
+          <button class="btn btn-brand" type="button" id="scGuardar" disabled title="El backend actual no ofrece publicación atómica">Publicar cambios</button>
+          <button class="btn btn-ghost" type="button" id="scDescartar">Deshacer</button>
+          <button class="btn btn-ghost" type="button" id="scReset">Restaurar valores</button>
         </div>
-        <div class="mut" id="scMsg">${disponible ? "Sin cambios pendientes." : "Editor deshabilitado hasta activar la personalización remota."}</div>
+        <div class="mut" id="scMsg" aria-live="polite">Vista previa local lista. No se enviarán cambios al servidor.</div>
       </div>
       <div class="av-preview-wrap">
         <div class="sc-toolbar"><div class="lbl">Vista previa en vivo</div>
@@ -546,13 +693,14 @@ async function mountConfig(host) {
       const cEl = host.querySelector(`[data-sc-count="${k.clave}"]`);
       if (cEl && el) cEl.textContent = `${el.value.length}/${k.max}`;
       const isDirty = el && sanitizeCfg(el.value) !== String(cfg(k.clave, ""));
-      wrap?.classList.toggle("is-dirty", !!isDirty && disponible);
+      wrap?.classList.toggle("is-dirty", !!isDirty);
       if (isDirty) dirty++;
       const prev = host.querySelector(`[data-prev="${k.clave}"]`);
       if (prev) prev.textContent = valOf(k.clave) || baseOf(k.clave) || "—";
     });
     const m = $("#scMsg");
-    if (m && disponible) m.textContent = dirty ? `${dirty} cambio${dirty === 1 ? "" : "s"} sin guardar.` : "Sin cambios pendientes.";
+    if (m) m.textContent = dirty ? `${dirty} cambio${dirty === 1 ? "" : "s"} en la vista previa; no guardado${dirty===1?"":"s"}.` : "Vista previa local sin cambios.";
+    ADM.dirty=dirty>0;
     return dirty;
   };
   host.querySelectorAll("[data-cfg-key]").forEach(el => el.addEventListener("input", syncUi));
@@ -578,39 +726,9 @@ async function mountConfig(host) {
     syncUi();
   });
   $("#scReset")?.addEventListener("click", () => {
-    if (!confirm("¿Restaurar TODOS los textos a sus valores por defecto? Después deberás pulsar «Guardar cambios» para aplicarlos.")) return;
+    if (!confirm("¿Restaurar TODOS los textos de la vista previa a sus valores por defecto? No se publicará ningún cambio.")) return;
     CFG_KEYS.forEach(k => { const el = host.querySelector(`[data-cfg-key="${k.clave}"]`); if (el) el.value = defaults[k.clave] || ""; });
     syncUi();
-  });
-  $("#scGuardar")?.addEventListener("click", async () => {
-    if (busy.has("scSave")) return;
-    const pendientes = [];
-    CFG_KEYS.forEach(k => {
-      const despues = valOf(k.clave), antes = String(cfg(k.clave, ""));
-      if (despues !== antes) pendientes.push({ k, antes, despues });
-    });
-    if (!pendientes.length) return;
-    busy.add("scSave"); $("#scGuardar").disabled = true;
-    const m = $("#scMsg"); if (m) m.textContent = "Guardando…";
-    try {
-      const uid = (await supabase.auth.getUser()).data.user?.id || null;
-      let ok = 0;
-      for (const p of pendientes) {
-        perfCountRequest();
-        const { error } = await supabase.from("site_config").upsert({
-          clave: p.k.clave, valor: p.despues, pagina: p.k.clave.split(".")[0],
-          tipo: "texto", publico: true, actualizado_por: uid, actualizado_en: new Date().toISOString(),
-        }, { onConflict: "clave" });
-        if (error) { if (m) m.textContent = errText(error, "guardar la personalización"); return; }
-        try {
-          await supabase.from("bitacora").insert({ usuario_id: uid, accion: "site_config_update", tipo: "nota_interna", detalle: { clave: p.k.clave, antes: p.antes, despues: p.despues } });
-        } catch { /* best-effort */ }
-        ok++;
-      }
-      await CFGMOD.loadSiteConfig(true);
-      if (m) m.textContent = `Listo: ${ok} cambio${ok === 1 ? "" : "s"} guardado${ok === 1 ? "" : "s"} y registrado${ok === 1 ? "" : "s"} en bitácora.`;
-      syncUi();
-    } finally { busy.delete("scSave"); $("#scGuardar").disabled = false; }
   });
   syncUi();
 }
@@ -619,16 +737,17 @@ async function mountConfig(host) {
    REGLAS DE ASIGNACIÓN (solo admin) — configuración futura sin ejecución.
    ============================================================================ */
 const COND = [
-  ["tipo_maquina", "Producto o familia (overlock, bordadora…)"],
-  ["tipo_caso", "Tipo de problema o atención (garantía, refacción…)"],
-  ["empresa", "Empresa / cliente (texto)"],
-  ["palabra_clave", "Palabra clave en el caso"],
+  ["tipo_maquina", "Producto o familia"],
+  ["tipo_caso", "Problema o atención"],
+  ["empresa", "Empresa"],
+  ["palabra_clave", "Palabra clave"],
   ["cliente_nuevo", "Cliente nuevo (sin valor)"],
 ];
 let AGENTES = [];
 let RG_ROWS = [];
 let RG_EDIT_ID = null;
 const rgToast = (txt, cls = "") => { const s = $("#rgMsg"); if (s) { s.textContent = txt; s.className = `mut ${cls}`.trim(); } };
+const rgAudit=async(accion,detalle)=>{try{await supabase.from("bitacora").insert({usuario_id:CTX.me,accion,tipo:"nota_interna",fecha:new Date().toISOString(),detalle})}catch{/* la operación principal reporta su propio resultado */}};
 
 async function rgLoad() {
   const cont = $("#rgLista"); if (!cont) return;
@@ -636,59 +755,75 @@ async function rgLoad() {
   perfCountRequest();
   const { data, error } = await supabase.from("reglas_asignacion")
     .select("id,nombre,prioridad,tipo_condicion,valor,agente_id,activo")
-    .is("eliminado_en", null)
-    .order("prioridad", { ascending: true }).limit(100);
-  if (error) { document.documentElement.dataset.assignmentRulesDeployRequired="1";cont.innerHTML = `<div class="empty-state"><b>Las reglas requieren una actualización administrativa del backend.</b><span class="mut">La asignación automática no está conectada. La vista previa permanece como simulación local y no modifica tickets.</span></div>`;document.querySelectorAll("#rgCrear,[data-rg-move],[data-rg-edit],[data-rg-toggle],[data-rg-del]").forEach(b=>b.disabled=true);return; }
-  RG_ROWS = data || [];
+    .order("prioridad", { ascending: true }).order("id",{ascending:true}).limit(100);
+  if (error) { document.documentElement.dataset.assignmentRulesDeployRequired="1";cont.innerHTML = `<div class="empty-state"><b>Las reglas requieren una actualización administrativa del backend.</b><span class="mut">La asignación automática no está conectada. La vista previa permanece como simulación local y no modifica tickets.</span></div>`;document.querySelectorAll("#rgCrear,[data-rg-move],[data-rg-edit],[data-rg-dup],[data-rg-toggle],[data-rg-del]").forEach(b=>b.disabled=true);return; }
+  RG_ROWS = (data || []).filter(r=>COND.some(([key])=>key===r.tipo_condicion));
   rgRender();
 }
 const rgShadowed = (r, i) => RG_ROWS.slice(0, i).some(p => p.activo && p.tipo_condicion === r.tipo_condicion && String(p.valor || "").toLowerCase() === String(r.valor || "").toLowerCase());
+const rgMismaPrioridad = (r, i) => r.activo && RG_ROWS.some((p, j) => j !== i && p.activo && p.prioridad === r.prioridad);
 function rgRender() {
   const cont = $("#rgLista"); if (!cont) return;
   const nombreAg = id => AGENTES.find(a => a.id === id)?.nombre || "—";
   const labelCond = c => (COND.find(x => x[0] === c) || ["", c])[1];
-  cont.innerHTML = RG_ROWS.length ? RG_ROWS.map((r, i) => `
-    <div class="rg-item">
-      <div><b>#${r.prioridad}</b> · ${esc(r.nombre || "")} ${r.activo ? '<span class="tag ok">Activa</span>' : '<span class="tag">Inactiva</span>'}</div>
+  const activas = RG_ROWS.filter(r => r.activo);
+  /* Conflictos detectables localmente: sombreado (mismo criterio+valor arriba),
+     misma prioridad entre activas y ausencia de regla de respaldo. */
+  const fallbackNote = activas.length
+    ? '<div class="mut rg-fallback-note">Sin regla de respaldo: los casos que no coincidan con ninguna regla quedarán sin asignación automática.</div>'
+    : "";
+  cont.innerHTML = (RG_ROWS.length ? RG_ROWS.map((r, i) => `
+    <div class="rg-item${r.activo ? "" : " is-inactive"}">
+      <div class="rg-item-head"><b>#${r.prioridad}</b> · <span class="rg-item-name">${esc(r.nombre || "")}</span> ${r.activo ? '<span class="tag ok">Activa</span>' : '<span class="tag">Inactiva</span>'}</div>
       <div class="mut">Si <b>${esc(labelCond(r.tipo_condicion))}</b>${r.valor ? ` = “${esc(r.valor)}”` : ""} → <b>${esc(nombreAg(r.agente_id))}</b></div>
       ${r.activo && rgShadowed(r, i) ? '<div class="rg-warn">⚠ Nunca se ejecutará: una regla activa con mayor prioridad ya cubre este mismo criterio y valor.</div>' : ""}
+      ${rgMismaPrioridad(r, i) ? '<div class="rg-warn">⚠ Conflicto de orden: otra regla activa comparte la prioridad #' + r.prioridad + '. Ajusta el orden para un resultado predecible.</div>' : ""}
       <div class="av-item-meta">
         <button class="mini btn-ghost" type="button" data-rg-move="${r.id}" data-dir="-1" ${i === 0 ? "disabled" : ""}>▲ Subir</button>
         <button class="mini btn-ghost" type="button" data-rg-move="${r.id}" data-dir="1" ${i === RG_ROWS.length - 1 ? "disabled" : ""}>▼ Bajar</button>
         <button class="mini btn-ghost" type="button" data-rg-edit="${r.id}">Editar</button>
+        <button class="mini btn-ghost" type="button" data-rg-dup="${r.id}">Duplicar</button>
         <button class="mini btn-ghost" type="button" data-rg-toggle="${r.id}" data-on="${r.activo ? 1 : 0}">${r.activo ? "Desactivar" : "Activar"}</button>
-        <button class="mini btn-ghost" type="button" data-rg-del="${r.id}">Eliminar</button>
       </div>
-    </div>`).join("") : '<div class="empty-state">Aún no hay reglas. Crea la primera con el formulario.</div>';
+    </div>`).join("") : '<div class="empty-state">Aún no hay reglas. Crea la primera con el formulario.</div>') + fallbackNote;
 }
+/* Vista previa: SOLO recolecta entradas y renderiza. La decisión pertenece por completo al
+   evaluador canónico (shared/assignment-rules.js); aquí no vive ninguna lógica de reglas. */
 function rgSimula() {
-  const maq = ($("#rgSimMaquina")?.value || "").trim().toLowerCase();
-  const caso = ($("#rgSimCaso")?.value || "").trim().toLowerCase();
-  const emp = ($("#rgSimEmpresa")?.value || "").trim().toLowerCase();
   const out = $("#rgSimOut"); if (!out) return;
-  const activas = RG_ROWS.filter(r => r.activo);
-  const match = activas.find(r => {
-    const v = String(r.valor || "").toLowerCase();
-    if (r.tipo_condicion === "tipo_maquina") return maq && maq.includes(v);
-    if (r.tipo_condicion === "tipo_caso") return caso && caso.includes(v);
-    if (r.tipo_condicion === "empresa") return emp && emp.includes(v);
-    if (r.tipo_condicion === "palabra_clave") return v && (maq.includes(v) || caso.includes(v) || emp.includes(v));
-    if (r.tipo_condicion === "cliente_nuevo") return false; /* no simulable sin dato real */
-    return false;
-  });
-  const nombreAg = id => AGENTES.find(a => a.id === id)?.nombre || "el agente configurado";
-  out.innerHTML = match
-    ? `La vista previa dirigiría este ticket a <b>${esc(nombreAg(match.agente_id))}</b> por la regla “${esc(match.nombre)}” (#${match.prioridad}).<br><span class="mut">La vista previa no asigna ni modifica tickets.</span>`
-    : `Ninguna regla activa coincide con esos datos.<br><span class="mut">La vista previa no asigna ni modifica tickets.</span>`;
+  const ticket = { tipoMaquina: $("#rgSimMaquina")?.value, tipoCaso: $("#rgSimCaso")?.value, empresa: $("#rgSimEmpresa")?.value };
+  const decision = evaluateAssignment({ ticket, rules: RG_ROWS, agents: AGENTES });
+  const matches = matchingRules({ ticket, rules: RG_ROWS });
+  const nombreAg = id => AGENTES.find(a => String(a.id) === String(id))?.nombre || "el agente configurado";
+  const nota = '<span class="mut">La vista previa no asigna ni modifica tickets.</span>';
+  const regla = `<b>${esc(decision.ruleName || "")}</b> (#${decision.priority})`;
+  if (decision.outcome === OUTCOME.ASSIGNED) {
+    out.innerHTML = `Regla ganadora: ${regla} → <b>${esc(nombreAg(decision.agentId))}</b>.<br><span class="mut">Coinciden ${matches.length}: ${matches.map(m => esc(m.rule.nombre || "")).join(", ")}. Criterio: ${esc(decision.matchedCondition)}.</span> ${nota}`;
+    return;
+  }
+  if (decision.reason === REASON.AGENT_DISABLED || decision.reason === REASON.AGENT_UNKNOWN) {
+    const motivo = decision.reason === REASON.AGENT_DISABLED ? "está deshabilitado" : "ya no existe en la lista de agentes";
+    out.innerHTML = `Coincide ${regla}, pero su agente ${motivo}: el caso quedaría <b>sin asignar</b>.<br>${nota}`;
+    return;
+  }
+  out.innerHTML = `Ninguna regla activa coincide con esos datos: el caso quedaría <b>sin asignar</b>.<br>${nota}`;
 }
 async function mountReglas(host) {
   host.innerHTML = '<div class="dash-skel"></div>';
   perfCountRequest();
-  const { data } = await supabase.from("perfiles").select("id,nombre,rol").in("rol", ["soporte", "admin"]).order("nombre");
-  AGENTES = data || [];
+  const { data, error: agErr } = await supabase.from("perfiles").select("id,nombre,rol").in("rol", ["soporte", "admin"]).order("nombre");
+  if (agErr) {
+    /* Antes se ignoraba el error y el select decía "(crea perfiles primero)",
+       lo cual era engañoso: ahora estado de error real con reintento. */
+    host.innerHTML = `<div class="empty-state">${esc(errText(agErr, "cargar la lista de agentes"))} <button class="mini btn-ghost" type="button" data-rg-agents-retry>Reintentar</button></div>`;
+    host.querySelector("[data-rg-agents-retry]")?.addEventListener("click", () => mountReglas(host));
+    return;
+  }
+  AGENTES = [...new Map((data||[]).map(agent=>[String(agent.id),agent])).values()];
   const ags = AGENTES.length ? AGENTES.map(a => `<option value="${a.id}">${esc(a.nombre || a.id)}</option>`).join("") : '<option value="">(crea perfiles de soporte primero)</option>';
   host.innerHTML = `
-    <p class="mut">Define criterios administrativos para la distribución futura. Las reglas están disponibles para configuración; la asignación automática se habilitará al integrar el motor de distribución.</p>
+    <p class="mut">Define criterios administrativos para la distribución de casos entre agentes.</p>
+    <div class="rg-engine-note" role="status" data-engine-status="CONFIG_ONLY"><span aria-hidden="true">●</span> Estado del motor: CONFIG_ONLY. Las reglas pueden configurarse y probarse, pero la vista previa nunca asigna ni modifica tickets.</div>
     <div class="av-grid" style="margin-top:10px">
       <div class="av-form">
         <div class="field"><label class="lbl" for="rgNombre">Nombre de la regla</label><input class="input" id="rgNombre" maxlength="80" placeholder="Ej. Overlock → Juan"></div>
@@ -699,7 +834,7 @@ async function mountReglas(host) {
         <div class="actions"><button class="btn btn-brand" type="button" id="rgCrear">Crear regla</button><button class="btn btn-ghost hidden" type="button" id="rgCancelar">Cancelar edición</button></div>
         <div class="mut" id="rgMsg">Se advertirá si la regla se solapa con otra existente.</div>
         <div class="rg-test">
-          <div class="lbl">Vista previa de reglas</div>
+          <div class="lbl">Vista previa — no modifica tickets</div>
           <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
             <input class="input" id="rgSimMaquina" placeholder="Producto o familia">
             <input class="input" id="rgSimCaso" placeholder="Problema o atención">
@@ -731,18 +866,21 @@ async function mountReglas(host) {
     const agente_id = $("#rgAgente")?.value || "";
     const prioridad = parseInt($("#rgPrioridad")?.value || "100", 10) || 100;
     if (!nombre) return rgToast("Ponle un nombre a la regla.", "bad");
-    if (!agente_id) return rgToast("Elige a quién se asigna.", "bad");
+    if (!COND.some(([key])=>key===tipo)) return rgToast("El criterio no pertenece al contrato permitido.","bad");
+    if (!agente_id||!AGENTES.some(a=>String(a.id)===String(agente_id))) return rgToast("Elige un agente válido.", "bad");
+    if(prioridad<1)return rgToast("La prioridad debe ser un entero mayor que cero.","bad");
     if (tipo !== "cliente_nuevo" && !valor) return rgToast("Escribe el valor a comparar.", "bad");
     const dup = RG_ROWS.find(r => r.id !== RG_EDIT_ID && r.tipo_condicion === tipo && String(r.valor || "").toLowerCase() === valor.toLowerCase());
     if (dup && !confirm(`Ya existe la regla “${dup.nombre}” con el mismo criterio y valor (prioridad #${dup.prioridad}). ¿Crear de todas formas?`)) return;
     busy.add("rgNew"); $("#rgCrear").disabled = true;
     rgToast("Guardando…");
     try {
-      const payload = { nombre, tipo_condicion: tipo, valor: tipo === "cliente_nuevo" ? null : valor, agente_id, prioridad, actualizado_por: CTX.me };
+      const payload = { nombre, tipo_condicion: tipo, valor: tipo === "cliente_nuevo" ? null : valor, agente_id, prioridad };
       const result = RG_EDIT_ID
-        ? await supabase.from("reglas_asignacion").update(payload).eq("id", RG_EDIT_ID).is("eliminado_en", null)
-        : await supabase.from("reglas_asignacion").insert({ ...payload, activo: true, creado_por: CTX.me });
+        ? await supabase.from("reglas_asignacion").update(payload).eq("id", RG_EDIT_ID)
+        : await supabase.from("reglas_asignacion").insert({ ...payload, activo: true });
       if (result.error) return rgToast(errText(result.error, "guardar la regla"), "bad");
+      await rgAudit(RG_EDIT_ID?"regla_actualizada":"regla_creada",{regla_id:String(RG_EDIT_ID||"nueva").slice(0,36),tipo_condicion:tipo,prioridad});
       rgToast(RG_EDIT_ID ? "Regla actualizada y auditada." : "Regla creada y auditada.", "ok");
       resetForm();
       rgLoad();
@@ -758,9 +896,10 @@ async function mountReglas(host) {
       try {
         const a = RG_ROWS[i], b = RG_ROWS[j];
         /* intercambio de prioridades: dos updates puntuales, sin drag inseguro */
-        const r1 = await supabase.from("reglas_asignacion").update({ prioridad: b.prioridad, actualizado_por: CTX.me }).eq("id", a.id).is("eliminado_en", null);
-        const r2 = await supabase.from("reglas_asignacion").update({ prioridad: a.prioridad, actualizado_por: CTX.me }).eq("id", b.id).is("eliminado_en", null);
+        const r1 = await supabase.from("reglas_asignacion").update({ prioridad: b.prioridad }).eq("id", a.id);
+        const r2 = await supabase.from("reglas_asignacion").update({ prioridad: a.prioridad }).eq("id", b.id);
         if (r1.error || r2.error) rgToast(errText(r1.error || r2.error, "reordenar"), "bad");
+        else await rgAudit("regla_reordenada",{regla_id:String(a.id).slice(0,36),prioridad_anterior:a.prioridad,prioridad_nueva:b.prioridad});
         rgLoad();
       } finally { busy.delete("rgMv"); }
       return;
@@ -777,19 +916,26 @@ async function mountReglas(host) {
       toggleValor(); $("#rgNombre").focus();
       return;
     }
+    const dup = e.target.closest("[data-rg-dup]");
+    if (dup) {
+      /* Duplicar = precargar el formulario como regla NUEVA (no escribe nada
+         hasta que el admin pulse «Crear regla»). */
+      const row = RG_ROWS.find(r => String(r.id) === dup.dataset.rgDup);
+      if (!row) return;
+      RG_EDIT_ID = null;
+      $("#rgNombre").value = `${row.nombre || "Regla"} (copia)`; $("#rgTipo").value = row.tipo_condicion;
+      $("#rgValor").value = row.valor || ""; $("#rgAgente").value = row.agente_id || "";
+      $("#rgPrioridad").value = String(row.prioridad || 100);
+      $("#rgCrear").textContent = "Crear regla"; $("#rgCancelar").classList.remove("hidden");
+      toggleValor(); $("#rgNombre").focus();
+      rgToast("Copia precargada: revisa prioridad y agente antes de crearla.");
+      return;
+    }
     const tg = e.target.closest("[data-rg-toggle]");
     if (tg) {
-      const { error } = await supabase.from("reglas_asignacion").update({ activo: tg.dataset.on !== "1", actualizado_por: CTX.me }).eq("id", tg.dataset.rgToggle).is("eliminado_en", null);
+      const { error } = await supabase.from("reglas_asignacion").update({ activo: tg.dataset.on !== "1" }).eq("id", tg.dataset.rgToggle);
       if (error) return rgToast(errText(error, "actualizar la regla"), "bad");
-      return rgLoad();
-    }
-    const del = e.target.closest("[data-rg-del]");
-    if (del) {
-      if (!confirm("¿Retirar esta regla? Se conservará su historial administrativo.")) return;
-      const { error } = await supabase.from("reglas_asignacion").update({ activo: false, eliminado_en: new Date().toISOString(), eliminado_por: CTX.me, actualizado_por: CTX.me }).eq("id", del.dataset.rgDel).is("eliminado_en", null);
-      if (error) return rgToast(errText(error, "eliminar la regla"), "bad");
-      rgToast("Regla retirada; su historial permanece en auditoría.", "ok");
-      if (RG_EDIT_ID === del.dataset.rgDel) resetForm();
+      await rgAudit("regla_actualizada",{regla_id:String(tg.dataset.rgToggle).slice(0,36),activo:tg.dataset.on!=="1"});
       return rgLoad();
     }
   });
@@ -797,70 +943,225 @@ async function mountReglas(host) {
   rgLoad();
 }
 
-/* ---------- Bitácora (solo admin, lazy, paginada y sin payloads sensibles) ---------- */
-async function mountBitacora(host) {
-  const PAGE = 10;
-  let page = 0;
-  host.innerHTML = `<div class="section-head"><div><h3>Historial de actividad</h3><p class="mut">Actividad administrativa y operativa relevante de la mesa de soporte.</p></div></div>
-    <div class="adm-log-filters" style="margin-top:10px">
-      <input class="input" id="logSearch" type="search" placeholder="Buscar acción, actor o entidad">
-      <select class="select" id="logType"><option value="">Todos los tipos</option><option value="nota_interna">Nota interna</option><option value="sistema">Sistema</option></select>
-      <select class="select" id="logResult"><option value="">Todos los resultados</option><option value="ok">Correctos</option><option value="error">Con error</option></select>
-    </div>
-    <div class="adm-log" id="logRows" style="margin-top:10px"><div class="dash-skel"></div></div>
-    <div class="actions"><button class="mini btn-ghost" id="logPrev" type="button">Anterior</button><span class="mut" id="logPage">Página 1</span><button class="mini btn-ghost" id="logNext" type="button">Siguiente</button></div>`;
+/* ============================================================================
+   BITÁCORA (solo admin, lazy) — B20-FABLE-01.
+   Owner único de render: createLogView(root), exportado a la ruta dedicada.
+   Dashboard conserva únicamente el resumen y un CTA.
+   Sin payloads sensibles: sin UUID completos, sin URLs, sin PII en metadata.
+   ============================================================================ */
+const LOG_SAFE_KEYS = ["clave", "folio", "ticket_id", "cliente_id", "documento_id", "nombre", "resultado", "estado"];
+const logSafeText = v => String(v ?? "").replace(/https?:\/\/\S+/gi, "[enlace protegido]").slice(0, 160);
+const logSafeDetail = detail => {
+  const d = detail && typeof detail === "object" ? detail : {};
+  return LOG_SAFE_KEYS.flatMap(k => {
+    const v = d[k];
+    if (v == null || typeof v === "object") return [];
+    const txt = logSafeText(v).slice(0, 90);
+    return txt ? [`${k}: ${txt}`] : [];
+  }).slice(0, 3).join(" · ");
+};
+const logFriendlyAction = value => ({portal_respondio:"El cliente respondió",portal_abierto:"El cliente abrió el seguimiento",ticket_asignado:"Ticket asignado",ticket_reasignado:"Ticket reasignado",supervision_solicitada:"Se solicitó supervisión",ticket_supervision_escalada:"Se solicitó supervisión",estado_actualizado:"Estado actualizado",ticket_seguimiento:"Seguimiento del ticket",ticket_solucion:"Solución registrada",ticket_creado:"Ticket creado",ticket_creado_desde_soporte_publico:"Solicitud de soporte creada",contacto_consolidado:"Contacto consolidado",aviso_publicado:"Aviso publicado",site_config_update:"Personalización actualizada"}[String(value||"")]||"Actividad registrada");
+const logAbsoluteDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}):"Fecha no disponible"};
+const logFailed = b => /error|fall|rechaz/i.test(`${b.accion} ${b.detalle?.resultado || ""}`);
+const logOrigin = b => {
+  const a = String(b.accion || "");
+  if (a.startsWith("portal_") || a === "ticket_creado_desde_soporte_publico") return "Cliente";
+  return b.usuario_id ? "Agente" : "Sistema";
+};
+/* Tipos de evento → acciones conocidas (filtro server-side vía .in). */
+const LOG_TYPES = [
+  ["apertura", "Apertura", { in: ["ticket_creado", "ticket_creado_desde_soporte_publico"] }],
+  ["respuesta", "Respuesta", { in: ["portal_respondio", "ticket_seguimiento", "ticket_solucion"] }],
+  ["nota_interna", "Nota interna", { tipo: "nota_interna" }],
+  ["asignacion", "Asignación", { in: ["ticket_asignado"] }],
+  ["reasignacion", "Reasignación", { in: ["ticket_reasignado"] }],
+  ["cambio_estado", "Cambio de estado", { in: ["estado_actualizado"] }],
+  ["cierre", "Cierre", { in: ["estado_actualizado"], estado: ["cerrado", "resuelto"] }],
+  ["reapertura", "Reapertura", { in: ["estado_actualizado"], estado: ["abierto", "en_proceso"] }],
+  ["aviso", "Publicación de aviso", { in: ["aviso_publicado"] }],
+  ["regla", "Regla modificada", { in: ["regla_creada", "regla_actualizada", "regla_modificada"] }],
+  ["personalizacion", "Personalización", { in: ["site_config_update"] }],
+  ["error", "Error", { client: "error" }],
+];
+let LOG_ACTORS = null; /* cache de perfiles para el filtro de actor/agente */
+async function logActorOptions() {
+  if (LOG_ACTORS) return LOG_ACTORS;
+  perfCountRequest();
+  const { data, error } = await supabase.from("perfiles").select("id,nombre").order("nombre");
+  LOG_ACTORS = error ? [] : (data || []);
+  return LOG_ACTORS;
+}
 
-  const safeDetail = detail => {
-    const d = detail && typeof detail === "object" ? detail : {};
-    const allowed = ["clave", "folio", "ticket_id", "cliente_id", "documento_id", "nombre", "resultado", "estado"];
-    return allowed.flatMap(k => {
-      const v = d[k];
-      if (v == null || typeof v === "object") return [];
-      const txt = String(v).replace(/https?:\/\/\S+/gi, "[enlace protegido]").slice(0, 90);
-      return txt ? [`${k}: ${txt}`] : [];
-    }).slice(0, 3).join(" · ");
+export function createLogView(root, { pageSize = 10 } = {}) {
+  let page = 0, size = pageSize, total = 0, seq = 0;
+  const urlState=document.body?.dataset.page==="bitacora-admin";
+  const el = q => root.querySelector(q);
+  root.innerHTML = `
+    <div class="adm-log-filters">
+      <input class="input" type="search" data-lf="q" placeholder="Buscar acción, actor o entidad" aria-label="Buscar en la bitácora">
+      <input class="input" type="text" data-lf="ticket" placeholder="Folio del ticket" aria-label="Filtrar por ticket">
+      <select class="select" data-lf="tipo" aria-label="Tipo de evento"><option value="">Todos los tipos</option>${LOG_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>
+      <select class="select" data-lf="actor" aria-label="Actor o agente"><option value="">Todos los actores</option><option value="__system__">Sistema</option></select>
+      <select class="select" data-lf="resultado" aria-label="Resultado"><option value="">Todos los resultados</option><option value="ok">Correctos</option><option value="error">Con error</option></select>
+      <select class="select" data-lf="origen" aria-label="Origen"><option value="">Todos los orígenes</option><option value="Sistema">Sistema</option><option value="Agente">Agente</option><option value="Cliente">Cliente</option><option value="Integración">Integración</option></select>
+      <label class="adm-log-date"><span class="lbl">Desde</span><input class="input" type="date" data-lf="desde" aria-label="Desde"></label>
+      <label class="adm-log-date"><span class="lbl">Hasta</span><input class="input" type="date" data-lf="hasta" aria-label="Hasta"></label>
+    </div>
+    <div class="adm-log-filter-actions"><span class="tag" data-log-active-filters>0 filtros activos</span><span class="mut" data-log-filter-error role="status"></span><button class="mini btn-ghost" type="button" data-log-clear>Limpiar</button><button class="mini btn-brand" type="button" data-log-apply>Aplicar</button></div>
+    <div class="adm-log" data-log-rows style="margin-top:10px"><div class="dash-skel"></div><div class="dash-skel"></div></div>
+    <div class="adm-log-pager">
+      <button class="mini btn-ghost" type="button" data-log-prev>Anterior</button>
+      <span class="mut" data-log-page aria-live="polite">Página 1</span>
+      <button class="mini btn-ghost" type="button" data-log-next>Siguiente</button>
+      <label class="adm-log-size"><span class="mut">Por página</span><select class="select" data-lf="size" aria-label="Eventos por página">${[10, 25, 50].map(n => `<option value="${n}"${n === size ? " selected" : ""}>${n}</option>`).join("")}</select></label>
+    </div>`;
+  if(urlState){const params=new URLSearchParams(location.search);root.querySelectorAll("[data-lf]").forEach(field=>{const value=params.get(`log_${field.dataset.lf}`);if(value!=null)field.value=value});page=Math.max(0,(parseInt(params.get("log_page")||"1",10)||1)-1);size=[10,25,50].includes(parseInt(params.get("log_size")||"",10))?parseInt(params.get("log_size"),10):size;el('[data-lf="size"]').value=String(size)}
+  const activeValues=()=>[...root.querySelectorAll('[data-lf]:not([data-lf="size"])')].filter(f=>String(f.value||"").trim());
+  const syncFilterMeta=()=>{const count=activeValues().length,tag=el("[data-log-active-filters]");if(tag)tag.textContent=`${count} filtro${count===1?"":"s"} activo${count===1?"":"s"}`;if(urlState){const params=new URLSearchParams();root.querySelectorAll("[data-lf]").forEach(f=>{if(f.value&&!(f.dataset.lf==="size"&&Number(f.value)===pageSize))params.set(`log_${f.dataset.lf}`,f.value)});if(page)params.set("log_page",String(page+1));history.replaceState(null,"",`${location.pathname}${params.size?`?${params}`:""}`)}};
+  logActorOptions().then(list => {
+    const sel = el('[data-lf="actor"]');
+    if (sel && list.length) sel.insertAdjacentHTML("beforeend", list.map(a => `<option value="${esc(a.id)}">${esc(a.nombre || "Usuario")}</option>`).join(""));
+  });
+
+  const rowHtml = (b, actors) => {
+    const failed = logFailed(b);
+    const folio = b.detalle?.folio, ticketId = b.detalle?.ticket_id;
+    const actor = b.usuario_id ? (actors[b.usuario_id] || "Usuario interno") : "Automatización del sistema";
+    const summary = logSafeDetail(b.detalle);
+    const antes = b.detalle && typeof b.detalle === "object" && b.detalle.antes != null && typeof b.detalle.antes !== "object" ? logSafeText(b.detalle.antes) : "";
+    const despues = b.detalle && typeof b.detalle === "object" && b.detalle.despues != null && typeof b.detalle.despues !== "object" ? logSafeText(b.detalle.despues) : "";
+    return `<article class="adm-log-row${failed ? " is-error" : ""}">
+      <span>
+        <span class="adm-log-line"><b>${esc(logFriendlyAction(b.accion))}</b> <span class="tag ${failed ? "bad" : "ok"}">${failed ? "Error" : "Correcto"}</span>${folio && ticketId ? `<a class="adm-log-ticket" href="ticket.html?id=${encodeURIComponent(ticketId)}">${esc(folio)}</a>` : ""}</span>
+        ${summary ? `<small class="mut">${esc(summary.replace(/ticket_id:[^·]+·?/i, "").trim())}</small>` : ""}
+        <details class="adm-log-detail"><summary>Ver detalle</summary>
+          <dl class="adm-log-detail-body">
+            <div><dt>Antes</dt><dd>${antes ? esc(antes) : "—"}</dd></div>
+            <div><dt>Después</dt><dd>${despues ? esc(despues) : "—"}</dd></div>
+            <div><dt>Metadata</dt><dd>${summary ? esc(summary) : "Sin metadata adicional"}</dd></div>
+            <div><dt>Origen</dt><dd>${esc(logOrigin(b))}</dd></div>
+            <div><dt>Identificador</dt><dd>${esc(String(b.id ?? "—").slice(0, 8))}</dd></div>
+            <div><dt>Relación</dt><dd>${folio && ticketId ? `<a href="ticket.html?id=${encodeURIComponent(ticketId)}">Ticket ${esc(folio)}</a>` : b.detalle?.clave ? `Configuración ${esc(String(b.detalle.clave))}` : "—"}</dd></div>
+            <div><dt>Código</dt><dd>${esc(b.accion || "evento")}</dd></div>
+          </dl>
+        </details>
+      </span>
+      <span class="mut adm-log-meta-col">${esc(actor)}<br><time datetime="${esc(b.fecha || "")}">${esc(logAbsoluteDate(b.fecha))}</time> · ${esc(ago(b.fecha))}</span>
+    </article>`;
   };
-  const friendlyAction = value => ({portal_respondio:"El cliente respondió",portal_abierto:"El cliente abrió el seguimiento",ticket_asignado:"Ticket asignado",ticket_reasignado:"Ticket reasignado",supervision_solicitada:"Se solicitó supervisión",ticket_supervision_escalada:"Se solicitó supervisión",estado_actualizado:"Estado actualizado",ticket_seguimiento:"Seguimiento del ticket",ticket_solucion:"Solución registrada",ticket_creado:"Ticket creado",ticket_creado_desde_soporte_publico:"Solicitud de soporte creada",contacto_consolidado:"Contacto consolidado"}[String(value||"")]||"Actividad registrada");
-  const absoluteDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}):"Fecha no disponible"};
+
   const load = async () => {
-    const rowsHost = $("#logRows");
-    rowsHost.innerHTML = '<div class="dash-skel"></div>';
+    const mySeq = ++seq;
+    const rowsHost = el("[data-log-rows]");
+    rowsHost.innerHTML = '<div class="dash-skel"></div><div class="dash-skel"></div>';
     perfCountRequest();
-    let q = supabase.from("bitacora").select("id,usuario_id,accion,tipo,fecha,detalle")
-      .order("fecha", { ascending: false }).range(page * PAGE, page * PAGE + PAGE);
-    const type = $("#logType")?.value || "";
-    if (type) q = q.eq("tipo", type);
-    const { data, error } = await q;
-    if (error) { rowsHost.innerHTML = `<div class="empty-state">${esc(errText(error, "leer la bitácora"))}</div>`; return; }
+    let q = supabase.from("bitacora").select("id,usuario_id,accion,tipo,fecha,detalle", { count: "exact" })
+      .order("fecha", { ascending: false }).range(page * size, (page + 1) * size - 1);
+    const tipoVal = el('[data-lf="tipo"]')?.value || "";
+    const tipoDef = LOG_TYPES.find(t => t[0] === tipoVal)?.[2] || null;
+    if (tipoDef?.in) q = q.in("accion", tipoDef.in);
+    if (tipoDef?.tipo) q = q.eq("tipo", tipoDef.tipo);
+    if (tipoDef?.estado) q = q.in("detalle->>estado", tipoDef.estado);
+    const actorVal = el('[data-lf="actor"]')?.value || "";
+    if (actorVal === "__system__") q = q.is("usuario_id", null);
+    else if (actorVal) q = q.eq("usuario_id", actorVal);
+    const desde = el('[data-lf="desde"]')?.value || "";
+    const hasta = el('[data-lf="hasta"]')?.value || "";
+    const dateError=el("[data-log-filter-error]");
+    if(desde&&hasta&&desde>hasta){if(dateError)dateError.textContent="La fecha Desde no puede ser posterior a Hasta.";rowsHost.innerHTML='<div class="empty-state">Corrige el intervalo de fechas para aplicar los filtros.</div>';return}
+    if(dateError)dateError.textContent="";
+    if (desde) q = q.gte("fecha", `${desde}T00:00:00`);
+    if (hasta) q = q.lte("fecha", `${hasta}T23:59:59`);
+    const ticketVal = (el('[data-lf="ticket"]')?.value || "").trim();
+    if (ticketVal) q = q.ilike("detalle->>folio", `%${ticketVal.replace(/[%_]/g, "")}%`);
+    const needle = (el('[data-lf="q"]')?.value || "").trim().replace(/[%_,()]/g," ").slice(0,80);
+    if(needle)q=q.or(`accion.ilike.%${needle}%,tipo.ilike.%${needle}%,detalle->>folio.ilike.%${needle}%`);
+    const resultFilter = el('[data-lf="resultado"]')?.value || (tipoDef?.client === "error" ? "error" : "");
+    if(resultFilter==="error")q=q.or("accion.ilike.%error%,accion.ilike.%fall%,accion.ilike.%rechaz%,detalle->>resultado.ilike.%error%");
+    else if(resultFilter==="ok")q=q.not("accion","ilike","%error%").not("accion","ilike","%fall%").not("accion","ilike","%rechaz%");
+    const origenFilter = el('[data-lf="origen"]')?.value || "";
+    if(origenFilter==="Cliente")q=q.in("accion",["portal_respondio","portal_abierto","ticket_creado_desde_soporte_publico"]);
+    else if(origenFilter==="Agente")q=q.not("usuario_id","is",null);
+    else if(origenFilter==="Sistema")q=q.is("usuario_id",null);
+    const { data, error, count } = await q;
+    if (mySeq !== seq) return; /* respuesta obsoleta descartada */
+    if (error) {
+      rowsHost.innerHTML = `<div class="empty-state">${esc(errText(error, "leer la bitácora"))} <button class="mini btn-ghost" type="button" data-log-retry>Reintentar</button></div>`;
+      el("[data-log-retry]")?.addEventListener("click", load);
+      return;
+    }
+    total = count ?? 0;
     const raw = data || [];
     const ids = [...new Set(raw.map(x => x.usuario_id).filter(Boolean))];
     let actors = {};
     if (ids.length) {
       const p = await supabase.from("perfiles").select("id,nombre").in("id", ids);
+      if (mySeq !== seq) return;
       if (!p.error) actors = Object.fromEntries((p.data || []).map(x => [x.id, x.nombre || "Usuario"]));
     }
-    const needle = ($("#logSearch")?.value || "").trim().toLowerCase();
-    const resultFilter = $("#logResult")?.value || "";
-    const filtered = raw.slice(0, PAGE).filter(b => {
-      const summary = safeDetail(b.detalle);
-      const result = /error|fall|rechaz/i.test(`${b.accion} ${b.detalle?.resultado || ""}`) ? "error" : "ok";
-      const haystack = `${b.accion} ${b.tipo} ${actors[b.usuario_id] || "Sistema"} ${summary}`.toLowerCase();
-      return (!needle || haystack.includes(needle)) && (!resultFilter || result === resultFilter);
-    });
-    rowsHost.innerHTML = filtered.length ? filtered.map(b => {
-      const summary = safeDetail(b.detalle);
-      const failed = /error|fall|rechaz/i.test(`${b.accion} ${b.detalle?.resultado || ""}`);
-      const folio=b.detalle?.folio,ticketId=b.detalle?.ticket_id,actor=actors[b.usuario_id]||"Automatización del sistema";
-      return `<article class="adm-log-row"><span><b>${esc(friendlyAction(b.accion))}</b> <span class="tag ${failed ? "bad" : "ok"}">${failed ? "Error" : "Correcto"}</span>${folio&&ticketId?`<a class="adm-log-ticket" href="ticket.html?id=${encodeURIComponent(ticketId)}">${esc(folio)}</a>`:""}${summary ? `<small class="mut">${esc(summary.replace(/ticket_id:[^·]+·?/i,"").trim())}</small>` : ""}<details><summary>Ver detalle</summary><small class="mut">Código: ${esc(b.accion||"evento")}</small></details></span><span class="mut">${esc(actor)}<br><time datetime="${esc(b.fecha||"")}">${esc(absoluteDate(b.fecha))}</time> · ${esc(ago(b.fecha))}</span></article>`;
-    }).join("") : '<div class="empty-state">No hay eventos que coincidan con estos filtros.</div>';
-    $("#logPage").textContent = `Página ${page + 1}`;
-    $("#logPrev").disabled = page === 0;
-    $("#logNext").disabled = raw.length <= PAGE;
+    const filtered = raw;
+    const anyFilter = needle || resultFilter || origenFilter || tipoVal || actorVal || desde || hasta || ticketVal;
+    rowsHost.innerHTML = filtered.length ? filtered.map(b => rowHtml(b, actors)).join("")
+      : raw.length || anyFilter
+        ? '<div class="empty-state">Sin coincidencias con los filtros actuales.<br><span class="mut">Ajusta la búsqueda, el intervalo de fechas o el tipo de evento.</span></div>'
+        : '<div class="empty-state">La bitácora aún no tiene eventos registrados.</div>';
+    const pages = Math.max(1, Math.ceil(total / size));
+    const pageEl = el("[data-log-page]"); if (pageEl) pageEl.textContent = `Página ${Math.min(page + 1, pages)} de ${pages}`;
+    const prev = el("[data-log-prev]"); if (prev) prev.disabled = page === 0;
+    const next = el("[data-log-next]"); if (next) next.disabled = (page + 1) * size >= total;
+    syncFilterMeta();
   };
-  $("#logPrev")?.addEventListener("click", () => { if (page) { page--; load(); } });
-  $("#logNext")?.addEventListener("click", () => { page++; load(); });
-  ["logSearch", "logType", "logResult"].forEach(id => $("#" + id)?.addEventListener(id === "logSearch" ? "input" : "change", () => { page = 0; load(); }));
+  el("[data-log-prev]")?.addEventListener("click", () => { if (page) { page--; load(); } });
+  el("[data-log-next]")?.addEventListener("click", () => { if ((page + 1) * size < total) { page++; load(); } });
+  el('[data-lf="size"]')?.addEventListener("change", e => { size = parseInt(e.target.value, 10) || 10; page = 0; load(); });
+  el("[data-log-apply]")?.addEventListener("click",()=>{page=0;load()});
+  el("[data-log-clear]")?.addEventListener("click",()=>{root.querySelectorAll('[data-lf]:not([data-lf="size"])').forEach(f=>f.value="");page=0;load()});
+  let debTimer = 0;
+  root.querySelectorAll("[data-lf]").forEach(f => {
+    if (f.dataset.lf === "size") return;
+    const evt = f.matches("input[type=search],input[type=text]") ? "input" : "change";
+    f.addEventListener(evt, () => { syncFilterMeta();if(evt!=="input")return;clearTimeout(debTimer);debTimer = setTimeout(() => { page = 0; load(); },320); });
+  });
+  syncFilterMeta();
   load();
+  return { reload: load };
+}
+
+/* Resumen superior: total real (count exacto) + categorías sobre los últimos
+   200 eventos (ventana declarada; nunca se presentan como totales globales). */
+export async function loadLogSummary(box) {
+  if (!box) return;
+  box.innerHTML = '<div class="dash-skel"></div>';
+  try {
+    perfCountRequest();
+    const [head, sample] = await Promise.all([
+      supabase.from("bitacora").select("id", { count: "exact", head: true }),
+      supabase.from("bitacora").select("id,usuario_id,accion,detalle").order("fecha", { ascending: false }).limit(200),
+    ]);
+    if (head.error || sample.error) throw head.error || sample.error;
+    const rows = sample.data || [];
+    const n = f => rows.filter(f).length;
+    const chips = [
+      ["Eventos totales", head.count ?? 0, ""],
+      ["Errores", n(logFailed), "is-warnchip"],
+      ["Cambios manuales", n(b => !!b.usuario_id && !String(b.accion || "").startsWith("portal_")), ""],
+      ["Automatizaciones", n(b => !b.usuario_id), ""],
+      ["Asignaciones", n(b => ["ticket_asignado", "ticket_reasignado"].includes(b.accion)), ""],
+      ["Cierres", n(b => b.accion === "estado_actualizado" && ["cerrado", "resuelto"].includes(String(b.detalle?.estado || ""))), ""],
+    ];
+    box.innerHTML = chips.map(([k, v, cls], i) => `<article class="kpi adm-log-chip ${cls}"><span class="kk">${esc(k)}${i ? '<br><i class="adm-log-chip-note">últimos 200</i>' : ""}</span><span class="kv">${esc(String(v))}</span></article>`).join("");
+  } catch (e) {
+    box.innerHTML = `<div class="empty-state">${esc(errText(e, "leer el resumen de la bitácora"))} <button class="mini btn-ghost" type="button" data-log-summary-retry>Reintentar</button></div>`;
+    box.querySelector("[data-log-summary-retry]")?.addEventListener("click", () => loadLogSummary(box));
+  }
+}
+
+async function mountBitacora(host) {
+  host.innerHTML = `
+    <div class="section-head"><div><h3>Bitácora administrativa</h3><p class="mut">Resumen de la actividad administrativa y operativa de la mesa.</p></div>
+      <a class="mini btn-ghost" href="bitacora-admin.html">Abrir actividad y auditoría</a></div>
+    <div class="adm-log-summary" data-log-summary><div class="dash-skel"></div></div>`;
+  loadLogSummary(host.querySelector("[data-log-summary]"));
 }
 
 /* ============================================================================
@@ -876,30 +1177,37 @@ async function init() {
   document.body.dataset.accessRole=CTX.isAdmin?"admin":"soporte";
   document.body.dataset.surface=CTX.isAdmin?"admin":"support";
 
-  const badge = $("#dashRoleBadge");
-  if (badge) badge.textContent = CTX.isAdmin ? "Administrador" : "Soporte";
-  const scope = $("#dashScope");
-  if (scope) {
-    scope.hidden = CTX.isAdmin;
-    scope.textContent = CTX.isAdmin ? "" : "Mis casos asignados";
-  }
+  /* Hero — owner único del rol: badge INLINE al final de #dashLead (sin
+     .dash-hero-meta ni badge duplicado a la derecha). Texto y badge fluyen
+     juntos; máximo 2 filas visuales para admin (kicker+acciones / lead+badge). */
+  const setLead = (text, badgeLabel, extraTag) => {
+    const l1 = $("#dashLead"); if (!l1) return;
+    l1.textContent = text + " ";
+    const b = document.createElement("span");
+    b.className = "tag ok dash-role-inline"; b.textContent = badgeLabel;
+    l1.appendChild(b);
+    if (extraTag) { const x = document.createElement("span"); x.className = "tag dash-role-inline"; x.textContent = extraTag; l1.appendChild(document.createTextNode(" ")); l1.appendChild(x); }
+  };
   if (!CTX.isAdmin) {
     const rawFirst = String(CTX.nombre || "").trim().split(/\s+/)[0] || "";
     const firstName = rawFirst && !rawFirst.includes("@") ? rawFirst : "Soporte";
     const t1 = $("#dashTitle"); if (t1) t1.textContent = `Tu mesa de soporte, ${firstName}`;
-    const l1 = $("#dashLead"); if (l1) l1.textContent = "Atiende tus casos asignados, responde a tiempo y vigila tus compromisos de servicio.";
+    setLead("Atiende tus casos asignados, responde a tiempo y vigila tus compromisos de servicio.", "Soporte", "Mis casos asignados");
     const act = $("#dashActTitle"); if (act) act.textContent = "Mi actividad reciente";
     document.querySelectorAll(".dash-admin-only").forEach(el => el.classList.add("hidden"));
   } else {
-    const t1 = $("#dashTitle"); if (t1) t1.textContent = "Mesa de soporte Janome";
-    const l1 = $("#dashLead"); if (l1) l1.textContent = "Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.";
+    /* El kicker ya dice “Mesa de soporte Janome”: el h1 con el mismo texto era
+       redundante → pasa a sr-only (se conserva un h1 accesible, sin fila extra). */
+    const t1 = $("#dashTitle"); if (t1) { t1.textContent = "Administración de la mesa de soporte Janome"; t1.classList.add("sr-only"); }
+    setLead("Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.", "Administrador");
     $("#dashAdmin")?.classList.remove("hidden");
     $("#dashAgents")?.classList.remove("hidden");
     $("#dashSupervision")?.classList.remove("hidden");
-    $("#dashAgentGrid")?.addEventListener("click",e=>{const b=e.target.closest("[data-agent-row]");if(b)openAgent(AGENT_ROWS[Number(b.dataset.agentRow)])});
-    const closeAgent=()=>{$("#dashAgentModal").hidden=true};
-    $("#dashAgentClose")?.addEventListener("click",closeAgent);
-    $("#dashAgentModal")?.addEventListener("click",e=>{if(e.target.id==="dashAgentModal")closeAgent()});
+    $("#dashAgentGrid")?.addEventListener("click",e=>{const metric=e.target.closest("[data-agent-metric]"),card=metric?.closest("[data-agent-row]");if(metric&&card)openAgentMetric(AGENT_ROWS[Number(card.dataset.agentRow)],metric.dataset.agentMetric,metric)});
+    $("#dashAgentClose")?.addEventListener("click",()=>closeDialog("#dashAgentModal"));
+    $("#dashAgentModal")?.addEventListener("click",e=>{if(e.target.id==="dashAgentModal")closeDialog("#dashAgentModal")});
+    $("#dashAgentPrev")?.addEventListener("click",()=>{if(AGENT_MODAL_STATE.page>0){AGENT_MODAL_STATE.page--;renderAgentModal()}});
+    $("#dashAgentNext")?.addEventListener("click",()=>{AGENT_MODAL_STATE.page++;renderAgentModal()});
     bindAdmin();
   }
 
@@ -909,4 +1217,4 @@ async function init() {
   Promise.allSettled([loadActividad(), loadAgentSummary(), CTX.isAdmin?loadSupervision():Promise.resolve()]).then(perfSecondaryDone);
 }
 
-document.addEventListener("DOMContentLoaded", init);
+if(document.body?.dataset.page==="dashboard")document.addEventListener("DOMContentLoaded", init);

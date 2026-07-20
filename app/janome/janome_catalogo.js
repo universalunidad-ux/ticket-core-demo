@@ -421,11 +421,16 @@ function _norm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
+let _comboInstance = 0;
+
 export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } = {}) {
   if (!selectEl || !hostEl) return;
   selectEl.hidden = true;
   selectEl.setAttribute("aria-hidden", "true");
   selectEl.tabIndex = -1;
+
+  const base = hostEl.id || selectEl.id || `jn-combo-${++_comboInstance}`;
+  const listId = `${base}-list`;
 
   hostEl.classList.add("jn-combo");
   hostEl.innerHTML = `
@@ -438,10 +443,18 @@ export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } =
     </div>
   `;
   const input = hostEl.querySelector(".jn-combo-input");
+  const requestedInputId = String(hostEl.dataset.inputId || "").trim();
+  input.id = requestedInputId || `${base}-input`;
   const clear = hostEl.querySelector(".jn-combo-clear");
   const panel = hostEl.querySelector(".jn-combo-panel");
   const list = hostEl.querySelector(".jn-combo-list");
   const cats = hostEl.querySelector(".jn-combo-cats");
+
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-expanded", "false");
+  input.setAttribute("aria-controls", listId);
+  list.id = listId;
 
   let items = [], idx = -1, activeCat = "", confirmedName = "";
 
@@ -497,6 +510,8 @@ export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } =
         it.type = "button";
         it.className = "jn-combo-item";
         it.setAttribute("role", "option");
+        it.tabIndex = -1;
+        it.id = `${base}-opt-${items.length}`;
         it.dataset.id = p.id;
         it.dataset.nombre = p.nombre;
         it.dataset.grupo = g.grupo;
@@ -511,6 +526,9 @@ export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } =
     const otro = document.createElement("button");
     otro.type = "button";
     otro.className = "jn-combo-item jn-combo-otro";
+    otro.setAttribute("role", "option");
+    otro.tabIndex = -1;
+    otro.id = `${base}-opt-${items.length}`;
     otro.dataset.id = "OTRO";
     otro.dataset.nombre = "Otro / no aparece en la lista";
     otro.dataset.grupo = "Otro";
@@ -525,6 +543,7 @@ export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } =
       list.insertBefore(e, otro);
     }
     idx = -1;
+    input.removeAttribute("aria-activedescendant");
   };
 
   const abrir = () => {
@@ -536,16 +555,27 @@ export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } =
     renderCats();
     render("");
     panel.hidden = false;
+    input.setAttribute("aria-expanded", "true");
 
     if (confirmedName && _norm(input.value) === _norm(confirmedName)) {
       requestAnimationFrame(() => input.select());
     }
   };
-  const cerrar = () => { panel.hidden = true; idx = -1; };
+  const cerrar = () => {
+    panel.hidden = true;
+    idx = -1;
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+  };
 
   const marcar = () => {
     items.forEach((it, i) => it.classList.toggle("is-active", i === idx));
-    if (items[idx]) items[idx].scrollIntoView({ block: "nearest" });
+    if (items[idx]) {
+      input.setAttribute("aria-activedescendant", items[idx].id);
+      items[idx].scrollIntoView({ block: "nearest" });
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
   };
 
   const elegir = (it) => {
@@ -583,12 +613,14 @@ export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } =
     clear.hidden = !input.value;
     render(input.value);
     panel.hidden = false;
+    input.setAttribute("aria-expanded", "true");
     if (!input.value.trim() && selectEl.value) {
       selectEl.value = "";
       selectEl.dispatchEvent(new Event("change", { bubbles: true }));
     }
   });
   input.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") { cerrar(); return; }
     if (panel.hidden) { if (e.key === "ArrowDown") abrir(); return; }
     if (e.key === "ArrowDown") { e.preventDefault(); idx = Math.min(idx + 1, items.length - 1); marcar(); }
     else if (e.key === "ArrowUp") { e.preventDefault(); idx = Math.max(idx - 1, 0); marcar(); }

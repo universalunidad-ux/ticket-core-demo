@@ -5,10 +5,19 @@
 .cl-sum .kv{font-size:18px;font-weight:950;letter-spacing:-.02em}
 .cl-sum.is-warn{border-color:color-mix(in srgb,var(--warn) 38%,var(--line))}
 .cl-sum.is-warn .kv{color:var(--warn)}
-.cl-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.cl-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 200px auto;gap:10px;margin-top:10px}
+.cl-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,230px) minmax(180px,220px) auto auto;gap:8px;margin-top:10px;align-items:center}
+.cl-admin-filter{min-width:0}.cl-admin-filter .select{width:100%}
 .cl-viewtoggle{display:flex;gap:6px;align-items:center}
-.cl-table{width:100%;border-collapse:separate;border-spacing:0 8px}
+.cl-filter-wrap{position:relative}.cl-filter-trigger{min-height:40px;white-space:nowrap}.cl-filter-count{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--brand);color:#fff;font-size:11px;font-weight:900}
+.cl-filter-panel{position:absolute;z-index:90;right:0;top:calc(100% + 8px);width:min(430px,calc(100vw - 32px));padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 22px 60px rgba(2,6,23,.2)}
+.cl-filter-panel[hidden]{display:none}.cl-filter-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.cl-filter-head>div{display:grid;gap:2px}.cl-filter-head span{font-size:12px;color:var(--muted)}
+.cl-filter-options{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.cl-filter-option{min-height:36px;display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:11px;background:transparent;color:var(--text);padding:7px 9px;font:inherit;font-size:12px;font-weight:750;text-align:left;cursor:pointer}.cl-filter-option.is-active,.cl-filter-option:has(input:checked){border-color:color-mix(in srgb,var(--brand) 42%,var(--line));background:color-mix(in srgb,var(--brand) 9%,transparent)}
+.cl-equipment-field{position:relative;margin-top:10px}.cl-equipment-field .input{width:100%}.cl-equipment-list{position:absolute;z-index:95;left:0;right:0;top:calc(100% - 2px);max-height:260px;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 16px 44px rgba(2,6,23,.18)}
+.cl-equipment-option{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 8px;border:0;border-radius:10px;background:transparent;color:var(--text);padding:8px 9px;text-align:left;cursor:pointer}.cl-equipment-option b{overflow-wrap:anywhere}.cl-equipment-option span{font-size:11px;font-weight:800;color:var(--brand)}.cl-equipment-option small{grid-column:1/-1;color:var(--muted)}.cl-equipment-option:hover,.cl-equipment-option.is-active{background:color-mix(in srgb,var(--brand) 9%,var(--panel))}.cl-equipment-empty{padding:10px;color:var(--muted);font-size:12px}
+.cl-filter-size{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;font-size:12px;font-weight:800}.cl-filter-size .select{width:90px;min-height:36px}.cl-filter-status{min-height:18px;margin-top:7px;font-size:11.5px}.cl-filter-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.cl-filter-actions .btn{min-height:36px;padding:7px 12px}
+.cl-table-wrap{overflow-x:auto}.cl-table{width:100%;min-width:680px;border-collapse:separate;border-spacing:0 8px}
+.cl-table th{text-align:left;padding:0 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.cl-table th:nth-child(2),.cl-table th:nth-child(3){text-align:center}
 .cl-row{cursor:pointer}
 .cl-row td{padding:10px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel-2) 96%,transparent)}
 .cl-row td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}
@@ -18,12 +27,13 @@
 .cl-name{font-weight:850;overflow-wrap:anywhere}
 .cl-sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .cl-num{font-weight:800;text-align:center;white-space:nowrap}
-.cl-pager{display:flex;align-items:center;gap:12px;margin-top:12px}
+.cl-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;min-height:34px}
+.cl-pagination{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-left:auto}.cl-page-arrow{width:30px;height:30px;min-width:30px;min-height:30px;padding:0;display:grid;place-items:center;font-size:20px}.cl-page-label{min-width:42px;text-align:center;font-size:11px;color:var(--muted);font-weight:800}
 .cl-skel{height:52px;border-radius:14px;background:color-mix(in srgb,var(--panel-2) 92%,transparent);animation:clPulse 1.2s ease-in-out infinite;margin-bottom:8px}
 @keyframes clPulse{0%,100%{opacity:.55}50%{opacity:1}}
 .mini.is-active{border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:color-mix(in srgb,var(--brand) 12%,transparent)}
 /* Vista de tarjetas */
-.cl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.cl-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
 .cl-card{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--panel-2) 96%,transparent);cursor:pointer;min-width:0}
 .cl-card:hover{border-color:color-mix(in srgb,var(--brand) 35%,var(--line))}
 .cl-card:focus-visible{outline:none;box-shadow:var(--focus)}
@@ -31,9 +41,13 @@
 .cl-card-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
 @media (max-width:860px){
   .cl-toolbar{grid-template-columns:1fr}
+  .cl-filter-panel{left:0;right:auto}
   .cl-viewtoggle{display:none} /* mobile siempre usa cards */
   .cl-table,.cl-table tbody{display:block}
   .cl-table thead{display:none}
   .cl-table .cl-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:color-mix(in srgb,var(--panel-2) 96%,transparent)}
   .cl-table .cl-row td{display:block;border:0!important;background:transparent;padding:0}
+}
+@media (max-width:520px){
+  .cl-filter-options{grid-template-columns:1fr}.cl-pager{align-items:center}.cl-pagination{width:auto}.cl-pagination .mini{flex:none}
 }

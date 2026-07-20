@@ -13,6 +13,7 @@
 <div id="appShell"></div>
 <main class="wrap">
   <section class="panel cf-head" id="cfHead">
+    <a class="mini btn-ghost cf-back" id="cfBack" href="clientes.html" aria-label="Volver a Clientes" title="Volver a Clientes">‹</a>
     <div class="cf-id"><div class="cf-avatar" id="cfAvatar">—</div>
       <div><div class="section-kicker">Ficha de cliente</div><h1 id="cfNombre">Cargando…</h1><div class="cl-sub" id="cfContactoLinea">—</div></div>
     </div>
@@ -24,15 +25,15 @@
   </section>
   <div class="panel inset hidden" id="cfConsolidaAviso">⚠ Este cliente tiene tickets pendientes de consolidación. <a href="consolidacion-clientes.html">Ver cola</a></div>
   <nav class="cf-tabs" id="cfTabs" role="tablist" aria-label="Secciones del cliente">
-    <button class="chat-tab is-active" data-tab="resumen" type="button" role="tab">Resumen</button>
-    <button class="chat-tab" data-tab="contactos" type="button" role="tab">Contactos <span class="cf-tab-n hidden"></span></button>
-    <button class="chat-tab" data-tab="equipos" type="button" role="tab">Máquinas y accesorios <span class="cf-tab-n hidden"></span></button>
-    <button class="chat-tab" data-tab="tickets" type="button" role="tab">Tickets <span class="cf-tab-n hidden"></span></button>
-    <button class="chat-tab" data-tab="adjuntos" type="button" role="tab">Adjuntos <span class="cf-tab-n hidden"></span></button>
-    <button class="chat-tab" data-tab="bitacora" type="button" role="tab">Bitácora</button>
-    <button class="chat-tab" data-tab="consolidacion" type="button" role="tab">Consolidación <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab is-active" data-tab="resumen" id="cfTabResumen" type="button" role="tab" aria-controls="cfBody" aria-selected="true" tabindex="0">Resumen</button>
+    <button class="chat-tab" data-tab="contactos" id="cfTabContactos" type="button" role="tab" aria-controls="cfBody" aria-selected="false" tabindex="-1">Contactos <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="equipos" id="cfTabEquipos" type="button" role="tab" aria-controls="cfBody" aria-selected="false" tabindex="-1">Máquinas y accesorios <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="tickets" id="cfTabTickets" type="button" role="tab" aria-controls="cfBody" aria-selected="false" tabindex="-1">Tickets <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="adjuntos" id="cfTabAdjuntos" type="button" role="tab" aria-controls="cfBody" aria-selected="false" tabindex="-1">Adjuntos <span class="cf-tab-n hidden"></span></button>
+    <button class="chat-tab" data-tab="bitacora" id="cfTabBitacora" type="button" role="tab" aria-controls="cfBody" aria-selected="false" tabindex="-1">Bitácora</button>
+    <button class="chat-tab" data-tab="consolidacion" id="cfTabConsolidacion" type="button" role="tab" aria-controls="cfBody" aria-selected="false" tabindex="-1">Consolidación <span class="cf-tab-n hidden"></span></button>
   </nav>
-  <section class="panel" id="cfBody"><div class="cf-skel"></div><div class="cf-skel"></div><div class="cf-skel"></div></section>
+  <section class="panel" id="cfBody" role="tabpanel" aria-labelledby="cfTabResumen"><div class="cf-skel"></div><div class="cf-skel"></div><div class="cf-skel"></div></section>
 </main>
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
 <script type="module" src="cliente.js?v=frontend-final-20260716-01"></script>

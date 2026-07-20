@@ -1,0 +1,12 @@
+{
+  "project_ref": "ovfmqqqwezfdtgrtkjhf",
+  "slug": "support-submit-secure",
+  "version": 57,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "9c51469401d3c6cd6bac45296b0efb20c1d317bfb582ebcb3a7421b821ea1be5",
+  "source_sha256": "ca6d03a4827644c1d8df53fb2c68d99b670fb69115a7b71d6a08369dd8dae9df",
+  "retrieved_read_only_at": "2026-07-16",
+  "source_file": "upstream-v57/index.ts.b64",
+  "source_encoding": "base64"
+}
