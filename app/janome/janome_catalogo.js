@@ -443,6 +443,8 @@ export function montarBuscadorEquipo(selectEl, hostEl, { onPick, placeholder } =
     </div>
   `;
   const input = hostEl.querySelector(".jn-combo-input");
+  const requestedInputId = String(hostEl.dataset.inputId || "").trim();
+  input.id = requestedInputId || `${base}-input`;
   const clear = hostEl.querySelector(".jn-combo-clear");
   const panel = hostEl.querySelector(".jn-combo-panel");
   const list = hostEl.querySelector(".jn-combo-list");
