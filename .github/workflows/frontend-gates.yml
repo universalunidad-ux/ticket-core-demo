@@ -18,6 +18,14 @@ jobs:
           fetch-depth: 0
       - name: Enforce canonical source and anti-drift context
         run: node tools/preflight.mjs --mode ci
+      - name: Run deterministic assignment evaluator tests
+        run: node tools/assignment-engine.test.mjs
+      - name: Validate support product combobox accessibility
+        run: node tools/support-product-combobox-a11y.test.mjs
+      - name: Validate legal page precache contract
+        run: node tools/sw-legal-shells.test.mjs
+      - name: Enforce assignment test ownership
+        run: node tools/ci-assignment-ownership.test.mjs
       - name: Validate final Pages artifact
         run: node tools/frontend-gates.mjs .
       - name: Scan forbidden secrets and local config
