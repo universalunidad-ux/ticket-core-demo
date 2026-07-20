@@ -19,8 +19,14 @@ const dialogRecords=new WeakMap();
 const dialogInertState=new Map();
 
 const dialogElement=value=>typeof value==="string"?$(value):value;
+// getComputedStyle(el).display no hereda el display:none de un ancestro: el control seguiria
+// pasando el filtro y focus() fallaria en silencio. checkVisibility resuelve el arbol completo;
+// el fallback usa getClientRects (0 cajas bajo cualquier ancestro display:none) mas la
+// comprobacion explicita de visibility, que si genera cajas.
 const dialogTargetVisible=el=>{
   if(!el?.isConnected||el.hidden||el.disabled||el.closest?.(".hidden,[inert],[hidden],[aria-hidden='true']"))return false;
+  if(typeof el.checkVisibility==="function")return el.checkVisibility({checkVisibilityCSS:true});
+  if(!el.getClientRects?.().length)return false;
   const style=getComputedStyle(el);
   return style.display!=="none"&&style.visibility!=="hidden";
 };

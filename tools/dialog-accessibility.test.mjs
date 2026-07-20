@@ -13,7 +13,8 @@ const files={
   assignment:read("app/tickets-assignment.js"),
   polish:read("app/ticket-composer-polish.js"),
   ticketsHtml:read("app/tickets.html"),
-  ticketHtml:read("app/ticket.html")
+  ticketHtml:read("app/ticket.html"),
+  ticketCss:read("app/ticket.css")
 };
 const results=[];
 const test=(name,fn)=>{try{fn();results.push(["PASS",name])}catch(error){results.push(["FAIL",name]);console.error(`FAIL\t${name}\n${error.stack||error}`);process.exitCode=1}};
@@ -112,6 +113,82 @@ test("12 nested quick replies preserve the lower layer",()=>{
   assert.match(files.tickets,/onCloseRequest:closeQuickEditor/);
   assert.match(files.global,/dialogStack\.slice\(0,-1\)\.forEach\(record=>setDialogInert\(record\.element,true\)\)/);
   assert.match(files.global,/const next=dialogStack\.at\(-1\)\|\|null/);
+});
+
+// R16: cobertura estatica de los tres defectos runtime (focusables fantasma, restauracion de foco,
+// overlay invisible) mas los invariantes que la correccion no debe romper.
+const slice=(text,from,to)=>text.slice(text.indexOf(from),text.indexOf(to));
+const visibilityPredicate=()=>slice(files.global,"const dialogTargetVisible=","const dialogFocusables=");
+const lifecycleBlock=()=>slice(files.global,"const DIALOG_FOCUSABLE","export const applyTheme");
+
+test("13 focusable filter discards controls under an invisible ancestor",()=>{
+  const predicate=visibilityPredicate();
+  assert.match(predicate,/typeof el\.checkVisibility==="function"/);
+  assert.match(predicate,/checkVisibility\(\{checkVisibilityCSS:true\}\)/);
+  assert.match(predicate,/getClientRects\?\.\(\)\.length/);
+  assert.doesNotMatch(predicate,/offsetParent/);
+});
+
+test("14 focusable filter preserves genuinely rendered controls",()=>{
+  const predicate=visibilityPredicate();
+  assert.match(predicate,/\.hidden,\[inert\],\[hidden\],\[aria-hidden='true'\]/);
+  assert.match(predicate,/style\.display!=="none"&&style\.visibility!=="hidden"/);
+  const list=slice(files.global,"const dialogFocusables=","const focusDialogTarget=");
+  assert.match(list,/querySelectorAll\(DIALOG_FOCUSABLE\)/);
+  assert.match(list,/el\.tabIndex<0/);
+  assert.match(list,/\[disabled\],\[aria-disabled='true'\]/);
+});
+
+test("15 closed tickets modal restores focus to a persistent anchor",()=>{
+  assert.match(files.tickets,/openDialog\(m,\{initialFocus:"#tkClosedQ",fallbackFocus:"#tkMoreFiltersBtn"/);
+  assert.match(files.tickets,/closeDialog\("#tkClosedModal",\{fallbackFocus:"#tkMoreFiltersBtn"\}\)/);
+  assert.doesNotMatch(files.tickets,/fallbackFocus:"#tkToggleClosed"/);
+  const anchor=files.ticketsHtml.indexOf('id="tkMoreFiltersBtn"'),pop=files.ticketsHtml.indexOf('id="tkAdvancedFilters"'),toggle=files.ticketsHtml.indexOf('id="tkToggleClosed"');
+  assert.ok(anchor>=0&&pop>=0&&toggle>=0,"missing toolbar ids");
+  // El ancla debe preceder al popup que closeTicketFloaters() oculta; #tkToggleClosed queda dentro.
+  assert.ok(anchor<pop,"#tkMoreFiltersBtn must live outside #tkAdvancedFilters");
+  assert.ok(toggle>pop,"#tkToggleClosed is expected inside #tkAdvancedFilters");
+});
+
+test("16 contact overlay derives visibility from the hidden attribute",()=>{
+  assert.match(files.ticketCss,/#tkContactOverlay:not\(\[hidden\]\)\{display:flex\}/);
+  assert.match(files.ticketCss,/#tkContactOverlay\[hidden\]/);
+  assert.equal(count(files.ticketCss,"#tkContactOverlay:not([hidden])"),1);
+  // #evModal ya derivaba su estado visible de [hidden]: patron canonico preexistente, no regresionar.
+  assert.match(files.ticketCss,/#evModal:not\(\[hidden\]\)/);
+  // Los overlays sin regla visible propia siguen sin ella: la correccion no los toca.
+  for(const id of ["tkSystemOverlay","tkQrModal"])assert.doesNotMatch(files.ticketCss,new RegExp(`#${id}:not\\(\\[hidden\\]\\)`),id);
+  assert.doesNotMatch(files.ticket,/tkContactOverlay"\)\.classList/);
+});
+
+test("17 dialog stack stays LIFO",()=>{
+  assert.match(files.global,/const existingIndex=dialogStack\.findIndex\(item=>item\.element===element\)/);
+  assert.match(files.global,/if\(existingIndex>=0\)dialogStack\.splice\(existingIndex,1\)/);
+  assert.match(files.global,/dialogStack\.push\(record\)/);
+  assert.match(files.global,/const top=dialogStack\.at\(-1\)/);
+  assert.match(files.global,/const next=dialogStack\.at\(-1\)\|\|null/);
+});
+
+test("18 inert bookkeeping survives the fix",()=>{
+  assert.match(files.global,/const dialogInertState=new Map\(\)/);
+  assert.match(files.global,/const rememberInert=el=>/);
+  assert.match(files.global,/el\.toggleAttribute\("inert",!!on\)/);
+  assert.match(files.global,/const restoreDialogInert=\(\)=>/);
+  assert.match(files.global,/dialogInertState\.clear\(\)/);
+});
+
+test("19 Escape still closes only the topmost dialog",()=>{
+  const handler=slice(files.global,"const onDialogKeydown=","const ensureDialogOwner=");
+  assert.match(handler,/const record=dialogStack\.at\(-1\)/);
+  assert.match(handler,/if\(e\.key!=="Escape"\)return/);
+  assert.match(handler,/e\.stopImmediatePropagation\(\)/);
+  assert.match(handler,/record\.options\.onCloseRequest\|\|\(\(\)=>closeDialog\(record\.element\)\)/);
+});
+
+test("20 no global fallback to the search box",()=>{
+  assert.doesNotMatch(lifecycleBlock(),/#tkSearch/);
+  assert.doesNotMatch(files.tickets,/fallbackFocus:"#tkSearch"/);
+  assert.doesNotMatch(files.ticket,/fallbackFocus:"#tkSearch"/);
 });
 
 results.forEach(([status,name])=>console.log(`${status}\t${name}`));

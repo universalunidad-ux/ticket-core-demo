@@ -165,6 +165,10 @@ body[data-page="ticket"]{overflow:hidden}
 @media(max-width:740px) and (orientation:portrait){body[data-page="ticket"] #appShell>header{display:block!important}body[data-page="ticket"] .app-mobile-title{display:none!important}body[data-page="ticket"] .ticket-page{width:100vw;height:calc(100dvh - 62px);margin:0}body[data-page="ticket"] .ticket-main,body[data-page="ticket"] .ticket-thread{width:100vw;height:calc(100dvh - 62px);margin:0;border-radius:0}body[data-page="ticket"] .ticket-thread{grid-template-rows:52px minmax(120px,1fr) auto}body[data-page="ticket"] .thread-topbar{position:relative;height:52px;min-height:52px;padding:10px 8px 0}body[data-page="ticket"] .thread-topbar:before{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);width:62px;height:5px;border-radius:999px;background:color-mix(in srgb,var(--muted) 26%,transparent)}body[data-page="ticket"] .thread-left-actions,body[data-page="ticket"] .thread-actions,body[data-page="ticket"] .thread-gear-wrap{height:42px}body[data-page="ticket"] #tkSideToggle{display:grid!important}body[data-page="ticket"] #tkThreadStamp{font-size:12px;font-weight:760}}
 
 .overlay[hidden],#tkSystemOverlay[hidden],#tkContactOverlay[hidden],#tkQrModal[hidden],#evModal[hidden]{display:none!important;pointer-events:none!important;visibility:hidden!important}
+/* openDialog quita [hidden] y la clase .hidden pero nunca anade .open, asi que .overlay{display:none}
+   de global.css seguia ganando y el panel quedaba invisible pese a hidden=false. El estado visible se
+   deriva de la ausencia de [hidden]: sin segunda gestion de clases y sin tocar los demas overlays. */
+#tkContactOverlay:not([hidden]){display:flex}
 
 /* Adjuntos del composer (chips con miniatura, visibles al seleccionar) */
 .tk-attach-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
