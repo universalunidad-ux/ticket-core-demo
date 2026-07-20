@@ -8,7 +8,8 @@ export const hide=v=>{const el=typeof v==="string"?$(v):v;el?.classList.add("hid
 
 export const toggle=v=>{const el=typeof v==="string"?$(v):v;if(!el)return;el.classList.toggle("hidden");el.classList.toggle("open");el.hidden=el.classList.contains("hidden");return el};
 
-export const toast=(text,type="",ms=2600)=>{document.querySelectorAll(".toast").forEach(x=>x.remove());const d=document.createElement("div");d.className=`toast ${type}`.trim();d.textContent=text;document.body.appendChild(d);setTimeout(()=>d.remove(),ms)};
+// Owner unico de anuncios efimeros: role=status + live polite/atomic. No mueve foco ni acumula toasts.
+export const toast=(text,type="",ms=2600)=>{document.querySelectorAll(".toast").forEach(x=>x.remove());const d=document.createElement("div");d.className=`toast ${type}`.trim();d.setAttribute("role","status");d.setAttribute("aria-live","polite");d.setAttribute("aria-atomic","true");d.textContent=text;document.body.appendChild(d);setTimeout(()=>d.remove(),ms)};
 export const debounce=(fn,ms=220)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
 export const copyTxt=(v,msg="Copiado")=>navigator.clipboard.writeText(v||"").then(()=>toast(msg,"ok")).catch(()=>toast("No se pudo copiar","bad"));
 const blurInside=n=>{const a=document.activeElement;if(n&&a&&n.contains(a)&&a.blur)a.blur()};
