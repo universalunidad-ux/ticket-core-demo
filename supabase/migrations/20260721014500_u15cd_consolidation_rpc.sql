@@ -1,6 +1,8 @@
 -- PREPARED_NOT_APPLIED
 -- DO_NOT_APPLY_WITHOUT_STAGING_REVIEW
 -- TC-U15C-D
+-- TC-U15C-D2 HARDENING
+-- request_hash calculado en servidor; fallos posteriores al reclamo hacen rollback
 --
 -- Consolidación transaccional de cliente/contacto para tickets.
 -- Esta migración está preparada localmente y NO ha sido aplicada.
@@ -32,12 +34,23 @@ create index if not exists idx_tickets_contacto_id
 create index if not exists idx_tickets_contacto_id_sugerido
   on public.tickets (contacto_id_sugerido);
 
+drop function if exists public.tc_consolidar_cliente_ticket(
+  uuid,
+  text,
+  bigint,
+  text,
+  text,
+  uuid,
+  uuid,
+  jsonb,
+  jsonb
+);
+
 create or replace function public.tc_consolidar_cliente_ticket(
   p_ticket_id uuid,
   p_action text,
   p_expected_version bigint,
   p_idempotency_key text,
-  p_request_hash text,
   p_cliente_id uuid default null,
   p_contacto_id uuid default null,
   p_cliente jsonb default '{}'::jsonb,
@@ -54,6 +67,7 @@ declare
   v_ticket public.tickets%rowtype;
   v_idempotency public.edge_idempotency%rowtype;
   v_idempotency_inserted integer := 0;
+  v_request_hash text;
   v_response jsonb;
   v_operation_id uuid := gen_random_uuid();
 
@@ -111,14 +125,17 @@ begin
     );
   end if;
 
-  if nullif(trim(p_request_hash), '') is null
-     or length(trim(p_request_hash)) < 8 then
-    return jsonb_build_object(
-      'ok', false,
-      'status', 422,
-      'code', 'INVALID_REQUEST_HASH'
-    );
-  end if;
+  v_request_hash := md5(
+    jsonb_build_object(
+      'ticket_id', p_ticket_id,
+      'action', p_action,
+      'expected_version', p_expected_version,
+      'cliente_id', p_cliente_id,
+      'contacto_id', p_contacto_id,
+      'cliente', coalesce(p_cliente, '{}'::jsonb),
+      'contacto', coalesce(p_contacto, '{}'::jsonb)
+    )::text
+  );
 
   insert into public.edge_idempotency (
     idempotency_key,
@@ -131,7 +148,7 @@ begin
     trim(p_idempotency_key),
     'tc_consolidar_cliente_ticket',
     p_ticket_id,
-    trim(p_request_hash),
+    v_request_hash,
     'processing'
   )
   on conflict (idempotency_key) do nothing;
@@ -153,7 +170,7 @@ begin
     if v_idempotency.action is distinct from
          'tc_consolidar_cliente_ticket'
        or v_idempotency.resource_id is distinct from p_ticket_id
-       or v_idempotency.request_hash is distinct from trim(p_request_hash)
+       or v_idempotency.request_hash is distinct from v_request_hash
     then
       return jsonb_build_object(
         'ok', false,
@@ -188,13 +205,9 @@ begin
       'code', 'TICKET_NOT_FOUND'
     );
 
-    update public.edge_idempotency
-      set status = 'completed',
-          response = v_response,
-          updated_at = now()
-      where idempotency_key = trim(p_idempotency_key);
-
-    return v_response;
+    raise exception 'TC_U15CD_LOGICAL_FAILURE'
+      using errcode = 'P0001',
+            detail = v_response::text;
   end if;
 
   if v_ticket.consolidacion_version <> p_expected_version then
@@ -206,13 +219,22 @@ begin
       'current_version', v_ticket.consolidacion_version
     );
 
-    update public.edge_idempotency
-      set status = 'completed',
-          response = v_response,
-          updated_at = now()
-      where idempotency_key = trim(p_idempotency_key);
+    raise exception 'TC_U15CD_LOGICAL_FAILURE'
+      using errcode = 'P0001',
+            detail = v_response::text;
+  end if;
 
-    return v_response;
+  if v_ticket.estado in ('resuelto', 'cerrado') then
+    v_response := jsonb_build_object(
+      'ok', false,
+      'status', 409,
+      'code', 'TICKET_TERMINAL_STATE',
+      'ticket_status', v_ticket.estado
+    );
+
+    raise exception 'TC_U15CD_LOGICAL_FAILURE'
+      using errcode = 'P0001',
+            detail = v_response::text;
   end if;
 
   if p_action <> 'postpone'
@@ -224,14 +246,12 @@ begin
       'current_version', v_ticket.consolidacion_version
     );
 
-    update public.edge_idempotency
-      set status = 'completed',
-          response = v_response,
-          updated_at = now()
-      where idempotency_key = trim(p_idempotency_key);
-
-    return v_response;
+    raise exception 'TC_U15CD_LOGICAL_FAILURE'
+      using errcode = 'P0001',
+            detail = v_response::text;
   end if;
+
+  v_final_contacto_id := v_ticket.contacto_id;
 
   if p_action = 'associate_existing' then
     if p_cliente_id is null then
@@ -241,13 +261,9 @@ begin
         'code', 'CLIENT_REQUIRED'
       );
 
-      update public.edge_idempotency
-        set status = 'completed',
-            response = v_response,
-            updated_at = now()
-        where idempotency_key = trim(p_idempotency_key);
-
-      return v_response;
+      raise exception 'TC_U15CD_LOGICAL_FAILURE'
+        using errcode = 'P0001',
+              detail = v_response::text;
     end if;
 
     select id
@@ -263,13 +279,9 @@ begin
         'code', 'CLIENT_NOT_FOUND'
       );
 
-      update public.edge_idempotency
-        set status = 'completed',
-            response = v_response,
-            updated_at = now()
-        where idempotency_key = trim(p_idempotency_key);
-
-      return v_response;
+      raise exception 'TC_U15CD_LOGICAL_FAILURE'
+        using errcode = 'P0001',
+              detail = v_response::text;
     end if;
 
     if p_contacto_id is not null then
@@ -287,13 +299,9 @@ begin
           'code', 'CONTACT_NOT_OWNED_BY_CLIENT'
         );
 
-        update public.edge_idempotency
-          set status = 'completed',
-              response = v_response,
-              updated_at = now()
-          where idempotency_key = trim(p_idempotency_key);
-
-        return v_response;
+        raise exception 'TC_U15CD_LOGICAL_FAILURE'
+          using errcode = 'P0001',
+                detail = v_response::text;
       end if;
     end if;
 
@@ -314,13 +322,9 @@ begin
           'code', 'CLIENT_NOT_FOUND'
         );
 
-        update public.edge_idempotency
-          set status = 'completed',
-              response = v_response,
-              updated_at = now()
-          where idempotency_key = trim(p_idempotency_key);
-
-        return v_response;
+        raise exception 'TC_U15CD_LOGICAL_FAILURE'
+          using errcode = 'P0001',
+                detail = v_response::text;
       end if;
     else
       v_cliente_nombre := coalesce(
@@ -335,13 +339,9 @@ begin
           'code', 'CLIENT_NAME_REQUIRED'
         );
 
-        update public.edge_idempotency
-          set status = 'completed',
-              response = v_response,
-              updated_at = now()
-          where idempotency_key = trim(p_idempotency_key);
-
-        return v_response;
+        raise exception 'TC_U15CD_LOGICAL_FAILURE'
+          using errcode = 'P0001',
+                detail = v_response::text;
       end if;
 
       insert into public.clientes (
@@ -384,13 +384,9 @@ begin
           'code', 'CONTACT_NOT_OWNED_BY_CLIENT'
         );
 
-        update public.edge_idempotency
-          set status = 'completed',
-              response = v_response,
-              updated_at = now()
-          where idempotency_key = trim(p_idempotency_key);
-
-        return v_response;
+        raise exception 'TC_U15CD_LOGICAL_FAILURE'
+          using errcode = 'P0001',
+                detail = v_response::text;
       end if;
     else
       v_contacto_nombre := coalesce(
@@ -407,6 +403,19 @@ begin
         nullif(trim(coalesce(p_contacto->>'telefono', '')), ''),
         nullif(trim(coalesce(v_ticket.telefono_capturado, '')), '')
       );
+
+      if v_ticket.contacto_id is not null
+         and v_contacto_nombre is not null then
+        v_response := jsonb_build_object(
+          'ok', false,
+          'status', 422,
+          'code', 'CONTACT_OVERWRITE_NOT_ALLOWED'
+        );
+
+        raise exception 'TC_U15CD_LOGICAL_FAILURE'
+          using errcode = 'P0001',
+                detail = v_response::text;
+      end if;
 
       if v_contacto_nombre is not null then
         insert into public.clientes_contactos (
@@ -448,6 +457,20 @@ begin
     v_final_cliente_id := v_ticket.cliente_id;
     v_final_contacto_id := v_ticket.contacto_id;
     v_decision := 'pendiente';
+  end if;
+
+  if p_action in ('associate_existing', 'create_new')
+     and v_ticket.contacto_id is not null
+     and v_final_contacto_id is distinct from v_ticket.contacto_id then
+    v_response := jsonb_build_object(
+      'ok', false,
+      'status', 422,
+      'code', 'CONTACT_OVERWRITE_NOT_ALLOWED'
+    );
+
+    raise exception 'TC_U15CD_LOGICAL_FAILURE'
+      using errcode = 'P0001',
+            detail = v_response::text;
   end if;
 
   if p_action in ('associate_existing', 'create_new') then
@@ -638,38 +661,6 @@ begin
 end
 $function$;
 
-revoke all on function public.tc_consolidar_cliente_ticket(
-  uuid,
-  text,
-  bigint,
-  text,
-  text,
-  uuid,
-  uuid,
-  jsonb,
-  jsonb
-) from public;
-
-revoke all on function public.tc_consolidar_cliente_ticket(
-  uuid,
-  text,
-  bigint,
-  text,
-  text,
-  uuid,
-  uuid,
-  jsonb,
-  jsonb
-) from anon;
-
-grant execute on function public.tc_consolidar_cliente_ticket(
-  uuid,
-  text,
-  bigint,
-  text,
-  text,
-  uuid,
-  uuid,
-  jsonb,
-  jsonb
-) to authenticated;
+revoke execute on function public.tc_consolidar_cliente_ticket(uuid, text, bigint, text, uuid, uuid, jsonb, jsonb) from public;
+revoke execute on function public.tc_consolidar_cliente_ticket(uuid, text, bigint, text, uuid, uuid, jsonb, jsonb) from anon;
+grant execute on function public.tc_consolidar_cliente_ticket(uuid, text, bigint, text, uuid, uuid, jsonb, jsonb) to authenticated;

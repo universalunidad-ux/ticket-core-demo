@@ -82,12 +82,12 @@ test("autorización v1 es exclusivamente admin", () => {
 test("grants son fail-closed", () => {
   assert.match(
     migration,
-    /revoke all on function public\.tc_consolidar_cliente_ticket[\s\S]*from public/,
+    /revoke execute on function public\.tc_consolidar_cliente_ticket[\s\S]*from public/,
   );
 
   assert.match(
     migration,
-    /revoke all on function public\.tc_consolidar_cliente_ticket[\s\S]*from anon/,
+    /revoke execute on function public\.tc_consolidar_cliente_ticket[\s\S]*from anon/,
   );
 
   assert.match(
@@ -242,6 +242,167 @@ test("contract test está registrado en CI", () => {
   assert.match(
     workflow,
     /node tools\/u15d-consolidation-rpc-contract\.test\.mjs/,
+  );
+});
+
+
+test("prueba U15C-D2: hash calculado en servidor", () => {
+  assert.doesNotMatch(
+    migration,
+    /\bp_request_hash\s+text\b/,
+  );
+
+  assert.ok(
+    migration.includes("v_request_hash := md5("),
+  );
+
+  assert.match(
+    migration,
+    /request_hash\s+is\s+distinct\s+from\s+v_request_hash/,
+  );
+});
+
+test("prueba U15C-D2: guard de contacto precede al INSERT", () => {
+  const createStart = migration.indexOf(
+    "elsif p_action = 'create_new' then",
+  );
+
+  const createEnd = migration.indexOf(
+    "elsif p_action = 'discard_candidate' then",
+  );
+
+  assert.ok(createStart >= 0);
+  assert.ok(createEnd > createStart);
+
+  const createBlock = migration.slice(
+    createStart,
+    createEnd,
+  );
+
+  const guard = createBlock.indexOf(
+    "CONTACT_OVERWRITE_NOT_ALLOWED",
+  );
+
+  const contactInsert = createBlock.indexOf(
+    "insert into public.clientes_contactos",
+  );
+
+  assert.ok(guard >= 0);
+  assert.ok(contactInsert > guard);
+});
+
+test("prueba U15C-D2: tickets terminales son rechazados", () => {
+  assert.match(
+    migration,
+    /v_ticket\.estado\s+in\s*\(\s*'resuelto'\s*,\s*'cerrado'\s*\)/,
+  );
+
+  assert.match(
+    migration,
+    /TICKET_TERMINAL_STATE/,
+  );
+});
+
+test("prueba U15C-D2: fallos no consumen idempotencia", () => {
+  const completedWrites =
+    migration.match(
+      /\bset\s+status\s*=\s*'completed'/g,
+    ) || [];
+
+  const completedReferences =
+    migration.match(
+      /\bstatus\s*=\s*'completed'/g,
+    ) || [];
+
+  assert.equal(
+    completedWrites.length,
+    1,
+  );
+
+  assert.equal(
+    completedReferences.length,
+    2,
+  );
+
+  assert.match(
+    migration,
+    /TC_U15CD_LOGICAL_FAILURE/,
+  );
+
+  assert.match(
+    migration,
+    /detail\s*=\s*v_response::text/,
+  );
+});
+
+test("prueba U15C-D2: decision usa el dominio válido", () => {
+  for (const decision of [
+    "aceptado",
+    "ignorado",
+    "creado_cliente",
+    "creado_contacto",
+    "pendiente",
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`v_decision := '${decision}'`),
+    );
+  }
+
+  const insertStart = migration.indexOf(
+    "insert into public.ticket_match_decisiones",
+  );
+
+  const insertEnd = migration.indexOf(
+    "returning id into v_decision_id;",
+    insertStart,
+  );
+
+  assert.ok(insertStart >= 0);
+  assert.ok(insertEnd > insertStart);
+
+  const decisionInsert = migration.slice(
+    insertStart,
+    insertEnd,
+  );
+
+  assert.match(
+    decisionInsert,
+    /\bv_decision\b/,
+  );
+
+  assert.doesNotMatch(
+    decisionInsert,
+    /values\s*\(\s*p_ticket_id\s*,\s*p_action\s*\)/,
+  );
+});
+
+
+test("prueba U15C-D2: revokes explícitos compatibles con el inventario global", () => {
+  const signature =
+    "uuid, text, bigint, text, uuid, uuid, jsonb, jsonb";
+
+  assert.ok(
+    migration.includes(
+      `revoke execute on function public.tc_consolidar_cliente_ticket(${signature}) from public;`,
+    ),
+  );
+
+  assert.ok(
+    migration.includes(
+      `revoke execute on function public.tc_consolidar_cliente_ticket(${signature}) from anon;`,
+    ),
+  );
+
+  assert.ok(
+    migration.includes(
+      `grant execute on function public.tc_consolidar_cliente_ticket(${signature}) to authenticated;`,
+    ),
+  );
+
+  assert.doesNotMatch(
+    migration,
+    /revoke\s+all\s+on\s+function\s+public\.tc_consolidar_cliente_ticket/i,
   );
 });
 
