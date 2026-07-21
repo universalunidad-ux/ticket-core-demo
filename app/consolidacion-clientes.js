@@ -4,6 +4,7 @@
    Contactos siguen fuera del contrato integral: CLIENT_RLS_BLOCKED=YES.
    ========================================================================== */
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
 import { readQS, writeQS } from "./shared/query-state.js";
 import { fmtFecha, estadoTag } from "./shared/formatters.js?v=frontend-final-20260716-01";
 import { esc } from "./global.js?v=frontend-final-20260716-01";
@@ -12,6 +13,11 @@ import { perfPrimaryDone, perfPageReady, perfCountRequest } from "./shared/perf.
 
 const $ = q => document.querySelector(q);
 const PAGE_SIZE = 10, BATCH = 500, ID_CHUNK = 80;
+const CONSOLIDATION_BACKEND_DECISION = "BACKEND_NOT_PRESENT";
+const CONSOLIDATION_EXECUTION_ENABLED = false;
+const EXPECTED_VERSION_FIELD = "fecha_actualizacion";
+const expectedVersionFor = ticket =>
+  String(ticket?.[EXPECTED_VERSION_FIELD] || "");
 const ST = {
   sb: null, isAdmin: false, rows: [], clients: {}, agents: {}, choices: new Map(),
   level: "", order: "oldest", page: 1, loading: true, error: null, reqSeq: 0,
@@ -118,17 +124,45 @@ function impactHtml(ticket) {
 
 function actionHtml(ticket) {
   const candidate = candidateFor(ticket);
-  return `<div class="cq-action-block"><div class="cq-actions" aria-label="Acciones no disponibles">
-    <button class="btn btn-brand" type="button" disabled aria-disabled="true">Asociar a cliente/contacto</button>
-    <button class="btn btn-ghost" type="button" disabled aria-disabled="true">Mantener como nuevo</button>
-    <button class="btn btn-ghost" type="button" disabled aria-disabled="true">Descartar candidato</button>
-    <button class="btn btn-ghost" type="button" disabled aria-disabled="true">Posponer</button>
-  </div><span class="cq-disabled-reason">${candidate ? "Ninguna acción se ejecuta" : "Asociar además carece de candidato válido"}: falta una RPC transaccional que autorice admin, bloquee y versione el ticket, revalide candidato/contacto, aplique una sola decisión idempotente, audite y devuelva el resultado.</span></div>`;
+  const reason = CONSOLIDATION_EXECUTION_ENABLED
+    ? "Ejecución disponible."
+    : "Backend no disponible: falta una operación única que autorice, bloquee y versione el ticket, revalide la decisión, sea idempotente, audite y devuelva un resultado verificable.";
+
+  return `<div class="cq-action-block"
+    data-backend-decision="${esc(CONSOLIDATION_BACKEND_DECISION)}">
+    <div class="cq-actions" aria-label="Acciones no disponibles">
+      <button class="btn btn-brand" type="button"
+        data-consolidation-action="associate"
+        disabled aria-disabled="true">
+        Asociar a cliente/contacto
+      </button>
+      <button class="btn btn-ghost" type="button"
+        data-consolidation-action="create"
+        disabled aria-disabled="true">
+        Mantener como nuevo
+      </button>
+      <button class="btn btn-ghost" type="button"
+        data-consolidation-action="discard"
+        disabled aria-disabled="true">
+        Descartar candidato
+      </button>
+      <button class="btn btn-ghost" type="button"
+        data-consolidation-action="postpone"
+        disabled aria-disabled="true">
+        Posponer
+      </button>
+    </div>
+    <span class="cq-disabled-reason">
+      ${candidate
+        ? esc(reason)
+        : `Asociar carece además de candidato válido. ${esc(reason)}`}
+    </span>
+  </div>`;
 }
 
 function cardHtml(ticket, open = false) {
   const candidate = candidateFor(ticket), choice = choiceFor(ticket), score = scorePercent(ticket.match_score);
-  return `<details class="cq-card" data-id="${esc(ticket.id)}" ${open ? "open" : ""}><summary><span><b>${esc(ticket.folio || "Ticket sin folio")}</b><small>${esc(ticket.titulo || ticket.empresa_capturada || "Caso de consolidación")}</small></span><span class="cq-summary-meta">${safeMatchTag(ticket.match_nivel)}<b>${score == null ? "—" : `${score}%`}</b><span>${candidate ? esc(candidate.nombre) : "Sin candidato válido"}</span></span></summary><div class="cq-body">
+  return `<details class="cq-card" data-id="${esc(ticket.id)}" data-expected-version="${esc(expectedVersionFor(ticket))}" ${open ? "open" : ""}><summary><span><b>${esc(ticket.folio || "Ticket sin folio")}</b><small>${esc(ticket.titulo || ticket.empresa_capturada || "Caso de consolidación")}</small></span><span class="cq-summary-meta">${safeMatchTag(ticket.match_nivel)}<b>${score == null ? "—" : `${score}%`}</b><span>${candidate ? esc(candidate.nombre) : "Sin candidato válido"}</span></span></summary><div class="cq-body">
     <div class="cq-case-meta"><span>${estadoTag(ticket.estado)}</span><span>Creado ${fmtFecha(ticket.fecha_creacion)}</span><a href="ticket.html?id=${encodeURIComponent(ticket.id)}">Abrir ticket</a></div>
     ${comparisonHtml(ticket)}
     <fieldset class="cq-primary"><legend>Registro principal de la vista previa</legend>${candidate ? `<label><input type="radio" name="primary_${esc(ticket.id)}" value="existing" data-primary ${choice.primary === "existing" ? "checked" : ""}> <span><b>${esc(candidate.nombre)}</b><small>Cliente existente sugerido</small></span></label>` : ""}<label><input type="radio" name="primary_${esc(ticket.id)}" value="new" data-primary ${choice.primary === "new" ? "checked" : ""}> <span><b>${esc(ticket.empresa_capturada || ticket.nombre_capturado || "Nuevo cliente")}</b><small>Identidad capturada; requiere alta transaccional</small></span></label></fieldset>
@@ -171,7 +205,7 @@ async function load() {
   if (!ST.isAdmin) { ST.loading = false; ST.error = { human: "La revisión está reservada para administración y no amplía permisos de RLS." }; render(); return; }
   try {
     const tickets = await withTimeout(fetchAll(() => ST.sb.from("tickets")
-      .select("id,folio,titulo,estado,fecha_creacion,empresa_capturada,nombre_capturado,correo_capturado,telefono_capturado,asignado_a,cliente_id_sugerido,contacto_id_sugerido,match_score,match_nivel")
+      .select("id,folio,titulo,estado,fecha_creacion,fecha_actualizacion,empresa_capturada,nombre_capturado,correo_capturado,telefono_capturado,asignado_a,cliente_id_sugerido,contacto_id_sugerido,match_score,match_nivel")
       .eq("requiere_consolidacion", true).neq("estado", "cerrado").order("fecha_creacion", { ascending: true })), 20000);
     if (seq !== ST.reqSeq) return;
     ST.rows = tickets;
@@ -196,7 +230,8 @@ async function load() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const ctx = await mountNav("consolidacion"); if (!ctx) return;
-  ST.sb = ctx.sb; ST.isAdmin = String(ctx.rol || "").toLowerCase() === "admin";
+  ST.sb = ctx.sb;
+  ST.isAdmin = isAdminRole(ctx.rol);
   const query = readQS({ level: "", order: "oldest", page: "1" });
   ST.level = ["", "none", "bajo", "medio", "alto"].includes(query.level) ? query.level : "";
   ST.order = ["oldest", "recent", "score"].includes(query.order) ? query.order : "oldest";

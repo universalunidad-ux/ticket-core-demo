@@ -60,7 +60,7 @@ export function renderContactos(d) {
     "Aquí aparecerán las personas de contacto del cliente (nombre, puesto, correo y teléfono) cuando se registren.",
   );
   return `<div class="cf-list">${d.contactos.map(c => `<div class="cf-rowitem"><div><div class="cl-name">${esc(c.nombre || "—")} ${c.es_principal ? '<span class="tag ok">principal</span>' : ""}</div><div class="cl-sub">${esc([c.puesto, c.correo, c.telefono].filter(Boolean).join(" · ") || "Sin datos de contacto")}</div></div></div>`).join("")}</div>
-  <p class="mut" style="margin-top:10px">La edición de contactos se hace vía Edge (crear-cliente-janome / consolidar-cliente-ticket); no hay escritura directa multitabla desde el navegador.</p>`;
+  <p class="mut" style="margin-top:10px">La edición de contactos requiere una operación backend versionada. La cola de Consolidación permanece en modo análisis y no realiza escrituras desde el navegador.</p>`;
 }
 
 export function renderEquipos(equipos) {
@@ -128,5 +128,5 @@ export function renderConsolidacion(data) {
   );
   return `${sugeridos.length ? `<h3>Tickets que sugieren a este cliente</h3><div class="cf-list" style="margin:8px 0 14px">${sugeridos.map(t => `<div class="cf-rowitem cf-link" data-ticket="${esc(t.id)}" role="link" tabindex="0"><div><div class="cl-name">${esc(t.folio || "—")} · ${esc(t.nombre_capturado || t.empresa_capturada || "—")}</div><div class="cl-sub">${matchTag(t.match_nivel)} score ${t.match_score ?? "—"} · ${fmtFecha(t.fecha_creacion)}</div></div><span class="cl-sub">Abrir ›</span></div>`).join("")}</div>` : ""}
   ${pend.length ? `<h3>Tickets del cliente pendientes</h3><div class="cf-list" style="margin-top:8px">${pend.map(t => `<div class="cf-rowitem cf-link" data-ticket="${esc(t.id)}" role="link" tabindex="0"><div><div class="cl-name">${esc(t.folio || "—")} · ${esc(t.titulo || "")}</div><div class="cl-sub">${estadoTag(t.estado)}</div></div><span class="cl-sub">Abrir ›</span></div>`).join("")}</div>` : ""}
-  <p class="mut" style="margin-top:10px">Confirmar o cambiar la asociación se hace desde <a href="consolidacion-clientes.html">Consolidación</a> (acción transaccional vía Edge).</p>`;
+  <p class="mut" style="margin-top:10px">La cola de <a href="consolidacion-clientes.html">Consolidación</a> presenta análisis y vista previa. La ejecución permanece deshabilitada hasta contar con un backend transaccional verificado.</p>`;
 }
