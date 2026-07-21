@@ -58,6 +58,8 @@ jobs:
         run: node tools/u15a2-agent-summary.test.mjs
       - name: TC-U15A-3 dashboard and audit contracts
         run: node tools/u15a3-dashboard-admin-bitacora.test.mjs
+      - name: TC-U15B-1 clients machine filter
+        run: node tools/u15b1-clients-machines-filters.test.mjs
       - name: Static accessibility gate
         run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)

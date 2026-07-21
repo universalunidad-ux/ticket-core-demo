@@ -116,7 +116,7 @@ for (const [id, label] of Object.entries({
   clAgentFilter: "Filtrar clientes por agente",
   clOrder: "Ordenar clientes",
   clFilterPageSize: "Clientes por página",
-  clEquipmentInput: "Filtrar por máquina o accesorio",
+  clEquipmentInput: "Filtrar por familia o modelo de máquina",
 })) {
   assertAttr(clientes, id, "aria-label", label);
 }
