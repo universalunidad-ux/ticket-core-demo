@@ -60,6 +60,8 @@ jobs:
         run: node tools/u15a3-dashboard-admin-bitacora.test.mjs
       - name: TC-U15B-1 clients machine filter
         run: node tools/u15b1-clients-machines-filters.test.mjs
+      - name: TC-U15B-2 client creation contract
+        run: node tools/u15b2-client-create-catalog-agent.test.mjs
       - name: Static accessibility gate
         run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)
