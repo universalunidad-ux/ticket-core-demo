@@ -69,6 +69,8 @@ jobs:
         run: node tools/u15b2-client-create-catalog-agent.test.mjs
       - name: TC-U15C-A safe consolidation boundary
         run: node tools/u15c-frontend-safe-contract.test.mjs
+      - name: TC-U15C-D consolidation RPC contract
+        run: node tools/u15d-consolidation-rpc-contract.test.mjs
       - name: Static accessibility gate
         run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)
