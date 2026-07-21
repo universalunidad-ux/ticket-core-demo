@@ -1,7 +1,6 @@
 /* B19D-cont — alta interna de cliente (formulario profesional, validación por
    campo, duplicados, estados de envío). Claro/oscuro vía variables globales. */
 .ac-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.ac-back{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;font-size:19px;font-weight:900;padding:0;display:grid;place-items:center;line-height:1;text-decoration:none}
 .ac-section{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
 .ac-section:first-of-type{margin-top:8px;padding-top:0;border-top:0}
 .ac-section h2{font-size:15px;letter-spacing:-.01em}

@@ -1,5 +1,6 @@
 import { supabase as s } from "./supabase.js";
 import { openDialog, closeDialog } from "./global.js?v=frontend-final-20260716-01";
+import { isAdminRole, scopeLabel, TICKET_SCOPES } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
 
 const esc = v => String(v ?? "").replace(/[&<>"']/g, m => ({
   "&":"&amp;",
@@ -16,9 +17,16 @@ const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 let AGENTS = [];
 let CURRENT_USER_ID = "";
 let IS_ADMIN = false;
-let FILTER_MODE = localStorage.getItem("tc_assign_filter") || "all";
 let BUSY = false;
 let OBS = null;
+
+/* TC-U15A-1: el alcance vive en la URL (única fuente de verdad), resuelto por tickets.js.
+   Aquí sólo lo leemos para reflejar selección visible + aria-pressed. */
+const currentScope = () => {
+  if (typeof window.__tkScope === "function") return window.__tkScope();
+  const v = new URLSearchParams(location.search).get("scope");
+  return TICKET_SCOPES.includes(v) ? v : "all";
+};
 
 function agentLabel(a){
   return a?.nombre || a?.correo || a?.auth_email || (a?.id ? String(a.id).slice(0,8) : "Agente");
@@ -108,7 +116,6 @@ function mountStyles(){
 .tcViewPills{display:grid;gap:10px}
 .tcViewPills button{min-height:46px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);font-weight:850;cursor:pointer;text-align:left;padding:0 14px}
 .tcViewPills button.is-active{border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:color-mix(in srgb,var(--brand) 12%,var(--panel))}
-.tcAssignHiddenByFilter{display:none !important}
 
 /* B.1: overlay propio MÁS CLARO (no toca el global .overlay de otros modales) */
 #tcAssignOverlay,#tcViewOverlay{background:rgba(15,23,42,.30)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important;padding:18px!important}
@@ -144,7 +151,7 @@ async function loadAgents(){
     .select("id,rol")
     .eq("id", CURRENT_USER_ID)
     .maybeSingle();
-  IS_ADMIN = !meError && String(me?.rol || "").toLowerCase() === "admin";
+  IS_ADMIN = !meError && isAdminRole(me?.rol);
   document.body.dataset.accessRole = IS_ADMIN ? "admin" : "soporte";
   if(!IS_ADMIN){
     AGENTS = [];
@@ -203,9 +210,9 @@ function mountViewModal(){
         <button type="button" class="tcViewModal__x" id="tcViewClose" aria-label="Cerrar">×</button>
       </div>
       <div class="tcViewPills">
-        <button type="button" data-assign-filter="all">Todos</button>
-        <button type="button" data-assign-filter="mine">Mis tickets</button>
-        <button type="button" data-assign-filter="free">Sin asignar</button>
+        <button type="button" data-scope="all" aria-pressed="false">Todos</button>
+        <button type="button" data-scope="mine" aria-pressed="false">Mis tickets</button>
+        <button type="button" data-scope="unassigned" aria-pressed="false">Sin asignar</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
@@ -213,11 +220,15 @@ function mountViewModal(){
   // Cierre con backdrop (click en el propio overlay, no en document) → sin carrera.
   ov.addEventListener("click", e => { if(e.target === ov) closeView(); });
   $("#tcViewClose").onclick = () => closeView();
-  ov.querySelectorAll("[data-assign-filter]").forEach(b => {
+  // TC-U15A-1: delega el alcance en el contrato canónico (tickets.js). Éste sincroniza
+  // URL, reinicia paginación (Kanban + compacta), recalcula métricas y recarga con
+  // guarda anti-carreras (LOAD_SEQ). Aquí sólo reflejamos la selección.
+  ov.querySelectorAll("[data-scope]").forEach(b => {
     b.addEventListener("click", () => {
-      FILTER_MODE = b.dataset.assignFilter || "all";
-      localStorage.setItem("tc_assign_filter", FILTER_MODE);
-      applyAssignmentDecorations();
+      const scope = b.dataset.scope || "all";
+      if (typeof window.__tkApplyScope === "function") window.__tkApplyScope(scope);
+      syncViewPills();
+      syncViewButton();
       closeView();
     });
   });
@@ -409,23 +420,26 @@ function updateCardBadge(card, t){
   }
 }
 
-function applyFilter(card, t){
-  // B2_3_DISABLE_LOCAL_ASSIGN_FILTER:
-  // Desactivado temporalmente porque ocultaba DOM ya renderizado sin pasar por
-  // filtered()/renderBoard(), lo que dejaba counts/pager/columnas inconsistentes.
-  // El filtro real Todos/Mis/Sin asignar se implementará después en tickets.js.
-  card.classList.remove("tcAssignHiddenByFilter");
-}
+// TC-U15A-1: el filtro real de alcance ya no oculta filas en el DOM; se aplica en la
+// consulta Supabase (tickets.js/fetchTicketsRest). Este módulo sólo decora badges y
+// refleja la selección visible; no re-filtra el board.
 
 function syncViewPills(){
-  $$("#tcViewOverlay [data-assign-filter]").forEach(b => {
-    b.classList.toggle("is-active", (b.dataset.assignFilter || "all") === FILTER_MODE);
+  const scope = currentScope();
+  $$("#tcViewOverlay [data-scope]").forEach(b => {
+    const on = (b.dataset.scope || "all") === scope;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
   });
 }
 
 function syncViewButton(){
   const btn = $("#tcAssignViewBtn");
-  if(btn) btn.classList.toggle("is-filtered", FILTER_MODE !== "all");
+  if(!btn) return;
+  const scope = currentScope();
+  btn.classList.toggle("is-filtered", scope !== "all");
+  btn.setAttribute("aria-label", `Vista de tickets: ${scopeLabel(scope)}`);
+  btn.setAttribute("title", `Vista: ${scopeLabel(scope)}`);
 }
 
 function applyAssignmentDecorations(){
@@ -443,17 +457,16 @@ function applyAssignmentDecorations(){
   mountViewModal();
   mountAssignModal();
   syncViewButton();
+  syncViewPills();
   // B.1: SOLO cards/rows reales de tickets (no `[data-id]` genérico, que pegaba
   // badges en pagers/contenedores y vaciaba columnas al filtrar).
   // B.2: además decoramos las filas de los popups (cabecera de columna y cerrados).
+  // TC-U15A-1: ya no se oculta ninguna fila aquí; el alcance se aplica en la consulta.
   $$(".k-card[data-id], .compact-row[data-id], .tk-col-modal-row[data-id], .closed-row[data-id]").forEach(card => {
     const id = cardId(card);
     const t = ticketById(id);
     if(!t) return;
     updateCardBadge(card, t);
-    // El filtro de vista (mis/sin asignar) SOLO oculta filas del board, nunca
-    // las de los popups (que tienen su propia búsqueda/paginación).
-    if(card.matches(".k-card, .compact-row")) applyFilter(card, t);
   });
   OBS?.observe(document.body, { childList:true, subtree:true });
 }
@@ -471,6 +484,11 @@ function bind(){
       window.__tcAssignBoardTimer = setTimeout(applyAssignmentDecorations, 150);
     });
     OBS.observe(document.body, { childList:true, subtree:true });
+  }
+  // TC-U15A-1: mantener selección visible + aria-pressed sincronizados con el alcance.
+  if(!window.__tcAssignScopeBound){
+    window.__tcAssignScopeBound = true;
+    window.addEventListener("tk:scopechange", () => { syncViewPills(); syncViewButton(); });
   }
 }
 

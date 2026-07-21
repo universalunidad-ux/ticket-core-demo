@@ -1,7 +1,6 @@
 /* B19A/B19D — ficha 360 de cliente Janome (header, tabs responsive, filas de
    ticket profesionales, skeletons y estados vacíos por pestaña). */
-.cf-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
-.cf-back{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;font-size:19px;font-weight:900;padding:0;display:grid;place-items:center;line-height:1;text-decoration:none}
+.cf-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
 .cf-id{display:flex;gap:14px;align-items:center;min-width:0}
 .cf-id h1{overflow-wrap:anywhere}
 .cf-avatar{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-weight:900;font-size:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--brand) 22%,var(--panel-2)),var(--panel-2));border:1px solid var(--line);flex:none}
@@ -42,7 +41,7 @@
 .cf-empty-d{color:var(--muted);font-size:13px;max-width:48ch;line-height:1.45}
 
 @media (max-width:860px){
-  .cf-head{grid-template-columns:auto minmax(0,1fr)}
+  .cf-head{grid-template-columns:minmax(0,1fr)}
   .cf-kpis{grid-column:1/-1}
   .cf-kpis{justify-content:flex-start}
   .cf-ticket{align-items:flex-start}

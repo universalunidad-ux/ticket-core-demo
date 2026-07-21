@@ -1,6 +1,7 @@
 import{supabase as s,guardSession,msg}from"./supabase.js";
 import{$,$$,toast,debounce,openDialog,closeDialog,norm,ensureAppShell,setAppRole,setRailOpenCount,setGlobalSearchData,setBreadcrumb,daysSince,ticketStateKey as baseTicketStateKey,ticketStateLabel,ticketPriorityCls}from"./global.js?v=frontend-final-20260716-01";
 import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260716-01";
+import{resolveTicketScope,scopeAssignedFilter,isAdminRole,scopeLabel}from"./shared/ticket-scope.js?v=frontend-final-20260716-01";
 
 window.s=s;
 let QR_SHARED_OK=false;
@@ -91,7 +92,7 @@ const tkKpiIsCanonical=(kpi=qp("kpi"))=>kpi==="urgent"?FILTER.priority==="urgent
 const tkTicketColumn=t=>{const state=ticketStateKey(rawState(t));return state==="resuelto"?"resuelto":["en_proceso","esperando_cliente"].includes(state)?"en_proceso":"abierto"};
 const tkResetPages=()=>{TK_LIST_COLUMNS.forEach(k=>COL_PAGE[k]=0);COMPACT_PAGE=0;try{localStorage.setItem("tc_tickets_compact_page","0")}catch{}};
 const tkCurrentListPosition=(ticket=null)=>{const selected=ticket||TK.find(x=>String(x?.id)===String(SELECTED_ID)),column=VIEW==="compact"?COMPACT_GROUP:selected?tkTicketColumn(selected):(TK_LIST_COLUMNS.includes(qp("column"))?qp("column"):MOBILE_STATE),page=VIEW==="compact"?COMPACT_PAGE:(COL_PAGE[column]||0);return{column:TK_LIST_COLUMNS.includes(column)?column:"abierto",page:Math.max(0,Number(page)||0)}};
-const tkSyncNavigationContext=()=>{const url=new URL(location.href),fromDashboard=url.searchParams.get("from")==="dashboard",back=$("#tkDashboardBack"),context=$("#tkContextLabel"),kpi=url.searchParams.get("kpi"),state=url.searchParams.get("state"),priority=url.searchParams.get("priority"),view=url.searchParams.get("view"),labels={urgent:"Urgentes",waiting:"En espera",urgent_stale:"Urgentes sin tocar",resolved:"Resueltos",first_response_overdue:"Respuesta vencida",sla_overdue:"SLA vencido"},states={abierto:"Abiertos",en_proceso:"En proceso",esperando_cliente:"Esperando cliente",resuelto:"Resueltos",cerrado:"Cerrados"},views={open:"Abiertos",waiting_client:"Esperando cliente",urgent:"Urgentes"};let label=labels[kpi]||states[state]||views[view]||"";if(!label&&priority)label=`Prioridad ${priority}`;if(!label&&url.searchParams.get("assignee"))label="Mis tickets";if(!label&&(FILTER.q||FILTER.type||FILTER.clienteId||FILTER.noClientLinked||FILTER.matchMedium))label="Resultados filtrados";if(back)back.hidden=!fromDashboard;if(context){const nextLabel=label?`· ${label}`:"";context.hidden=!label;if(context.textContent!==nextLabel)context.textContent=nextLabel;context.title=label;context.setAttribute("aria-label",label?`Contexto: ${label}`:"Contexto de tickets")}document.body.dataset.fromDashboard=fromDashboard?"1":"0"};
+const tkSyncNavigationContext=()=>{const url=new URL(location.href),fromDashboard=url.searchParams.get("from")==="dashboard",context=$("#tkContextLabel"),kpi=url.searchParams.get("kpi"),state=url.searchParams.get("state"),priority=url.searchParams.get("priority"),view=url.searchParams.get("view"),labels={urgent:"Urgentes",waiting:"En espera",urgent_stale:"Urgentes sin tocar",resolved:"Resueltos",first_response_overdue:"Respuesta vencida",sla_overdue:"SLA vencido"},states={abierto:"Abiertos",en_proceso:"En proceso",esperando_cliente:"Esperando cliente",resuelto:"Resueltos",cerrado:"Cerrados"},views={open:"Abiertos",waiting_client:"Esperando cliente",urgent:"Urgentes"};let label=labels[kpi]||states[state]||views[view]||"";if(!label&&priority)label=`Prioridad ${priority}`;if(!label&&url.searchParams.get("assignee"))label="Mis tickets";if(!label&&(FILTER.q||FILTER.type||FILTER.clienteId||FILTER.noClientLinked||FILTER.matchMedium))label="Resultados filtrados";if(context){const nextLabel=label?`· ${label}`:"";context.hidden=!label;if(context.textContent!==nextLabel)context.textContent=nextLabel;context.title=label;context.setAttribute("aria-label",label?`Contexto: ${label}`:"Contexto de tickets")}document.body.dataset.fromDashboard=fromDashboard?"1":"0"};
 const tkSyncListUrl=({mode="replace",resetPage=false,column="",page=null}={})=>{if(resetPage)tkResetPages();const url=new URL(location.href),kpi=url.searchParams.get("kpi")||"";if(kpi&&!tkKpiIsCanonical(kpi))url.searchParams.delete("kpi");["q","priority","state","type","cliente_id","noClient","match","noEvidence","impactHigh","urgentStale","firstResponseOverdue","slaOverdue","slaSoon"].forEach(k=>url.searchParams.delete(k));const canonicalKpi=url.searchParams.get("kpi")||"";if(FILTER.q)url.searchParams.set("q",FILTER.q);if(FILTER.priority&&canonicalKpi!=="urgent")url.searchParams.set("priority",FILTER.priority);if(FILTER.state&&!((canonicalKpi==="waiting"&&FILTER.state==="esperando_cliente")||(canonicalKpi==="resolved"&&FILTER.state==="resuelto")))url.searchParams.set("state",FILTER.state);if(FILTER.type)url.searchParams.set("type",FILTER.type);if(FILTER.clienteId)url.searchParams.set("cliente_id",FILTER.clienteId);if(FILTER.noClientLinked)url.searchParams.set("noClient","1");if(FILTER.matchMedium)url.searchParams.set("match","medio");if(FILTER.noEvidence)url.searchParams.set("noEvidence","1");if(FILTER.impactHigh)url.searchParams.set("impactHigh","1");if(FILTER.urgentStale&&canonicalKpi!=="urgent_stale")url.searchParams.set("urgentStale","1");if(FILTER.frBreach&&canonicalKpi!=="first_response_overdue")url.searchParams.set("firstResponseOverdue","1");if(FILTER.rsBreach&&canonicalKpi!=="sla_overdue")url.searchParams.set("slaOverdue","1");if(FILTER.slaSoon)url.searchParams.set("slaSoon","1");url.searchParams.set("layout",VIEW==="compact"?"compact":"kanban");if(resetPage){url.searchParams.delete("column");url.searchParams.delete("page")}else{const pos={column:TK_LIST_COLUMNS.includes(column)?column:tkCurrentListPosition().column,page:page==null?tkCurrentListPosition().page:Math.max(0,Number(page)||0)};url.searchParams.set("column",pos.column);if(pos.page>0)url.searchParams.set("page",String(pos.page+1));else url.searchParams.delete("page")}const next=url.pathname+(url.search?url.search:"")+(url.hash||"");if(mode==="push")history.pushState(history.state,"",next);else history.replaceState(history.state,"",next);tkSyncNavigationContext();return next};
 const tkRestoreListPosition=()=>{const layout=qp("layout"),column=qp("column"),page=Math.max(0,(Number(qp("page"))||1)-1);if(layout==="compact")VIEW="compact";else if(layout==="kanban")VIEW="kanban";if(TK_LIST_COLUMNS.includes(column)){if(VIEW==="compact"){COMPACT_GROUP=column;COMPACT_PAGE=page;localStorage.setItem("tc_tickets_compact_group",column);localStorage.setItem("tc_tickets_compact_page",String(page))}else{COL_PAGE[column]=page;MOBILE_STATE=column;localStorage.setItem("tc_tickets_mobile_state",column)}}};
 tkEnsureDashboardOrigin();
@@ -234,7 +235,9 @@ const tkAuthContext=async()=>{
   const {data,error}=await s.from("perfiles").select("id,rol").eq("id",user.id).maybeSingle();
   if(error)throw new Error(`No se pudo determinar el rol: ${error.message||error.code||"error de perfiles"}`);
   const rol=norm(data?.rol||"soporte");
-  TK_AUTH_CTX={userId:user.id,rol,isAdmin:rol==="admin"};
+  /* isAdmin conserva la semántica previa (rol==="admin") usada por el editor de respuestas.
+     canAllScope habilita el alcance all/unassigned para admin, owner y administrador (TC-U15A-1). */
+  TK_AUTH_CTX={userId:user.id,rol,isAdmin:rol==="admin",canAllScope:isAdminRole(rol)};
   registerInternalSearchProvider({sb:s,user,rol});
   window.__TC_ACCESS_CONTEXT=Object.freeze({...TK_AUTH_CTX});
   document.body.dataset.accessRole=TK_AUTH_CTX.isAdmin?"admin":"soporte";
@@ -652,10 +655,35 @@ const demoPatchTicket=async(id,patch={})=>{
 };
 
 const restHeaders=async()=>{const key=s.supabaseKey,token=TK_ACTIVE_TOKEN||await tkSessionToken(1200);if(!token&&!DEV_READONLY())throw new Error("Sesión no activa. Inicia sesión.");return{apikey:key,Authorization:`Bearer ${token||key}`,"Content-Type":"application/json"}};
-const fetchTicketsRest=async()=>{const url=s.supabaseUrl,h=await restHeaders(),ctx=DEV_READONLY()?{isAdmin:true,userId:""}:await tkAuthContext(),q=new URLSearchParams({select:"*",order:"fecha_actualizacion.desc"});if(!ctx.isAdmin)q.set("asignado_a",`eq.${ctx.userId}`);else if(qp("assignee"))q.set("asignado_a",`eq.${qp("assignee")}`);const endpoint=`${url}/rest/v1/tickets?${q}`;console.info("TICKETS_REQUEST",{endpoint:new URL(endpoint).pathname+new URL(endpoint).search,scope:ctx.isAdmin?"admin_all":"support_own"});const r=await fetch(endpoint,{headers:h});if(!r.ok){const body=await r.text();const e=new Error(`Tickets HTTP ${r.status}: ${body}`);e.status=r.status;e.endpoint=endpoint;throw e}const rows=await r.json(),ids=[...new Set(rows.map(x=>x.cliente_id).filter(Boolean))];if(!ids.length){rows.forEach(t=>t.clientes=null);return rows}const clientEndpoint=`${url}/rest/v1/clientes?select=id,nombre&id=in.(${ids.join(",")})`;const cr=await fetch(clientEndpoint,{headers:h});if(!cr.ok){const body=await cr.text();const e=new Error(`Clientes de tickets HTTP ${cr.status}: ${body}`);e.status=cr.status;e.endpoint=clientEndpoint;throw e}const clientes=await cr.json(),map=Object.fromEntries(clientes.map(x=>[x.id,x]));rows.forEach(t=>t.clientes=map[t.cliente_id]||null);return rows};
+const fetchTicketsRest=async()=>{const url=s.supabaseUrl,h=await restHeaders(),ctx=DEV_READONLY()?{isAdmin:true,canAllScope:true,userId:""}:await tkAuthContext(),q=new URLSearchParams({select:"*",order:"fecha_actualizacion.desc"});/* TC-U15A-1: alcance canónico aplicado EN LA CONSULTA. Soporte queda forzado a "mine"
+   aunque manipule ?scope=; sólo administración accede a all/unassigned. */const scope=resolveTicketScope(qp("scope"),{isAdmin:!!ctx.canAllScope}),assignedFilter=scopeAssignedFilter(scope,ctx.userId);if(assignedFilter)q.set("asignado_a",assignedFilter);else if(ctx.canAllScope&&qp("assignee"))q.set("asignado_a",`eq.${qp("assignee")}`);const endpoint=`${url}/rest/v1/tickets?${q}`;console.info("TICKETS_REQUEST",{endpoint:new URL(endpoint).pathname+new URL(endpoint).search,scope,role:ctx.canAllScope?"admin":"support"});const r=await fetch(endpoint,{headers:h});if(!r.ok){const body=await r.text();const e=new Error(`Tickets HTTP ${r.status}: ${body}`);e.status=r.status;e.endpoint=endpoint;throw e}const rows=await r.json(),ids=[...new Set(rows.map(x=>x.cliente_id).filter(Boolean))];if(!ids.length){rows.forEach(t=>t.clientes=null);return rows}const clientEndpoint=`${url}/rest/v1/clientes?select=id,nombre&id=in.(${ids.join(",")})`;const cr=await fetch(clientEndpoint,{headers:h});if(!cr.ok){const body=await cr.text();const e=new Error(`Clientes de tickets HTTP ${cr.status}: ${body}`);e.status=cr.status;e.endpoint=clientEndpoint;throw e}const clientes=await cr.json(),map=Object.fromEntries(clientes.map(x=>[x.id,x]));rows.forEach(t=>t.clientes=map[t.cliente_id]||null);return rows};
 const updateTicketRest=async(id,payload)=>{if(!id)throw new Error("Falta id de ticket");const h=await restHeaders(),r=await fetch(`${s.supabaseUrl}/rest/v1/tickets?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{...h,Prefer:"return=representation"},body:JSON.stringify(payload)});const txt=await r.text();if(!r.ok)throw new Error(txt);return JSON.parse(txt||"[]")};
 
 window.__fetchTicketsRest=fetchTicketsRest;
+
+/* TC-U15A-1: alcance efectivo actual, resuelto desde la URL y la capacidad del usuario. */
+const tkScopeIsAdmin=()=>!!(TK_AUTH_CTX?.canAllScope||DEV_READONLY());
+const tkCurrentScope=()=>resolveTicketScope(qp("scope"),{isAdmin:tkScopeIsAdmin()});
+/* Cambia el alcance: sincroniza URL (única fuente de verdad), reinicia paginación y
+   resultados (Kanban + vista compacta) y recarga. load() lleva LOAD_SEQ, así que una
+   consulta anterior nunca sobrescribe esta selección posterior. Conserva búsqueda,
+   prioridad, estado, KPIs y cerrados (no toca esos parámetros). */
+const tkApplyScope=requested=>{
+  const scope=resolveTicketScope(requested,{isAdmin:tkScopeIsAdmin()});
+  const url=new URL(location.href);
+  if(scope==="all")url.searchParams.delete("scope");else url.searchParams.set("scope",scope);
+  url.searchParams.delete("assignee");
+  url.searchParams.delete("column");
+  url.searchParams.delete("page");
+  history.replaceState(history.state,"",url);
+  tkResetPages();
+  SELECTED_ID="";
+  window.dispatchEvent(new CustomEvent("tk:scopechange",{detail:{scope}}));
+  return load();
+};
+window.__tkScope=tkCurrentScope;
+window.__tkApplyScope=tkApplyScope;
+window.__tkScopeLabel=scopeLabel;
 window.__updateTicketRest=updateTicketRest;
 
 
