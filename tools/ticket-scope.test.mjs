@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync as readWorkflowFileSync } from "node:fs";
 /* TC-U15A-1 — pruebas del contrato canónico de alcance (scope) de Tickets.
    Cubre: scope=all|mine|unassigned, normalización del rol soporte, defensa ante
    manipulación de URL y el filtro PostgREST aplicado EN la consulta. Cero red, cero DOM. */
@@ -125,4 +126,20 @@ test("tickets-assignment.js delega el alcance y sincroniza aria-pressed", () => 
   assert.doesNotMatch(src, /function applyFilter/, "filtro cosmético muerto debe eliminarse");
 });
 
-if (!process.exitCode) console.log(`TICKET_SCOPE_TESTS=PASS (${passed})`);
+if (!process.exitCode)
+test("prueba TC-U15A-1 (scope) registrada en CI", () => {
+  const workflow = readWorkflowFileSync(
+    new URL(
+      "../.github/workflows/frontend-gates.yml",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.ok(
+    workflow.includes(
+      "node tools/ticket-scope.test.mjs",
+    ),
+  );
+});
+
+console.log(`TICKET_SCOPE_TESTS=PASS (${passed})`);

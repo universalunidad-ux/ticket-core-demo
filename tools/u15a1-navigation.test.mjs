@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync as readWorkflowFileSync } from "node:fs";
 /* TC-U15A-1 — pruebas de navegación canónica: los controles locales de volver/atrás
    fueron retirados de las páginas objetivo y no quedan referencias activas (HTML/CSS/JS).
    El header compartido (app-history) es el ÚNICO dueño de atrás/adelante. Cero red, cero DOM. */
@@ -75,4 +76,20 @@ test("no quedan textos de volver/atrás locales en las páginas objetivo", () =>
   }
 });
 
-if (!process.exitCode) console.log(`U15A1_NAVIGATION_TESTS=PASS (${passed})`);
+if (!process.exitCode)
+test("prueba TC-U15A-1 (navegación) registrada en CI", () => {
+  const workflow = readWorkflowFileSync(
+    new URL(
+      "../.github/workflows/frontend-gates.yml",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.ok(
+    workflow.includes(
+      "node tools/u15a1-navigation.test.mjs",
+    ),
+  );
+});
+
+console.log(`U15A1_NAVIGATION_TESTS=PASS (${passed})`);
