@@ -92,7 +92,65 @@ const tkKpiIsCanonical=(kpi=qp("kpi"))=>kpi==="urgent"?FILTER.priority==="urgent
 const tkTicketColumn=t=>{const state=ticketStateKey(rawState(t));return state==="resuelto"?"resuelto":["en_proceso","esperando_cliente"].includes(state)?"en_proceso":"abierto"};
 const tkResetPages=()=>{TK_LIST_COLUMNS.forEach(k=>COL_PAGE[k]=0);COMPACT_PAGE=0;try{localStorage.setItem("tc_tickets_compact_page","0")}catch{}};
 const tkCurrentListPosition=(ticket=null)=>{const selected=ticket||TK.find(x=>String(x?.id)===String(SELECTED_ID)),column=VIEW==="compact"?COMPACT_GROUP:selected?tkTicketColumn(selected):(TK_LIST_COLUMNS.includes(qp("column"))?qp("column"):MOBILE_STATE),page=VIEW==="compact"?COMPACT_PAGE:(COL_PAGE[column]||0);return{column:TK_LIST_COLUMNS.includes(column)?column:"abierto",page:Math.max(0,Number(page)||0)}};
-const tkSyncNavigationContext=()=>{const url=new URL(location.href),fromDashboard=url.searchParams.get("from")==="dashboard",context=$("#tkContextLabel"),kpi=url.searchParams.get("kpi"),state=url.searchParams.get("state"),priority=url.searchParams.get("priority"),view=url.searchParams.get("view"),labels={urgent:"Urgentes",waiting:"En espera",urgent_stale:"Urgentes sin tocar",resolved:"Resueltos",first_response_overdue:"Respuesta vencida",sla_overdue:"SLA vencido"},states={abierto:"Abiertos",en_proceso:"En proceso",esperando_cliente:"Esperando cliente",resuelto:"Resueltos",cerrado:"Cerrados"},views={open:"Abiertos",waiting_client:"Esperando cliente",urgent:"Urgentes"};let label=labels[kpi]||states[state]||views[view]||"";if(!label&&priority)label=`Prioridad ${priority}`;if(!label&&url.searchParams.get("assignee"))label="Mis tickets";if(!label&&(FILTER.q||FILTER.type||FILTER.clienteId||FILTER.noClientLinked||FILTER.matchMedium))label="Resultados filtrados";if(context){const nextLabel=label?`· ${label}`:"";context.hidden=!label;if(context.textContent!==nextLabel)context.textContent=nextLabel;context.title=label;context.setAttribute("aria-label",label?`Contexto: ${label}`:"Contexto de tickets")}document.body.dataset.fromDashboard=fromDashboard?"1":"0"};
+const tkSyncNavigationContext=()=>{
+  const url=new URL(location.href);
+  const fromDashboard=url.searchParams.get("from")==="dashboard";
+  const context=$("#tkContextLabel");
+  const kpi=url.searchParams.get("kpi");
+  const state=url.searchParams.get("state");
+  const priority=url.searchParams.get("priority");
+  const view=url.searchParams.get("view");
+  const scope=url.searchParams.get("scope");
+  const labels={
+    urgent:"Urgentes",
+    waiting:"Esperando cliente",
+    urgent_stale:"Urgentes sin tocar",
+    resolved:"Resueltos",
+    first_response_overdue:"SLA 1ª respuesta vencida",
+    sla_overdue:"SLA resolución vencida"
+  };
+  const states={
+    abierto:"Abiertos",
+    en_proceso:"En proceso",
+    esperando_cliente:"Esperando cliente",
+    resuelto:"Resueltos",
+    cerrado:"Cerrados"
+  };
+  const views={
+    open:"Abiertos",
+    waiting_client:"Esperando cliente",
+    urgent:"Urgentes"
+  };
+
+  let label=labels[kpi]||states[state]||views[view]||"";
+
+  if(!label&&priority)label=`Prioridad ${priority}`;
+
+  if(scope==="mine"){
+    label=label?`Mis tickets · ${label}`:"Mis tickets";
+  }else if(scope==="unassigned"){
+    label=label?`Sin asignar · ${label}`:"Sin asignar";
+  }else if(!label&&url.searchParams.get("assignee")){
+    label="Mis tickets";
+  }
+
+  if(!label&&(FILTER.q||FILTER.type||FILTER.clienteId||FILTER.noClientLinked||FILTER.matchMedium)){
+    label="Resultados filtrados";
+  }
+
+  if(context){
+    const nextLabel=label?`· ${label}`:"";
+    context.hidden=!label;
+    if(context.textContent!==nextLabel)context.textContent=nextLabel;
+    context.title=label;
+    context.setAttribute(
+      "aria-label",
+      label?`Contexto: ${label}`:"Contexto de tickets"
+    );
+  }
+
+  document.body.dataset.fromDashboard=fromDashboard?"1":"0";
+};
 const tkSyncListUrl=({mode="replace",resetPage=false,column="",page=null}={})=>{if(resetPage)tkResetPages();const url=new URL(location.href),kpi=url.searchParams.get("kpi")||"";if(kpi&&!tkKpiIsCanonical(kpi))url.searchParams.delete("kpi");["q","priority","state","type","cliente_id","noClient","match","noEvidence","impactHigh","urgentStale","firstResponseOverdue","slaOverdue","slaSoon"].forEach(k=>url.searchParams.delete(k));const canonicalKpi=url.searchParams.get("kpi")||"";if(FILTER.q)url.searchParams.set("q",FILTER.q);if(FILTER.priority&&canonicalKpi!=="urgent")url.searchParams.set("priority",FILTER.priority);if(FILTER.state&&!((canonicalKpi==="waiting"&&FILTER.state==="esperando_cliente")||(canonicalKpi==="resolved"&&FILTER.state==="resuelto")))url.searchParams.set("state",FILTER.state);if(FILTER.type)url.searchParams.set("type",FILTER.type);if(FILTER.clienteId)url.searchParams.set("cliente_id",FILTER.clienteId);if(FILTER.noClientLinked)url.searchParams.set("noClient","1");if(FILTER.matchMedium)url.searchParams.set("match","medio");if(FILTER.noEvidence)url.searchParams.set("noEvidence","1");if(FILTER.impactHigh)url.searchParams.set("impactHigh","1");if(FILTER.urgentStale&&canonicalKpi!=="urgent_stale")url.searchParams.set("urgentStale","1");if(FILTER.frBreach&&canonicalKpi!=="first_response_overdue")url.searchParams.set("firstResponseOverdue","1");if(FILTER.rsBreach&&canonicalKpi!=="sla_overdue")url.searchParams.set("slaOverdue","1");if(FILTER.slaSoon)url.searchParams.set("slaSoon","1");url.searchParams.set("layout",VIEW==="compact"?"compact":"kanban");if(resetPage){url.searchParams.delete("column");url.searchParams.delete("page")}else{const pos={column:TK_LIST_COLUMNS.includes(column)?column:tkCurrentListPosition().column,page:page==null?tkCurrentListPosition().page:Math.max(0,Number(page)||0)};url.searchParams.set("column",pos.column);if(pos.page>0)url.searchParams.set("page",String(pos.page+1));else url.searchParams.delete("page")}const next=url.pathname+(url.search?url.search:"")+(url.hash||"");if(mode==="push")history.pushState(history.state,"",next);else history.replaceState(history.state,"",next);tkSyncNavigationContext();return next};
 const tkRestoreListPosition=()=>{const layout=qp("layout"),column=qp("column"),page=Math.max(0,(Number(qp("page"))||1)-1);if(layout==="compact")VIEW="compact";else if(layout==="kanban")VIEW="kanban";if(TK_LIST_COLUMNS.includes(column)){if(VIEW==="compact"){COMPACT_GROUP=column;COMPACT_PAGE=page;localStorage.setItem("tc_tickets_compact_group",column);localStorage.setItem("tc_tickets_compact_page",String(page))}else{COL_PAGE[column]=page;MOBILE_STATE=column;localStorage.setItem("tc_tickets_mobile_state",column)}}};
 tkEnsureDashboardOrigin();

@@ -136,21 +136,21 @@ const cnt = (build) => { perfCountRequest(); return build.then(r => (r.error ? n
 /* ---------- KPI rail ---------- */
 /* label con salto controlado (br autorizado, sin cortar palabras) */
 const KPI_DEF = {
-  abiertos:   { label: "Abiertos", href: "tickets.html?state=abierto" },
-  proceso:    { label: "En proceso", href: "tickets.html?state=en_proceso" },
-  esperando:  { label: "Esperando<br>cliente", href: "tickets.html?state=esperando_cliente" },
-  resueltos:  { label: "Resueltos", href: "tickets.html?state=resuelto" },
-  sinAsignar: { label: "Sin asignar", warnIf: v => v > 0 },
-  urgentes:   { label: "Alta / urgente", href: "tickets.html?priority=urgente", warnIf: v => v > 0 },
+  abiertos:   { label: "Abiertos", href: "tickets.html?from=dashboard&scope=all&state=abierto" },
+  proceso:    { label: "En proceso", href: "tickets.html?from=dashboard&scope=all&state=en_proceso" },
+  esperando:  { label: "Esperando<br>cliente", href: "tickets.html?from=dashboard&scope=all&state=esperando_cliente" },
+  resueltos:  { label: "Resueltos", href: "tickets.html?from=dashboard&scope=all&state=resuelto" },
+  sinAsignar: { label: "Sin asignar", href: "tickets.html?from=dashboard&scope=unassigned" },
+  urgentes:   { label: "Alta / urgente", href: "tickets.html?from=dashboard&scope=all&kpi=urgent", warnIf: v => v > 0 },
   hoyN:       { label: "Creados hoy" },
   semana:     { label: "Creados<br>esta semana" },
   consolidar: { label: "Por consolidar", href: "consolidacion-clientes.html", warnIf: v => v > 0 },
-  slaPR:      { label: "SLA 1ª vencida", badIf: v => v > 0 },
-  slaRes:     { label: "SLA vencido", badIf: v => v > 0 },
-  misAbiertos:  { label: "Mis tickets<br>abiertos", href: "tickets.html" },
-  misEsperando: { label: "Esperando<br>cliente", href: "tickets.html?state=esperando_cliente" },
-  misUrgentes:  { label: "Alta / urgente", href: "tickets.html?priority=urgente", warnIf: v => v > 0 },
-  misCerrables: { label: "Cerrables<br>(resueltos)", href: "tickets.html?state=resuelto" },
+  slaPR:      { label: "SLA 1ª respuesta<br>vencida", href: "tickets.html?from=dashboard&scope=all&kpi=first_response_overdue", badIf: v => v > 0 },
+  slaRes:     { label: "SLA resolución<br>vencida", href: "tickets.html?from=dashboard&scope=all&kpi=sla_overdue", badIf: v => v > 0 },
+  misAbiertos:  { label: "Mis tickets<br>abiertos", href: "tickets.html?from=dashboard&scope=mine&state=abierto" },
+  misEsperando: { label: "Esperando<br>cliente", href: "tickets.html?from=dashboard&scope=mine&kpi=waiting" },
+  misUrgentes:  { label: "Alta / urgente", href: "tickets.html?from=dashboard&scope=mine&kpi=urgent", warnIf: v => v > 0 },
+  misCerrables: { label: "Cerrables<br>(resueltos)", href: "tickets.html?from=dashboard&scope=mine&kpi=resolved" },
   misPorVencer: { label: "Próximos<br>a vencer", warnIf: v => v > 0 },
 };
 const ADMIN_RAIL = ["abiertos", "proceso", "esperando", "resueltos", "sinAsignar", "urgentes", "hoyN", "semana", "consolidar", "slaPR", "slaRes"];
@@ -1190,7 +1190,7 @@ export function createLogView(root, { pageSize = 10 } = {}) {
       <button class="mini btn-ghost" type="button" data-log-next>Siguiente</button>
       <label class="adm-log-size"><span class="mut">Por página</span><select class="select" data-lf="size" aria-label="Eventos por página">${[10, 25, 50].map(n => `<option value="${n}"${n === size ? " selected" : ""}>${n}</option>`).join("")}</select></label>
     </div>`;
-  if(urlState){const params=new URLSearchParams(location.search);root.querySelectorAll("[data-lf]").forEach(field=>{const value=params.get(`log_${field.dataset.lf}`);if(value!=null)field.value=value});page=Math.max(0,(parseInt(params.get("log_page")||"1",10)||1)-1);size=[10,25,50].includes(parseInt(params.get("log_size")||"",10))?parseInt(params.get("log_size"),10):size;el('[data-lf="size"]').value=String(size)}
+  if(urlState){const params=new URLSearchParams(location.search);root.querySelectorAll("[data-lf]").forEach(field=>{const value=params.get(`log_${field.dataset.lf}`);if(value!=null)field.value=value});page=Math.max(0,(parseInt(params.get("log_page")||"1",10)||1)-1);size=10;const sizeField=el('[data-lf="size"]');if(sizeField){sizeField.value="10";sizeField.disabled=true;sizeField.setAttribute("aria-label","10 eventos por página")}}
   const activeValues=()=>[...root.querySelectorAll('[data-lf]:not([data-lf="size"])')].filter(f=>String(f.value||"").trim());
   const syncFilterMeta=()=>{const count=activeValues().length,tag=el("[data-log-active-filters]");if(tag)tag.textContent=`${count} filtro${count===1?"":"s"} activo${count===1?"":"s"}`;if(urlState){const params=new URLSearchParams();root.querySelectorAll("[data-lf]").forEach(f=>{if(f.value&&!(f.dataset.lf==="size"&&Number(f.value)===pageSize))params.set(`log_${f.dataset.lf}`,f.value)});if(page)params.set("log_page",String(page+1));history.replaceState(null,"",`${location.pathname}${params.size?`?${params}`:""}`)}};
   logActorOptions().then(list => {
