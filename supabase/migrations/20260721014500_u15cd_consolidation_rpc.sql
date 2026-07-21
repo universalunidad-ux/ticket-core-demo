@@ -237,8 +237,7 @@ begin
             detail = v_response::text;
   end if;
 
-  if p_action <> 'postpone'
-     and v_ticket.requiere_consolidacion is not true then
+  if v_ticket.requiere_consolidacion is not true then
     v_response := jsonb_build_object(
       'ok', false,
       'status', 409,

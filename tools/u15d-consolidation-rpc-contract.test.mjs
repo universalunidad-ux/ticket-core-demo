@@ -406,6 +406,52 @@ test("prueba U15C-D2: revokes explícitos compatibles con el inventario global",
   );
 });
 
+
+test("prueba U15C-D3: postpone no reabre consolidaciones resueltas", () => {
+  assert.match(
+    migration,
+    /if\s+v_ticket\.requiere_consolidacion\s+is\s+not\s+true\s+then/,
+  );
+
+  assert.doesNotMatch(
+    migration,
+    /if\s+p_action\s*<>\s*'postpone'[\s\S]{0,100}?requiere_consolidacion/,
+  );
+
+  const resolvedGuard = migration.indexOf(
+    "if v_ticket.requiere_consolidacion is not true then",
+  );
+
+  const postponeBranch = migration.indexOf(
+    "elsif p_action = 'postpone' then",
+  );
+
+  assert.ok(resolvedGuard >= 0);
+  assert.ok(postponeBranch > resolvedGuard);
+
+  const resolvedBlockEnd = migration.indexOf(
+    "end if;",
+    resolvedGuard,
+  );
+
+  assert.ok(resolvedBlockEnd > resolvedGuard);
+
+  const resolvedBlock = migration.slice(
+    resolvedGuard,
+    resolvedBlockEnd,
+  );
+
+  assert.match(
+    resolvedBlock,
+    /CONSOLIDATION_ALREADY_RESOLVED/,
+  );
+
+  assert.match(
+    resolvedBlock,
+    /TC_U15CD_LOGICAL_FAILURE/,
+  );
+});
+
 console.log(
   `U15D_CONSOLIDATION_RPC_CONTRACT_TESTS=PASS (${passed})`,
 );
