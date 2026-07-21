@@ -71,6 +71,8 @@ jobs:
         run: node tools/u15c-frontend-safe-contract.test.mjs
       - name: TC-U15C-D consolidation RPC contract
         run: node tools/u15d-consolidation-rpc-contract.test.mjs
+      - name: TC-SEC-RLS-MATCH contract
+        run: node tools/tc-sec-rls-match-contract.test.mjs
       - name: Static accessibility gate
         run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)
