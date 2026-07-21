@@ -50,6 +50,12 @@ jobs:
         run: node --experimental-strip-types tools/run-contract-tests.mjs .
       - name: Enforce admin UX functional closeout (U10)
         run: node tools/admin-ux-u10.test.mjs
+      - name: Verify dashboard resilience utilities (U15A-2)
+        run: node tools/dashboard-resilience.test.mjs
+      - name: Verify supervision tray and agents resilience (U15A-2)
+        run: node tools/u15a2-supervision.test.mjs
+      - name: TC-U15A-2 agent summary contracts
+        run: node tools/u15a2-agent-summary.test.mjs
       - name: Static accessibility gate
         run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)

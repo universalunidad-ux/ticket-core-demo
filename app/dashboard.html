@@ -70,9 +70,33 @@
   </section>
 
   <section class="panel dash-supervision dash-admin-only hidden" id="dashSupervision" style="margin-top:12px">
-    <div class="section-head"><div><div class="section-kicker">Administración</div><h2>Requieren supervisión</h2></div></div>
+    <div class="section-head">
+      <div><div class="section-kicker">Administración</div><h2>Requieren supervisión</h2></div>
+      <div class="dash-act-nav">
+        <span class="mut dash-sup-total" id="dashSupTotal" aria-live="polite"></span>
+        <button class="icon-btn" id="dashSupPrev" type="button" aria-label="Casos anteriores" disabled>‹</button>
+        <button class="icon-btn" id="dashSupNext" type="button" aria-label="Más casos" disabled>›</button>
+      </div>
+    </div>
     <div class="dash-supervision-list" id="dashSupervisionList"><div class="dash-skel"></div></div>
+    <nav class="dash-act-dots" id="dashSupDots" aria-label="Páginas de supervisión"></nav>
   </section>
+
+  <!-- Revisión rápida de supervisión: NO navega de inmediato; el modal resume el caso.
+       Acciones sin contrato backend verificable quedan deshabilitadas y explicadas. -->
+  <div class="overlay" id="dashSupervisionModal" role="dialog" aria-modal="true" aria-labelledby="dashSupTitle" tabindex="-1" hidden>
+    <div class="modal dash-sup-modal">
+      <div class="section-head"><div><div class="section-kicker">Revisión rápida de supervisión</div><h3 id="dashSupTitle">Caso</h3></div><button class="icon-btn" id="dashSupClose" type="button" aria-label="Cerrar">✕</button></div>
+      <div class="dash-sup-body" id="dashSupBody" aria-live="polite"></div>
+      <div class="dash-sup-actions">
+        <a class="btn btn-brand" id="dashSupOpen" href="#">Abrir ticket completo</a>
+        <button class="mini btn-ghost" id="dashSupCopy" type="button">Copiar folio</button>
+        <button class="mini btn-ghost" id="dashSupReviewed" type="button" disabled aria-describedby="dashSupActionsNote">Marcar revisado</button>
+        <button class="mini btn-ghost" id="dashSupAskAgent" type="button" disabled aria-describedby="dashSupActionsNote">Solicitar información al agente</button>
+      </div>
+      <p class="mut dash-sup-actions-note" id="dashSupActionsNote">Marcar revisado y solicitar información al agente estarán disponibles cuando exista una operación backend verificable (rol, revalidación, auditoría y estado). No se simula ninguna escritura.</p>
+    </div>
+  </div>
 
   <section class="panel dash-admin-only hidden" id="dashAgents" style="margin-top:12px">
     <div class="section-head"><div><div class="section-kicker">Equipo</div><h2>Agentes de soporte</h2></div></div>
