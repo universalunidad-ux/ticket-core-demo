@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_MANIFEST = "tools/canonical-source.json";
@@ -39,6 +40,20 @@ function isNoncanonical(value, patterns) {
 
 function isTracked(root, path) {
   return git(root, ["ls-files", "--error-unmatch", "--", path], true).status === 0;
+}
+
+function sha256(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(value, required, allowed) {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  return required.every((key) => Object.hasOwn(value, key)) && keys.every((key) => allowed.includes(key));
 }
 
 function changedPaths(root) {
@@ -167,6 +182,8 @@ function validateManifestShape(manifest, fail) {
   for (const key of strings) if (!manifest[key] || typeof manifest[key] !== "string") fail("MANIFEST_FIELD", key);
   for (const key of ["excluded_projects", "noncanonical_patterns", "required_owners", "required_edge_owners", "externalized_owners", "historical_not_active_owners", "active_entrypoints", "specialized_gate_owners"])
     if (!Array.isArray(manifest[key])) fail("MANIFEST_FIELD", key);
+  if (Object.hasOwn(manifest, "required_local_runtime_owners") && !Array.isArray(manifest.required_local_runtime_owners))
+    fail("MANIFEST_FIELD", "required_local_runtime_owners");
   if (manifest.product !== "ticket-core-demo") fail("PRODUCT_MISMATCH", manifest.product || "missing");
   if (manifest.allowed_branch?.policy !== "prefix" || !manifest.allowed_branch?.implementation_branch || !manifest.allowed_branch?.allowed_prefixes?.length)
     fail("BRANCH_POLICY", "prefix policy and implementation branch required");
@@ -344,8 +361,25 @@ export function evaluateGate({ root: rawRoot, sourceRoot: rawSourceRoot, manifes
     if (new Set(paths).size > 1) fail("DUPLICATE_ACTIVE_OWNER", `${responsibility}:${paths.join(",")}`);
   }
 
+  const tracked = head ? git(root, ["ls-files"]).stdout.split("\n").filter(Boolean) : [];
+  const classificationByName = new Map();
+  const noteClassification = (name, category) => {
+    if (typeof name !== "string" || !name) return;
+    const categories = classificationByName.get(name) || [];
+    categories.push(category);
+    classificationByName.set(name, categories);
+  };
+  const localPathRecords = new Map();
+  const noteLocalPath = (path, category, name) => {
+    if (typeof path !== "string" || !path) return;
+    const records = localPathRecords.get(path) || [];
+    records.push({ category, name });
+    localPathRecords.set(path, records);
+  };
+
   const externalized = new Map();
   for (const owner of manifest.externalized_owners || []) {
+    noteClassification(owner?.name, "externalized_owners");
     if (!owner?.name || owner.type !== "edge-function" || owner.classification !== "EXTERNALIZED_EXPLICIT" || !owner.reason || !owner.caller || !owner.contract_owner || !owner.status) {
       fail("EXTERNAL_OWNER_INVALID", owner?.name || "missing"); continue;
     }
@@ -357,30 +391,134 @@ export function evaluateGate({ root: rawRoot, sourceRoot: rawSourceRoot, manifes
   }
   const requiredLocal = new Map();
   for (const owner of manifest.required_edge_owners || []) {
+    noteClassification(owner?.name, "required_edge_owners");
+    noteLocalPath(owner?.path, "required_edge_owners", owner?.name);
     if (!owner?.name || owner.classification !== "REQUIRED_LOCAL" || !owner.path || !owner.caller) { fail("REQUIRED_EDGE_OWNER_INVALID", owner?.name || "missing"); continue; }
     if (requiredLocal.has(owner.name)) fail("DUPLICATE_REQUIRED_EDGE_OWNER", owner.name);
+    const expectedPath = new RegExp(`^supabase/functions/${owner.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/index\\.(?:ts|js|mjs)$`);
+    if (!expectedPath.test(owner.path)) fail("REQUIRED_EDGE_OWNER_INVALID", `${owner.name}:${owner.path}`);
     if (!activeRuntime.has(owner.caller)) fail("REQUIRED_EDGE_CALLER_NOT_ACTIVE", `${owner.name}:${owner.caller}`);
-    if (!existsSync(resolve(sourceRoot, owner.path)) || !isTracked(root, owner.path)) fail("EDGE_OWNER_MISSING", owner.name);
+    const target = resolve(sourceRoot, owner.path);
+    if (!inside(sourceRoot, target) || !existsSync(target) || !statSync(target).isFile() || !isTracked(root, owner.path)) fail("EDGE_OWNER_MISSING", owner.name);
     requiredLocal.set(owner.name, owner);
   }
   const historical = new Map();
   for (const owner of manifest.historical_not_active_owners || []) {
+    noteClassification(owner?.name, "historical_not_active_owners");
     if (!owner?.name || owner.classification !== "HISTORICAL_NOT_ACTIVE" || !owner.reason) { fail("HISTORICAL_OWNER_INVALID", owner?.name || "missing"); continue; }
     if (historical.has(owner.name)) fail("DUPLICATE_HISTORICAL_OWNER", owner.name);
     historical.set(owner.name, owner);
   }
-  for (const name of new Set([...requiredLocal.keys(), ...externalized.keys(), ...historical.keys()])) {
-    const categories = Number(requiredLocal.has(name)) + Number(externalized.has(name)) + Number(historical.has(name));
-    if (categories > 1) fail("EDGE_CLASSIFICATION_COLLISION", name);
+
+  const runtimeLocal = new Map();
+  const runtimeOwnerRecords = Array.isArray(manifest.required_local_runtime_owners) ? manifest.required_local_runtime_owners : [];
+  const runtimeRequired = ["name", "classification", "path", "source_sha256", "evidence", "runtime_status"];
+  const runtimeAllowed = [...runtimeRequired, "remote_version", "verify_jwt"];
+  const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const hashPattern = /^[0-9a-f]{64}$/;
+  const runtimePathPattern = /^supabase\/functions\/[a-z0-9]+(?:-[a-z0-9]+)*\/index\.(?:ts|js|mjs)$/;
+  const remoteEvidencePathPattern = /^supabase\/functions\/[a-z0-9]+(?:-[a-z0-9]+)*\/source-current\.json$/;
+  for (const owner of runtimeOwnerRecords) {
+    noteClassification(owner?.name, "required_local_runtime_owners");
+    noteLocalPath(owner?.path, "required_local_runtime_owners", owner?.name);
+    const label = owner?.name || "missing";
+    if (!hasExactKeys(owner, runtimeRequired, runtimeAllowed)) fail("RUNTIME_EDGE_OWNER_INVALID", label);
+    if (!slugPattern.test(owner?.name || "") || owner?.classification !== "REQUIRED_LOCAL_RUNTIME" || !["REMOTE_ACTIVE", "LOCAL_ONLY_NOT_DEPLOYED"].includes(owner?.runtime_status))
+      fail("RUNTIME_EDGE_OWNER_INVALID", label);
+    if (runtimeLocal.has(owner?.name)) fail("DUPLICATE_RUNTIME_EDGE_OWNER", label);
+    const expectedSourcePath = typeof owner?.name === "string" ? new RegExp(`^supabase/functions/${owner.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/index\\.(?:ts|js|mjs)$`) : null;
+    if (typeof owner?.path !== "string" || !runtimePathPattern.test(owner.path) || !expectedSourcePath?.test(owner.path))
+      fail("RUNTIME_EDGE_PATH_INVALID", `${label}:${owner?.path || "missing"}`);
+    if (!hashPattern.test(owner?.source_sha256 || "")) fail("RUNTIME_EDGE_HASH_INVALID", label);
+
+    const source = typeof owner?.path === "string" ? resolve(sourceRoot, owner.path) : sourceRoot;
+    let sourceReady = false;
+    if (typeof owner?.path !== "string" || !inside(sourceRoot, source) || !existsSync(source) || !statSync(source).isFile() || !isTracked(root, owner.path)) {
+      fail("RUNTIME_EDGE_OWNER_MISSING", label);
+    } else if (statSync(source).size === 0) {
+      fail("RUNTIME_EDGE_OWNER_EMPTY", label);
+    } else {
+      sourceReady = true;
+      if (hashPattern.test(owner?.source_sha256 || "") && sha256(source) !== owner.source_sha256)
+        fail("RUNTIME_EDGE_HASH_MISMATCH", label);
+    }
+
+    if (owner?.runtime_status === "REMOTE_ACTIVE") {
+      if (!Number.isInteger(owner.remote_version) || owner.remote_version < 1 || typeof owner.verify_jwt !== "boolean")
+        fail("RUNTIME_EDGE_REMOTE_FIELDS_INVALID", label);
+      const evidence = owner.evidence;
+      const evidenceShape = hasExactKeys(evidence, ["kind", "path"], ["kind", "path"])
+        && evidence.kind === "REMOTE_READ_ONLY_METADATA"
+        && remoteEvidencePathPattern.test(evidence.path || "");
+      if (!evidenceShape) {
+        fail("RUNTIME_EDGE_EVIDENCE_INVALID", label);
+      } else {
+        const evidenceFile = resolve(sourceRoot, evidence.path);
+        if (!inside(sourceRoot, evidenceFile) || !existsSync(evidenceFile) || !statSync(evidenceFile).isFile() || !isTracked(root, evidence.path)) {
+          fail("RUNTIME_EDGE_EVIDENCE_MISSING", `${label}:${evidence.path}`);
+        } else {
+          let metadata;
+          try { metadata = JSON.parse(readFileSync(evidenceFile, "utf8")); }
+          catch { metadata = null; }
+          const expectedEvidencePath = `supabase/functions/${owner.name}/source-current.json`;
+          if (evidence.path !== expectedEvidencePath || !isRecord(metadata)
+            || metadata.slug !== owner.name || metadata.status !== "ACTIVE"
+            || metadata.remote_version !== owner.remote_version || metadata.verify_jwt !== owner.verify_jwt
+            || metadata.source_sha256 !== owner.source_sha256
+            || typeof metadata.provenance !== "string" || !metadata.provenance.trim()
+            || metadata.deployed_by_this_unit !== false)
+            fail("RUNTIME_EDGE_EVIDENCE_MISMATCH", label);
+        }
+      }
+    } else if (owner?.runtime_status === "LOCAL_ONLY_NOT_DEPLOYED") {
+      if (Object.hasOwn(owner, "remote_version") || Object.hasOwn(owner, "verify_jwt"))
+        fail("RUNTIME_EDGE_LOCAL_ONLY_REMOTE_FIELDS", label);
+      const evidence = owner.evidence;
+      const evidenceShape = hasExactKeys(evidence, ["kind", "path", "marker"], ["kind", "path", "marker"])
+        && evidence.kind === "TRACKED_SOURCE_MARKER"
+        && runtimePathPattern.test(evidence.path || "")
+        && evidence.marker === "PREPARED_NOT_APPLIED";
+      if (!evidenceShape) {
+        fail("RUNTIME_EDGE_EVIDENCE_INVALID", label);
+      } else if (evidence.path !== owner.path || !sourceReady || !readFileSync(source, "utf8").includes(evidence.marker)) {
+        fail("RUNTIME_EDGE_EVIDENCE_MISMATCH", label);
+      }
+    }
+    if (typeof owner?.name === "string" && !runtimeLocal.has(owner.name)) runtimeLocal.set(owner.name, owner);
   }
-  const tracked = head ? git(root, ["ls-files"]).stdout.split("\n").filter(Boolean) : [];
+
+  for (const [name, categories] of classificationByName) {
+    if (categories.length > 1) fail("EDGE_CLASSIFICATION_COLLISION", `${name}:${categories.join(",")}`);
+  }
+  for (const [path, records] of localPathRecords) {
+    if (records.length > 1) fail("DUPLICATE_LOCAL_EDGE_PATH", `${path}:${records.map((record) => record.name).join(",")}`);
+  }
+
+  const trackedEdgeEntrypoints = tracked.filter((path) => /^supabase\/functions\/[^/]+\/index\.(?:ts|js|mjs)$/.test(path));
+  const trackedEntrypointsByName = new Map();
+  for (const path of trackedEdgeEntrypoints) {
+    const name = path.split("/")[2];
+    const paths = trackedEntrypointsByName.get(name) || [];
+    paths.push(path);
+    trackedEntrypointsByName.set(name, paths);
+  }
+  for (const [name, paths] of trackedEntrypointsByName) {
+    if (paths.length > 1) fail("MULTIPLE_TRACKED_EDGE_ENTRYPOINTS", `${name}:${paths.join(",")}`);
+    for (const path of paths) {
+      const records = localPathRecords.get(path) || [];
+      if (externalized.has(name) || historical.has(name)) fail("NONLOCAL_EDGE_OWNER_TRACKED", `${name}:${path}`);
+      else if (records.length === 0) fail("UNREGISTERED_TRACKED_EDGE_OWNER", path);
+    }
+  }
+
   const sourceFiles = [...activeRuntime].filter((path) => /^app\/.*\.(?:html|js|mjs)$/.test(path) && !isNoncanonical(path, manifest.noncanonical_patterns || []));
   const edgeNames = new Set();
   for (const path of sourceFiles) for (const name of staticEdgeNames(readFileSync(join(sourceRoot, path), "utf8"))) edgeNames.add(name);
   for (const name of edgeNames) {
     const ownerDir = join(sourceRoot, "supabase/functions", name);
     const localOwner = existsSync(ownerDir) && statSync(ownerDir).isDirectory() && ["index.ts", "index.js", "index.mjs"].some((file) => isTracked(root, `supabase/functions/${name}/${file}`));
-    if (historical.has(name)) fail("HISTORICAL_OWNER_ACTIVE", name);
+    if (runtimeLocal.has(name)) fail("RUNTIME_EDGE_STATIC_CALLER", name);
+    else if (historical.has(name)) fail("HISTORICAL_OWNER_ACTIVE", name);
     else if (requiredLocal.has(name)) {
       const declared = requiredLocal.get(name);
       if (!localOwner || !isTracked(root, declared.path)) fail("EDGE_OWNER_MISSING", name);
@@ -402,7 +540,7 @@ export function evaluateGate({ root: rawRoot, sourceRoot: rawSourceRoot, manifes
   if (!failures.length) {
     pass("IDENTITY"); pass("GIT_STATE"); pass("ACTIVE_FILES"); pass("NONCANONICAL_SOURCES"); pass("EDGE_AND_MIGRATIONS"); pass("PRODUCT_BOUNDARY");
   }
-  return { ok: failures.length === 0, failures, checks, metadata: { head, branch: effectiveBranch, edgeOwnersChecked: edgeNames.size, entrypointsChecked: (manifest.active_entrypoints || []).length, activeRuntimeFiles: activeRuntime.size } };
+  return { ok: failures.length === 0, failures, checks, metadata: { head, branch: effectiveBranch, edgeOwnersChecked: edgeNames.size, entrypointsChecked: (manifest.active_entrypoints || []).length, activeRuntimeFiles: activeRuntime.size, trackedEdgeEntrypoints: trackedEdgeEntrypoints.length, runtimeEdgeOwners: runtimeLocal.size } };
 }
 
 function parseArgs(argv) {

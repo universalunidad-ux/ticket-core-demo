@@ -1,5 +1,5 @@
 {
-  "gate_version": "1.1.0",
+  "gate_version": "1.2.0",
   "product": "ticket-core-demo",
   "canonical_repo": "/Users/jaziel/Documents/EXPIRITI_REPOS_PUBLIC/ticket-core-demo",
   "expected_remote": "https://github.com/universalunidad-ux/ticket-core-demo.git",
@@ -163,6 +163,20 @@
       "classification": "REQUIRED_LOCAL",
       "path": "supabase/functions/ticket-escalar-admin/index.ts",
       "caller": "app/ticket-composer-polish.js"
+    }
+  ],
+  "required_local_runtime_owners": [
+    {
+      "name": "support-orphan-cleanup",
+      "classification": "REQUIRED_LOCAL_RUNTIME",
+      "path": "supabase/functions/support-orphan-cleanup/index.ts",
+      "source_sha256": "528633ffc557e1fdc636a7dfcd05e8901b21058bdf38cbb25397a4bf2045a5ad",
+      "evidence": {
+        "kind": "TRACKED_SOURCE_MARKER",
+        "path": "supabase/functions/support-orphan-cleanup/index.ts",
+        "marker": "PREPARED_NOT_APPLIED"
+      },
+      "runtime_status": "LOCAL_ONLY_NOT_DEPLOYED"
     }
   ],
   "externalized_owners": [
