@@ -75,6 +75,8 @@ jobs:
         run: node tools/tc-sec-rls-match-contract.test.mjs
       - name: TC-SEC-SD-GRANTS contract
         run: node tools/tc-sec-sd-grants-contract.test.mjs
+      - name: TC-U15E-A2 site config split contract
+        run: node tools/tc-site-config-split-contract.test.mjs
       - name: Static accessibility gate
         run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)
