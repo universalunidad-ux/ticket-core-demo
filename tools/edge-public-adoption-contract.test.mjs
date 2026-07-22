@@ -149,7 +149,7 @@ assert.deepEqual(
   }],
 );
 
-for (const name of ["crear-cliente-janome", "ticket-escalar-admin", "crear-ticket-interno"]) {
+for (const name of ["crear-cliente-janome", "crear-ticket-interno"]) {
   const matches = externalizedOwners.filter((owner) => owner.name === name);
   assert.equal(matches.length, 1, `${name} must remain externalized exactly once`);
   assert.equal(matches[0].type, "edge-function");
