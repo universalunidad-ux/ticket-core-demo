@@ -58,7 +58,9 @@ Owner runtime no significa owner con caller estático. Si aparece un caller acti
 
 Tracked no equivale a deployed. El índice Git sólo prueba presencia y clasificación local; el estado remoto requiere la evidencia explícita de `REMOTE_ACTIVE`, y aun esa snapshot no prueba vigencia remota en tiempo real ni autoriza deploy.
 
-`support-orphan-cleanup` es el único record actual de `required_local_runtime_owners`. Está clasificado `REQUIRED_LOCAL_RUNTIME` con estado `LOCAL_ONLY_NOT_DEPLOYED`, source `supabase/functions/support-orphan-cleanup/index.ts`, SHA-256 `528633ffc557e1fdc636a7dfcd05e8901b21058bdf38cbb25397a4bf2045a5ad` y marker `PREPARED_NOT_APPLIED`. Su registro no modifica el source ni lo despliega.
+`support-orphan-cleanup` está clasificado `REQUIRED_LOCAL_RUNTIME` con estado `LOCAL_ONLY_NOT_DEPLOYED`, source `supabase/functions/support-orphan-cleanup/index.ts`, SHA-256 `528633ffc557e1fdc636a7dfcd05e8901b21058bdf38cbb25397a4bf2045a5ad` y marker `PREPARED_NOT_APPLIED`. Su registro no modifica el source ni lo despliega.
+
+`match-cliente` está clasificada `REQUIRED_LOCAL_RUNTIME` con estado `REMOTE_ACTIVE`, sin caller estático declarado. Su owner canónico es `supabase/functions/match-cliente/index.ts`; `source-current.json` conserva la evidencia read-only de la versión remota 15 con `verify_jwt=true`, SHA-256 `0590b1e683100e45733c5a3e31f253d97598894bb541eaafb1bb2829cdffb01b` y `deployed_by_this_unit=false`. La adopción preserva byte-for-byte la fuente recuperada y no implica hardening, deploy ni cambios remotos.
 
 `crear-cliente-janome` y `crear-ticket-interno` continúan como dependencias activas sin owner versionado en este worktree. El manifiesto las clasifica `EXTERNALIZED_EXPLICIT` con razón. Esta declaración no autoriza despliegues, cambios remotos ni uso de código del producto privado.
 

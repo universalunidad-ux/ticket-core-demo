@@ -177,6 +177,19 @@
         "marker": "PREPARED_NOT_APPLIED"
       },
       "runtime_status": "LOCAL_ONLY_NOT_DEPLOYED"
+    },
+    {
+      "name": "match-cliente",
+      "classification": "REQUIRED_LOCAL_RUNTIME",
+      "path": "supabase/functions/match-cliente/index.ts",
+      "source_sha256": "0590b1e683100e45733c5a3e31f253d97598894bb541eaafb1bb2829cdffb01b",
+      "evidence": {
+        "kind": "REMOTE_READ_ONLY_METADATA",
+        "path": "supabase/functions/match-cliente/source-current.json"
+      },
+      "runtime_status": "REMOTE_ACTIVE",
+      "remote_version": 15,
+      "verify_jwt": true
     }
   ],
   "externalized_owners": [
