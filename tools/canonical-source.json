@@ -19,14 +19,27 @@
   },
   "ci_event_policy": {
     "expected_repository": "universalunidad-ux/ticket-core-demo",
-    "allowed_events": ["pull_request", "push"],
-    "allowed_push_branches": ["main"],
+    "allowed_events": [
+      "pull_request",
+      "push"
+    ],
+    "allowed_push_branches": [
+      "main"
+    ],
     "require_github_ref_context": true
   },
   "allowed_branch": {
     "policy": "prefix",
     "implementation_branch": "review/backend-security-v2-20260718",
-    "allowed_prefixes": ["review/", "fix/", "feat/", "chore/", "sec/", "docs/", "test/"],
+    "allowed_prefixes": [
+      "review/",
+      "fix/",
+      "feat/",
+      "chore/",
+      "sec/",
+      "docs/",
+      "test/"
+    ],
     "main_direct_implementation_allowed": false
   },
   "known_pr_context": {
@@ -55,20 +68,76 @@
     "stale-worktree"
   ],
   "required_owners": [
-    { "id": "public-entrypoint", "responsibility": "demo-login-entrypoint", "path": "app/index.html" },
-    { "id": "public-config", "responsibility": "public-runtime-config", "path": "app/supabase.config.public.js" },
-    { "id": "shared-shell", "responsibility": "shared-application-shell", "path": "app/global.js" },
-    { "id": "service-worker", "responsibility": "offline-cache-owner", "path": "app/sw.js" },
-    { "id": "frontend-gate", "responsibility": "frontend-integrity-gate", "path": "tools/frontend-gates.mjs" },
-    { "id": "canonical-manifest", "responsibility": "canonical-source-contract", "path": "tools/canonical-source.json" },
-    { "id": "canonical-gate", "responsibility": "canonical-source-enforcement", "path": "tools/canonical-source-gate.mjs" },
-    { "id": "canonical-gate-tests", "responsibility": "canonical-source-test-owner", "path": "tools/canonical-source-gate.test.mjs" },
-    { "id": "canonical-continuity-doc", "responsibility": "canonical-source-continuity", "path": "docs/CANONICAL_SOURCE.md" },
-    { "id": "canonical-preflight", "responsibility": "canonical-preflight-orchestration", "path": "tools/preflight.mjs" },
-    { "id": "canonical-preflight-tests", "responsibility": "canonical-preflight-test-owner", "path": "tools/preflight.test.mjs" },
-    { "id": "canonical-hook-installer", "responsibility": "canonical-hook-installation", "path": "tools/install-git-hooks.mjs" },
-    { "id": "canonical-precommit-hook", "responsibility": "canonical-precommit-entrypoint", "path": ".githooks/pre-commit" },
-    { "id": "canonical-ci-workflow", "responsibility": "canonical-ci-enforcement", "path": ".github/workflows/frontend-gates.yml" }
+    {
+      "id": "public-entrypoint",
+      "responsibility": "demo-login-entrypoint",
+      "path": "app/index.html"
+    },
+    {
+      "id": "public-config",
+      "responsibility": "public-runtime-config",
+      "path": "app/supabase.config.public.js"
+    },
+    {
+      "id": "shared-shell",
+      "responsibility": "shared-application-shell",
+      "path": "app/global.js"
+    },
+    {
+      "id": "service-worker",
+      "responsibility": "offline-cache-owner",
+      "path": "app/sw.js"
+    },
+    {
+      "id": "frontend-gate",
+      "responsibility": "frontend-integrity-gate",
+      "path": "tools/frontend-gates.mjs"
+    },
+    {
+      "id": "canonical-manifest",
+      "responsibility": "canonical-source-contract",
+      "path": "tools/canonical-source.json"
+    },
+    {
+      "id": "canonical-gate",
+      "responsibility": "canonical-source-enforcement",
+      "path": "tools/canonical-source-gate.mjs"
+    },
+    {
+      "id": "canonical-gate-tests",
+      "responsibility": "canonical-source-test-owner",
+      "path": "tools/canonical-source-gate.test.mjs"
+    },
+    {
+      "id": "canonical-continuity-doc",
+      "responsibility": "canonical-source-continuity",
+      "path": "docs/CANONICAL_SOURCE.md"
+    },
+    {
+      "id": "canonical-preflight",
+      "responsibility": "canonical-preflight-orchestration",
+      "path": "tools/preflight.mjs"
+    },
+    {
+      "id": "canonical-preflight-tests",
+      "responsibility": "canonical-preflight-test-owner",
+      "path": "tools/preflight.test.mjs"
+    },
+    {
+      "id": "canonical-hook-installer",
+      "responsibility": "canonical-hook-installation",
+      "path": "tools/install-git-hooks.mjs"
+    },
+    {
+      "id": "canonical-precommit-hook",
+      "responsibility": "canonical-precommit-entrypoint",
+      "path": ".githooks/pre-commit"
+    },
+    {
+      "id": "canonical-ci-workflow",
+      "responsibility": "canonical-ci-enforcement",
+      "path": ".github/workflows/frontend-gates.yml"
+    }
   ],
   "required_edge_owners": [
     {
@@ -76,6 +145,24 @@
       "classification": "REQUIRED_LOCAL",
       "path": "supabase/functions/support-submit-secure/index.ts",
       "caller": "app/soporte.js"
+    },
+    {
+      "name": "estado-ticket-ts",
+      "classification": "REQUIRED_LOCAL",
+      "path": "supabase/functions/estado-ticket-ts/index.ts",
+      "caller": "app/estado.js"
+    },
+    {
+      "name": "estado-ticket-responder-ts",
+      "classification": "REQUIRED_LOCAL",
+      "path": "supabase/functions/estado-ticket-responder-ts/index.ts",
+      "caller": "app/estado.js"
+    },
+    {
+      "name": "ticket-escalar-admin",
+      "classification": "REQUIRED_LOCAL",
+      "path": "supabase/functions/ticket-escalar-admin/index.ts",
+      "caller": "app/ticket-composer-polish.js"
     }
   ],
   "externalized_owners": [
@@ -89,15 +176,6 @@
       "reason": "El frontend comprueba disponibilidad; el owner desplegado no pertenece a este worktree."
     },
     {
-      "name": "ticket-escalar-admin",
-      "type": "edge-function",
-      "classification": "EXTERNALIZED_EXPLICIT",
-      "caller": "app/ticket-composer-polish.js",
-      "contract_owner": "tools/canonical-source.json",
-      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
-      "reason": "Dependencia operativa externa explícita del compositor de supervisión."
-    },
-    {
       "name": "crear-ticket-interno",
       "type": "edge-function",
       "classification": "EXTERNALIZED_EXPLICIT",
@@ -105,43 +183,75 @@
       "contract_owner": "tools/canonical-source.json",
       "status": "ACTIVE_EXTERNAL_DEPENDENCY",
       "reason": "Dependencia operativa externa explícita del flujo interno de tickets."
-    },
-    {
-      "name": "estado-ticket-ts",
-      "type": "edge-function",
-      "classification": "EXTERNALIZED_EXPLICIT",
-      "caller": "app/estado.js",
-      "contract_owner": "tools/canonical-source.json",
-      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
-      "constraints": ["DO_NOT_RESTORE_FROM_PRIVATE_CORE", "DO_NOT_RECONSTRUCT_AUTOMATICALLY"],
-      "reason": "Endpoint de consulta invocado por app/estado.js; se registra el contrato externo sin restaurar ni copiar una Edge histórica."
-    },
-    {
-      "name": "estado-ticket-responder-ts",
-      "type": "edge-function",
-      "classification": "EXTERNALIZED_EXPLICIT",
-      "caller": "app/estado.js",
-      "contract_owner": "tools/canonical-source.json",
-      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
-      "constraints": ["DO_NOT_RESTORE_FROM_PRIVATE_CORE", "DO_NOT_RECONSTRUCT_AUTOMATICALLY"],
-      "reason": "Endpoint de respuesta invocado por app/estado.js; se registra el contrato externo sin restaurar ni copiar una Edge histórica."
     }
   ],
   "historical_not_active_owners": [],
   "active_entrypoints": [
-    { "path": "index.html", "surface": "root-redirect", "reason": "Entrada publicada que redirige al login Demo." },
-    { "path": "app/index.html", "surface": "login", "reason": "Inicio de sesión publicado y destino del entrypoint raíz." },
-    { "path": "app/dashboard.html", "surface": "authenticated-dashboard", "reason": "Superficie autenticada enlazada por la navegación activa." },
-    { "path": "app/tickets.html", "surface": "ticket-list", "reason": "Listado operativo enlazado por navegación y dashboard." },
-    { "path": "app/ticket.html", "surface": "ticket-detail", "reason": "Detalle operativo abierto desde el listado de tickets." },
-    { "path": "app/clientes.html", "surface": "client-list", "reason": "Listado de clientes enlazado por la navegación activa." },
-    { "path": "app/cliente.html", "surface": "client-detail", "reason": "Detalle abierto desde las superficies activas de clientes." },
-    { "path": "app/alta-cliente.html", "surface": "client-create", "reason": "Alta interna enlazada desde el módulo activo de clientes." },
-    { "path": "app/consolidacion-clientes.html", "surface": "client-consolidation", "reason": "Consolidación enlazada desde el módulo activo de clientes." },
-    { "path": "app/soporte.html", "surface": "public-support", "reason": "Formulario público enlazado por login, estado y navegación." },
-    { "path": "app/estado.html", "surface": "public-ticket-status", "reason": "Seguimiento público enlazado por soporte y rutas activas." },
-    { "path": "app/aviso-privacidad.html", "surface": "legal-privacy", "reason": "Documento legal enlazado por superficies públicas activas." },
-    { "path": "app/terminos.html", "surface": "legal-terms", "reason": "Documento legal enlazado por superficies públicas activas." }
+    {
+      "path": "index.html",
+      "surface": "root-redirect",
+      "reason": "Entrada publicada que redirige al login Demo."
+    },
+    {
+      "path": "app/index.html",
+      "surface": "login",
+      "reason": "Inicio de sesión publicado y destino del entrypoint raíz."
+    },
+    {
+      "path": "app/dashboard.html",
+      "surface": "authenticated-dashboard",
+      "reason": "Superficie autenticada enlazada por la navegación activa."
+    },
+    {
+      "path": "app/tickets.html",
+      "surface": "ticket-list",
+      "reason": "Listado operativo enlazado por navegación y dashboard."
+    },
+    {
+      "path": "app/ticket.html",
+      "surface": "ticket-detail",
+      "reason": "Detalle operativo abierto desde el listado de tickets."
+    },
+    {
+      "path": "app/clientes.html",
+      "surface": "client-list",
+      "reason": "Listado de clientes enlazado por la navegación activa."
+    },
+    {
+      "path": "app/cliente.html",
+      "surface": "client-detail",
+      "reason": "Detalle abierto desde las superficies activas de clientes."
+    },
+    {
+      "path": "app/alta-cliente.html",
+      "surface": "client-create",
+      "reason": "Alta interna enlazada desde el módulo activo de clientes."
+    },
+    {
+      "path": "app/consolidacion-clientes.html",
+      "surface": "client-consolidation",
+      "reason": "Consolidación enlazada desde el módulo activo de clientes."
+    },
+    {
+      "path": "app/soporte.html",
+      "surface": "public-support",
+      "reason": "Formulario público enlazado por login, estado y navegación."
+    },
+    {
+      "path": "app/estado.html",
+      "surface": "public-ticket-status",
+      "reason": "Seguimiento público enlazado por soporte y rutas activas."
+    },
+    {
+      "path": "app/aviso-privacidad.html",
+      "surface": "legal-privacy",
+      "reason": "Documento legal enlazado por superficies públicas activas."
+    },
+    {
+      "path": "app/terminos.html",
+      "surface": "legal-terms",
+      "reason": "Documento legal enlazado por superficies públicas activas."
+    }
   ],
   "external_resource_policy_owner": {
     "path": "tools/final-fix-gates.mjs",

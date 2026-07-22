@@ -41,9 +41,13 @@ Los prefijos de implementación permitidos viven únicamente en el manifiesto: `
 
 `--allow-bootstrap` existe solo para validar el primer commit G0. Funciona únicamente sobre el HEAD base exacto, con los cuatro archivos G0 declarados, staged y sin cambios unstaged. Después del commit se ejecuta el gate sin esa opción y se exige un worktree limpio.
 
-## Owners Edge externalizados
+## Owners Edge locales y externalizados
 
-`crear-cliente-janome`, `ticket-escalar-admin`, `crear-ticket-interno`, `estado-ticket-ts` y `estado-ticket-responder-ts` son dependencias activas que no tienen owner versionado en este worktree. El manifiesto las clasifica `EXTERNALIZED_EXPLICIT` con razón. En particular, las dos Edge de estado no se restauran ni se reconstruyen durante G0. Esta declaración no autoriza despliegues, cambios remotos ni uso de código del producto privado.
+`crear-cliente-janome` y `crear-ticket-interno` continúan como dependencias activas sin owner versionado en este worktree. El manifiesto las clasifica `EXTERNALIZED_EXPLICIT` con razón. Esta declaración no autoriza despliegues, cambios remotos ni uso de código del producto privado.
+
+`ticket-escalar-admin` está clasificada `REQUIRED_LOCAL`. Su owner canónico es `supabase/functions/ticket-escalar-admin/index.ts`, con caller activo `app/ticket-composer-polish.js`; `source-current.json` conserva la procedencia de la versión remota 5 con `verify_jwt=true`. La adopción preserva los bytes recuperados y no implica deploy, hardening ni cambios remotos.
+
+`estado-ticket-ts` y `estado-ticket-responder-ts` están clasificadas `REQUIRED_LOCAL`. Sus owners canónicos son `supabase/functions/estado-ticket-ts/index.ts` y `supabase/functions/estado-ticket-responder-ts/index.ts`, con caller activo `app/estado.js`; sus archivos `source-current.json` conservan la procedencia de las versiones remotas 37 y 39. La adopción preserva los bytes recuperados y no implica deploy, hardening, cambios remotos ni reconstrucción desde el producto privado.
 
 `support-submit-secure` está clasificada `REQUIRED_LOCAL`, tiene owner en `supabase/functions/support-submit-secure/` y el gate exige conservarlo mientras exista la llamada activa. G0 no usa inventarios históricos: solo clasifica nombres descubiertos en código activo.
 
