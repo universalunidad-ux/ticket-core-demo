@@ -76,6 +76,18 @@
       "classification": "REQUIRED_LOCAL",
       "path": "supabase/functions/support-submit-secure/index.ts",
       "caller": "app/soporte.js"
+    },
+    {
+      "name": "estado-ticket-ts",
+      "classification": "REQUIRED_LOCAL",
+      "path": "supabase/functions/estado-ticket-ts/index.ts",
+      "caller": "app/estado.js"
+    },
+    {
+      "name": "estado-ticket-responder-ts",
+      "classification": "REQUIRED_LOCAL",
+      "path": "supabase/functions/estado-ticket-responder-ts/index.ts",
+      "caller": "app/estado.js"
     }
   ],
   "externalized_owners": [
@@ -105,26 +117,6 @@
       "contract_owner": "tools/canonical-source.json",
       "status": "ACTIVE_EXTERNAL_DEPENDENCY",
       "reason": "Dependencia operativa externa explícita del flujo interno de tickets."
-    },
-    {
-      "name": "estado-ticket-ts",
-      "type": "edge-function",
-      "classification": "EXTERNALIZED_EXPLICIT",
-      "caller": "app/estado.js",
-      "contract_owner": "tools/canonical-source.json",
-      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
-      "constraints": ["DO_NOT_RESTORE_FROM_PRIVATE_CORE", "DO_NOT_RECONSTRUCT_AUTOMATICALLY"],
-      "reason": "Endpoint de consulta invocado por app/estado.js; se registra el contrato externo sin restaurar ni copiar una Edge histórica."
-    },
-    {
-      "name": "estado-ticket-responder-ts",
-      "type": "edge-function",
-      "classification": "EXTERNALIZED_EXPLICIT",
-      "caller": "app/estado.js",
-      "contract_owner": "tools/canonical-source.json",
-      "status": "ACTIVE_EXTERNAL_DEPENDENCY",
-      "constraints": ["DO_NOT_RESTORE_FROM_PRIVATE_CORE", "DO_NOT_RECONSTRUCT_AUTOMATICALLY"],
-      "reason": "Endpoint de respuesta invocado por app/estado.js; se registra el contrato externo sin restaurar ni copiar una Edge histórica."
     }
   ],
   "historical_not_active_owners": [],

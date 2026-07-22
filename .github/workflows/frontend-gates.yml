@@ -40,6 +40,8 @@ jobs:
         run: node tools/xss-gate.mjs .
       - name: Block anonymous CRM disclosure in support Edge (U1)
         run: node tools/edge-anon-response-gate.mjs .
+      - name: Preserve public ticket Edge source provenance
+        run: node tools/edge-public-adoption-contract.test.mjs
       - name: Block client-side role provisioning (U2)
         run: node tools/client-role-write-gate.mjs .
       - name: Enforce private/safe storage upload contract (U5)
