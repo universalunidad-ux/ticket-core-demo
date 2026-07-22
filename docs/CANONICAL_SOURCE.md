@@ -43,7 +43,9 @@ Los prefijos de implementación permitidos viven únicamente en el manifiesto: `
 
 ## Owners Edge locales y externalizados
 
-`crear-cliente-janome`, `ticket-escalar-admin` y `crear-ticket-interno` continúan como dependencias activas sin owner versionado en este worktree. El manifiesto las clasifica `EXTERNALIZED_EXPLICIT` con razón. Esta declaración no autoriza despliegues, cambios remotos ni uso de código del producto privado.
+`crear-cliente-janome` y `crear-ticket-interno` continúan como dependencias activas sin owner versionado en este worktree. El manifiesto las clasifica `EXTERNALIZED_EXPLICIT` con razón. Esta declaración no autoriza despliegues, cambios remotos ni uso de código del producto privado.
+
+`ticket-escalar-admin` está clasificada `REQUIRED_LOCAL`. Su owner canónico es `supabase/functions/ticket-escalar-admin/index.ts`, con caller activo `app/ticket-composer-polish.js`; `source-current.json` conserva la procedencia de la versión remota 5 con `verify_jwt=true`. La adopción preserva los bytes recuperados y no implica deploy, hardening ni cambios remotos.
 
 `estado-ticket-ts` y `estado-ticket-responder-ts` están clasificadas `REQUIRED_LOCAL`. Sus owners canónicos son `supabase/functions/estado-ticket-ts/index.ts` y `supabase/functions/estado-ticket-responder-ts/index.ts`, con caller activo `app/estado.js`; sus archivos `source-current.json` conservan la procedencia de las versiones remotas 37 y 39. La adopción preserva los bytes recuperados y no implica deploy, hardening, cambios remotos ni reconstrucción desde el producto privado.
 

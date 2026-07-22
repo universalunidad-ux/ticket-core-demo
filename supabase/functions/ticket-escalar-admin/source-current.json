@@ -1,0 +1,11 @@
+{
+  "slug": "ticket-escalar-admin",
+  "remote_version": 5,
+  "verify_jwt": true,
+  "source_sha256": "eb324b7b3f78b65d38d1d845e870a2b7724fd65a703e4e9fd4e6b71e421600c9",
+  "project_ref": "ovfmqqqwezfdtgrtkjhf",
+  "status": "ACTIVE",
+  "provenance": "READ_ONLY_SUPABASE_CLI_DOWNLOAD",
+  "deployed_by_this_unit": false,
+  "recovered_at": "2026-07-22T03:45:30Z"
+}
