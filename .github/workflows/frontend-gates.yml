@@ -50,6 +50,33 @@ jobs:
         run: node --experimental-strip-types tools/run-contract-tests.mjs .
       - name: Enforce admin UX functional closeout (U10)
         run: node tools/admin-ux-u10.test.mjs
+      - name: TC-U15A-1 ticket scope contract
+        run: node tools/ticket-scope.test.mjs
+      - name: TC-U15A-1 canonical navigation
+        run: node tools/u15a1-navigation.test.mjs
+
+      - name: Verify dashboard resilience utilities (U15A-2)
+        run: node tools/dashboard-resilience.test.mjs
+      - name: Verify supervision tray and agents resilience (U15A-2)
+        run: node tools/u15a2-supervision.test.mjs
+      - name: TC-U15A-2 agent summary contracts
+        run: node tools/u15a2-agent-summary.test.mjs
+      - name: TC-U15A-3 dashboard and audit contracts
+        run: node tools/u15a3-dashboard-admin-bitacora.test.mjs
+      - name: TC-U15B-1 clients machine filter
+        run: node tools/u15b1-clients-machines-filters.test.mjs
+      - name: TC-U15B-2 client creation contract
+        run: node tools/u15b2-client-create-catalog-agent.test.mjs
+      - name: TC-U15C-A safe consolidation boundary
+        run: node tools/u15c-frontend-safe-contract.test.mjs
+      - name: TC-U15C-D consolidation RPC contract
+        run: node tools/u15d-consolidation-rpc-contract.test.mjs
+      - name: TC-SEC-RLS-MATCH contract
+        run: node tools/tc-sec-rls-match-contract.test.mjs
+      - name: TC-SEC-SD-GRANTS contract
+        run: node tools/tc-sec-sd-grants-contract.test.mjs
+      - name: TC-U15E-A2 site config split contract
+        run: node tools/tc-site-config-split-contract.test.mjs
       - name: Static accessibility gate
         run: node tools/a11y-static-gate.mjs
       - name: Enforce pre-staging AuthZ reconciliation (U11)

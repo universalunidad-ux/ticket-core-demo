@@ -56,15 +56,3 @@ create policy archivos_ticket_staff_select
         and (public.tc_is_manager() or t.asignado_a = (select auth.uid()))
     )
   );
-
--- site_config: lectura para autenticados (config-loader); escritura solo admin.
-alter table public.site_config enable row level security;
-drop policy if exists site_config_read on public.site_config;
-create policy site_config_read
-  on public.site_config for select to authenticated
-  using (true);
-drop policy if exists site_config_admin_write on public.site_config;
-create policy site_config_admin_write
-  on public.site_config for all to authenticated
-  using (public.tc_is_admin())
-  with check (public.tc_is_admin());

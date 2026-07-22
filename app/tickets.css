@@ -1662,20 +1662,6 @@ body[data-page="tickets"] .tk-titleline{
   min-width:0;
   white-space:nowrap;
 }
-body[data-page="tickets"] .tk-dashboard-back{
-  width:36px!important;
-  min-width:36px!important;
-  height:36px!important;
-  min-height:36px!important;
-  padding:0!important;
-  display:grid!important;
-  place-items:center!important;
-  border-radius:13px!important;
-  font-size:20px!important;
-  line-height:1!important;
-  text-decoration:none!important;
-}
-body[data-page="tickets"] .tk-dashboard-back[hidden],
 body[data-page="tickets"] .tk-context-label[hidden]{display:none!important}
 body[data-page="tickets"] .tk-context-label{
   min-width:0;
@@ -1686,7 +1672,7 @@ body[data-page="tickets"] .tk-context-label{
   font-weight:780;
   letter-spacing:0;
 }
-body[data-page="tickets"] :is(.tk-dashboard-back,.k-card,.compact-row,.closed-row,.tk-col-modal-row[role="link"]):focus-visible{
+body[data-page="tickets"] :is(.k-card,.compact-row,.closed-row,.tk-col-modal-row[role="link"]):focus-visible{
   outline:3px solid var(--tc-control-focus,#0f766e)!important;
   outline-offset:2px!important;
 }
@@ -1734,19 +1720,18 @@ body[data-page="tickets"] .tk-compact-pager .cp-nav{display:flex;align-items:cen
 
 @media(max-width:720px){
   body[data-page="tickets"][data-from-dashboard="1"] .tickets-hero{
-    grid-template-columns:34px minmax(72px,auto) minmax(70px,1fr) 34px 34px 34px!important;
-    grid-template-areas:"back context search filter gear new"!important;
+    grid-template-columns:minmax(72px,auto) minmax(70px,1fr) 34px 34px 34px!important;
+    grid-template-areas:"context search filter gear new"!important;
   }
   body[data-page="tickets"][data-from-dashboard="1"] .hero-copy{display:contents!important}
   body[data-page="tickets"][data-from-dashboard="1"] .tk-titleline{display:contents!important}
   body[data-page="tickets"][data-from-dashboard="1"] .hero-copy :is(h1,.tk-edit-help,.tkHeroMinBtn){display:none!important}
   body[data-page="tickets"][data-from-dashboard="1"] .tk-context-label:not([hidden]){display:block!important;grid-area:context;max-width:128px;font-size:11px;line-height:1.1}
-  body[data-page="tickets"] .tk-dashboard-back{grid-area:back;width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;border-radius:12px!important}
   body[data-page="tickets"] .col-pager:not(.hidden){min-height:32px!important;padding:2px 7px 5px!important}
 }
 @media(max-width:380px){
   body[data-page="tickets"][data-from-dashboard="1"] .tickets-hero{
-    grid-template-columns:34px minmax(54px,72px) minmax(48px,1fr) 34px 34px 34px!important;
+    grid-template-columns:minmax(54px,72px) minmax(48px,1fr) 34px 34px 34px!important;
     gap:5px!important;
   }
   body[data-page="tickets"][data-from-dashboard="1"] .tk-context-label:not([hidden]){max-width:72px}

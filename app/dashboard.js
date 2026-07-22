@@ -17,15 +17,22 @@
    ============================================================================ */
 import { supabase, esc } from "./supabase.js";
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
 import { evaluateAssignment, matchingRules, OUTCOME, REASON } from "./shared/assignment-rules.js?v=frontend-final-20260716-01";
-import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel } from "./global.js?v=frontend-final-20260716-01";
+import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel, copyTxt } from "./global.js?v=frontend-final-20260716-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
+import { classifyLoadError, describeLoadError, paginate, pageItems, createSequence, keepLastValid, evidenceView, evidenceStoragePath, internalMessagePreview } from "./shared/dashboard-resilience.js?v=frontend-final-20260716-01";
 
 const $ = (q, c = document) => c.querySelector(q);
 const OPEN_STATES = ["abierto", "en_proceso", "esperando_cliente"];
 const CTX = { rol: "soporte", isAdmin: false, me: null, nombre: "" };
 const busy = new Set(); // guardas anti doble-submit por acción
 let AGENT_ROWS = [], AGENT_MODAL_STATE={agent:null,metric:null,page:0,trigger:null};
+/* U15A-2: perfiles y tickets se cargan por separado; el último resultado válido se
+   conserva ante una recarga fallida (keepLastValid) y la guarda de secuencia evita que
+   una respuesta previa pise a una posterior. */
+let AGENT_STATE={value:null,error:null,stale:false};
+const agentSeq=createSequence();
 const AGENT_PAGE_SIZE=10;
 const AGENT_METRICS = [
   {key:"ACTIVE",label:"Tickets activos",help:"Tickets que todavía requieren atención.",match:t=>OPEN_STATES.includes(ticketStateKey(t.estado))},
@@ -39,7 +46,10 @@ const AGENT_METRICS = [
   {key:"SUPERVISION_PENDING",label:"Casos por supervisar",help:"Tickets que fueron escalados y todavía requieren revisión administrativa.",match:t=>t.requiere_supervision===true}
 ];
 const agentMetricRows=(row,metric)=>Array.isArray(row?.tickets)?row.tickets.filter(metric.match):[];
-const agentMetricHtml=(row,def)=>{const count=agentMetricRows(row,def).length,name=row.agente_nombre||"Agente";return `<button class="dash-agent-metric" type="button" data-agent-metric="${esc(def.key)}" aria-label="${esc(`${name}: ${def.label}, ${count} tickets`)}"${def.help?` aria-describedby="dashSupervisionHelp"`:""}><span>${esc(def.label)}</span><b>${count}</b></button>`};
+/* U15A-2: cuando las métricas de tickets NO cargaron (falla parcial), no se inventan
+   ceros: la métrica muestra "—", se deshabilita y no puede abrir el modal. Un agente con
+   cero tickets reales (tickets sí cargaron) muestra 0. */
+const agentMetricHtml=(row,def)=>{const known=Array.isArray(row?.tickets),count=known?agentMetricRows(row,def).length:null,name=row.agente_nombre||"Agente";return `<button class="dash-agent-metric" type="button" data-agent-metric="${esc(def.key)}"${known?"":" disabled"} aria-label="${esc(`${name}: ${def.label}, ${known?`${count} tickets`:"sin datos"}`)}"${def.help?` aria-describedby="dashSupervisionHelp"`:""}><span>${esc(def.label)}</span><b>${known?count:"—"}</b></button>`};
 const agentTicketRow=t=>`<article class="dash-agent-ticket"><span class="tag ${ticketPriorityCls(t.prioridad)}">${esc(t.prioridad||"media")}</span><div><b>${esc(t.empresa_capturada||t.clientes?.nombre||"Sin cliente")}</b><span>${esc(t.folio||"—")} · ${esc(t.titulo||"Sin título")}</span><small>${esc(ticketStateLabel(t.estado))} · ${esc(ago(t.fecha_actualizacion||t.fecha_creacion))}${t.sla_breached_first_response||t.sla_breached_resolution?" · SLA vencido":""}${t.requiere_supervision?" · Supervisión":""}</small></div><a class="mini btn-ghost" href="ticket.html?id=${encodeURIComponent(t.id)}">Ver ticket</a></article>`;
 function renderAgentModal(){
   const {agent,metric,page}=AGENT_MODAL_STATE;if(!agent||!metric)return;
@@ -58,18 +68,50 @@ function openAgentMetric(row,metricKey,trigger){
   openDialog("#dashAgentModal",{trigger,initialFocus:"#dashAgentClose",fallbackFocus:trigger,onCloseRequest:()=>closeDialog("#dashAgentModal")});
 }
 
+/* Nota administrativa discreta (nunca visible para soporte: la sección es admin-only).
+   Clasifica la causa, muestra un mensaje honesto y ofrece reintentar sin duplicar
+   listeners (el botón es un elemento nuevo en cada render). */
+const agentAdminNote=(kind,contexto)=>`<div class="dash-admin-note" role="status" data-agent-note><b>No se pudieron ${esc(contexto)}.</b> <span class="mut">${esc(describeLoadError(kind))}</span> <button class="mini btn-ghost" type="button" data-agent-retry>Reintentar</button></div>`;
+const agentCardHtml=(r,i)=>`<article class="dash-agent-card" data-agent-row="${i}"><span class="dash-agent-head"><b>${esc(r.agente_nombre||"Agente")}</b><span class="tag">${esc(r.agente_rol||"—")}</span></span><span class="dash-agent-metrics">${AGENT_METRICS.map(d=>agentMetricHtml(r,d)).join("")}</span></article>`;
+
+function renderAgents(box,{profilesFailed=false,ticketsKind=null}={}){
+  if(!box)return;
+  const rows=AGENT_STATE.value?.rows||[];
+  AGENT_ROWS=rows; /* índices data-agent-row consistentes con lo renderizado (incl. datos rancios) */
+  const notes=[];
+  if(profilesFailed)notes.push(agentAdminNote(AGENT_STATE.error,"cargar los agentes"));
+  else if(ticketsKind)notes.push(agentAdminNote(ticketsKind,"cargar las métricas de tickets"));
+  if(AGENT_STATE.stale&&rows.length)notes.push('<div class="dash-admin-note mut" role="status">Mostrando el último resumen válido mientras se restablece la carga.</div>');
+  if(!rows.length){
+    box.innerHTML=profilesFailed?notes.join(""):'<div class="empty-state">Sin agentes en el resumen.</div>';
+  }else{
+    box.innerHTML=rows.map(agentCardHtml).join("")+notes.join("");
+  }
+  box.querySelector("[data-agent-retry]")?.addEventListener("click",loadAgentSummary,{once:true});
+}
+
 async function loadAgentSummary(){
   if(!CTX.isAdmin)return;
-  const box=$("#dashAgentGrid");
-  try{
-    perfCountRequest();
-    const profiles=await supabase.from("perfiles").select("id,nombre,rol").eq("rol","soporte").order("nombre",{ascending:true});
-    if(profiles.error)throw profiles.error;
-    const ids=(profiles.data||[]).map(x=>x.id),tickets=[];
-    if(ids.length)for(let from=0;;from+=500){const result=await supabase.from("tickets").select("id,folio,titulo,estado,prioridad,asignado_a,cliente_id,empresa_capturada,fecha_creacion,fecha_actualizacion,sla_breached_first_response,sla_breached_resolution,requiere_supervision,clientes(nombre)").in("asignado_a",ids).order("fecha_actualizacion",{ascending:false}).range(from,from+499);if(result.error)throw result.error;tickets.push(...(result.data||[]));if((result.data||[]).length<500)break}
-    AGENT_ROWS=(profiles.data||[]).map(p=>({agente_id:p.id,agente_nombre:p.nombre||"Agente",agente_rol:p.rol||"soporte",tickets:tickets.filter(t=>String(t.asignado_a)===String(p.id))}));
-    box.innerHTML=AGENT_ROWS.length?AGENT_ROWS.map((r,i)=>`<article class="dash-agent-card" data-agent-row="${i}"><span class="dash-agent-head"><b>${esc(r.agente_nombre||"Agente")}</b><span class="tag">${esc(r.agente_rol||"—")}</span></span><span class="dash-agent-metrics">${AGENT_METRICS.map(d=>agentMetricHtml(r,d)).join("")}</span></article>`).join(""):'<div class="empty-state">Sin agentes en el resumen.</div>';
-  }catch(e){box.innerHTML='<div class="empty-state">No se pudo cargar el resumen de agentes.</div>';console.error("AGENT_SUMMARY_LOAD_ERROR",e)}
+  const box=$("#dashAgentGrid");if(!box)return;
+  const token=agentSeq.next();
+  if(!AGENT_STATE.value)box.innerHTML='<div class="dash-skel"></div><div class="dash-skel"></div>';
+  perfCountRequest();
+  /* 1) Perfiles: superficie propia. Su falla NO destruye datos previos válidos. */
+  const prof=await supabase.from("perfiles").select("id,nombre,rol").eq("rol","soporte").order("nombre",{ascending:true})
+    .then(r=>r.error?{ok:false,error:r.error}:{ok:true,value:r.data||[]}).catch(error=>({ok:false,error}));
+  if(!agentSeq.isCurrent(token))return; /* llegó una carga posterior: descartar */
+  if(!prof.ok){AGENT_STATE=keepLastValid(AGENT_STATE,{ok:false,error:prof.error});renderAgents(box,{profilesFailed:true});console.error("AGENT_PROFILES_LOAD_ERROR",AGENT_STATE.error);return;}
+  /* 2) Tickets: superficie separada. Una falla parcial conserva los perfiles y sólo
+     deja las métricas en "—" (sin inventar ceros). */
+  const ids=prof.value.map(x=>x.id);let ticketsOk=true,ticketsKind=null,tickets=[];
+  if(ids.length){
+    try{for(let from=0;;from+=500){const result=await supabase.from("tickets").select("id,folio,titulo,estado,prioridad,asignado_a,cliente_id,empresa_capturada,fecha_creacion,fecha_actualizacion,sla_breached_first_response,sla_breached_resolution,requiere_supervision,clientes(nombre)").in("asignado_a",ids).order("fecha_actualizacion",{ascending:false}).range(from,from+499);if(result.error)throw result.error;tickets.push(...(result.data||[]));if((result.data||[]).length<500)break}}
+    catch(error){ticketsOk=false;ticketsKind=classifyLoadError(error);console.error("AGENT_TICKETS_LOAD_ERROR",ticketsKind);}
+  }
+  if(!agentSeq.isCurrent(token))return;
+  const rows=prof.value.map(p=>({agente_id:p.id,agente_nombre:p.nombre||"Agente",agente_rol:p.rol||"soporte",tickets:ticketsOk?tickets.filter(t=>String(t.asignado_a)===String(p.id)):null}));
+  AGENT_STATE=keepLastValid(AGENT_STATE,{ok:true,value:{rows,ticketsOk}});
+  renderAgents(box,{ticketsKind});
 }
 
 /* ---------- cache breve de métricas (volver al dashboard sin repetir counts) ---------- */
@@ -94,21 +136,21 @@ const cnt = (build) => { perfCountRequest(); return build.then(r => (r.error ? n
 /* ---------- KPI rail ---------- */
 /* label con salto controlado (br autorizado, sin cortar palabras) */
 const KPI_DEF = {
-  abiertos:   { label: "Abiertos", href: "tickets.html?state=abierto" },
-  proceso:    { label: "En proceso", href: "tickets.html?state=en_proceso" },
-  esperando:  { label: "Esperando<br>cliente", href: "tickets.html?state=esperando_cliente" },
-  resueltos:  { label: "Resueltos", href: "tickets.html?state=resuelto" },
-  sinAsignar: { label: "Sin asignar", warnIf: v => v > 0 },
-  urgentes:   { label: "Alta / urgente", href: "tickets.html?priority=urgente", warnIf: v => v > 0 },
+  abiertos:   { label: "Abiertos", href: "tickets.html?from=dashboard&scope=all&state=abierto" },
+  proceso:    { label: "En proceso", href: "tickets.html?from=dashboard&scope=all&state=en_proceso" },
+  esperando:  { label: "Esperando<br>cliente", href: "tickets.html?from=dashboard&scope=all&state=esperando_cliente" },
+  resueltos:  { label: "Resueltos", href: "tickets.html?from=dashboard&scope=all&state=resuelto" },
+  sinAsignar: { label: "Sin asignar", href: "tickets.html?from=dashboard&scope=unassigned" },
+  urgentes:   { label: "Alta / urgente", href: "tickets.html?from=dashboard&scope=all&kpi=urgent", warnIf: v => v > 0 },
   hoyN:       { label: "Creados hoy" },
   semana:     { label: "Creados<br>esta semana" },
   consolidar: { label: "Por consolidar", href: "consolidacion-clientes.html", warnIf: v => v > 0 },
-  slaPR:      { label: "SLA 1ª vencida", badIf: v => v > 0 },
-  slaRes:     { label: "SLA vencido", badIf: v => v > 0 },
-  misAbiertos:  { label: "Mis tickets<br>abiertos", href: "tickets.html" },
-  misEsperando: { label: "Esperando<br>cliente", href: "tickets.html?state=esperando_cliente" },
-  misUrgentes:  { label: "Alta / urgente", href: "tickets.html?priority=urgente", warnIf: v => v > 0 },
-  misCerrables: { label: "Cerrables<br>(resueltos)", href: "tickets.html?state=resuelto" },
+  slaPR:      { label: "SLA 1ª respuesta<br>vencida", href: "tickets.html?from=dashboard&scope=all&kpi=first_response_overdue", badIf: v => v > 0 },
+  slaRes:     { label: "SLA resolución<br>vencida", href: "tickets.html?from=dashboard&scope=all&kpi=sla_overdue", badIf: v => v > 0 },
+  misAbiertos:  { label: "Mis tickets<br>abiertos", href: "tickets.html?from=dashboard&scope=mine&state=abierto" },
+  misEsperando: { label: "Esperando<br>cliente", href: "tickets.html?from=dashboard&scope=mine&kpi=waiting" },
+  misUrgentes:  { label: "Alta / urgente", href: "tickets.html?from=dashboard&scope=mine&kpi=urgent", warnIf: v => v > 0 },
+  misCerrables: { label: "Cerrables<br>(resueltos)", href: "tickets.html?from=dashboard&scope=mine&kpi=resolved" },
   misPorVencer: { label: "Próximos<br>a vencer", warnIf: v => v > 0 },
 };
 const ADMIN_RAIL = ["abiertos", "proceso", "esperando", "resueltos", "sinAsignar", "urgentes", "hoyN", "semana", "consolidar", "slaPR", "slaRes"];
@@ -304,30 +346,163 @@ async function loadActividad() {
   }
 }
 
-/* ---------- Supervisión pendiente (misma recarga central, sin polling adicional) ---------- */
+/* ============================================================================
+   U15A-2 — REQUIEREN SUPERVISIÓN: bandeja compacta (5/pág, flechas, puntos,
+   contador, altura estable, estados carga/vacío/error/retry) + revisión rápida en
+   modal (no navega de inmediato). Sólo admin. La evidencia se muestra saneada: nunca
+   URL firmada, token, @thumb ni metadata cruda. La frontera real sigue en RLS/Edge.
+   ============================================================================ */
+const SUP_PAGE_SIZE=5, SUP_CAP=40;
+let SUP_PAGE=0, SUP_STATE={value:null,error:null,stale:false};
+const supSeq=createSequence(), supThumbSeq=createSequence();
+const SUP_MODAL_STATE={row:null,trigger:null};
+
+const supCardHtml=(r,abs)=>{
+  const ev=r.evidence, icon=ev.kind==="image"?"▧":ev.kind==="file"?"▣":"T", slaFlag=r.sla.first||r.sla.resolution;
+  return `<button class="dash-supervision-card" type="button" data-supervision-open="${abs}" aria-label="${esc(`Revisar caso ${r.folio} de ${r.clienteName}`)}">
+    <span class="dash-supervision-thumb${ev.kind==="image"?" is-image":""}" aria-hidden="true">${icon}</span>
+    <span class="dash-supervision-main">
+      <span class="dash-supervision-title"><b>${esc(r.folio)}</b><span class="tag ${ticketPriorityCls(r.prioridad)}">${esc(r.prioridad)}</span><span class="tag ${ticketStateCls(r.estado)}">${esc(ticketStateLabel(r.estado))}</span></span>
+      <span class="dash-supervision-sub">${esc(r.clienteName)} · ${esc(r.agentName)}</span>
+      <span class="dash-supervision-reason">${esc(r.motivo||"Enviado a supervisión")}</span>
+    </span>
+    <span class="dash-supervision-meta">
+      <span>${esc(ago(r.escaladoAt))}</span>
+      <span class="dash-sup-flags">${ev.kind==="image"||ev.kind==="file"?'<span class="dash-sup-flag" title="Incluye evidencia" aria-label="Incluye evidencia">📎</span>':""}${slaFlag?'<span class="dash-sup-flag is-bad" title="SLA vencido" aria-label="SLA vencido">⚠</span>':""}</span>
+    </span>
+  </button>`;
+};
+
+function renderSupDots(pages,page){
+  const host=$("#dashSupDots");if(!host)return;
+  host.innerHTML=pages>1?Array.from({length:pages},(_,i)=>`<button class="dash-act-dot${i===page?" is-active":""}" type="button" data-sup-page="${i}" aria-label="Ir a supervisión ${i+1}"${i===page?' aria-current="true"':""}><span></span></button>`).join(""):"";
+}
+
+function renderSupervision(){
+  const box=$("#dashSupervisionList");if(!box)return;
+  const totalEl=$("#dashSupTotal"),prev=$("#dashSupPrev"),next=$("#dashSupNext"),val=SUP_STATE.value;
+  if(!val||!val.rows.length){
+    if(SUP_STATE.error&&!val){
+      box.innerHTML=`<div class="empty-state">No se pudo cargar la cola de supervisión. <span class="mut">${esc(describeLoadError(SUP_STATE.error))}</span> <button class="mini btn-ghost" type="button" data-sup-retry>Reintentar</button></div>`;
+      box.querySelector("[data-sup-retry]")?.addEventListener("click",loadSupervision,{once:true});
+    }else box.innerHTML='<div class="empty-state">No hay tickets que requieran supervisión.</div>';
+    if(totalEl)totalEl.textContent="";
+    if(prev)prev.disabled=true;if(next)next.disabled=true;
+    renderSupDots(1,0);return;
+  }
+  const rows=val.rows, p=paginate({total:rows.length,page:SUP_PAGE,size:SUP_PAGE_SIZE});SUP_PAGE=p.page;
+  box.innerHTML=pageItems(rows,SUP_PAGE,SUP_PAGE_SIZE).map((r,i)=>supCardHtml(r,p.from+i)).join("")
+    +(val.degraded?'<div class="dash-admin-note mut" role="status">Algunos datos complementarios no cargaron; se muestran con valores de respaldo.</div>':"")
+    +(SUP_STATE.stale?'<div class="dash-admin-note mut" role="status">Mostrando la última cola válida mientras se restablece la carga.</div>':"");
+  if(totalEl)totalEl.textContent=`${val.total} ${val.total===1?"caso":"casos"}`;
+  if(prev)prev.disabled=!p.hasPrev;if(next)next.disabled=!p.hasNext;
+  renderSupDots(p.pages,p.page);
+}
+
+async function loadSupModalThumb(storagePath){
+  const host=$("#dashSupEvidence");if(!host||!storagePath)return;
+  const token=supThumbSeq.next();
+  try{
+    const{data:signed,error}=await supabase.storage.from("soporte_adjuntos").createSignedUrl(storagePath,90);
+    if(error||!signed?.signedUrl||!supThumbSeq.isCurrent(token))return; /* la URL firmada NUNCA se imprime: sólo alimenta img.src */
+    const slot=host.querySelector("[data-sup-evi-slot]");if(!slot)return;
+    const img=document.createElement("img");img.className="dash-sup-evi-img";img.alt="Miniatura segura del adjunto";img.loading="lazy";
+    img.addEventListener("error",()=>{img.remove();slot.textContent="Vista previa no disponible.";},{once:true});
+    img.src=signed.signedUrl;slot.textContent="";slot.appendChild(img);
+    setTimeout(()=>{img.removeAttribute("src");img.remove()},85000); /* expira antes que la URL firmada */
+  }catch{/* silencioso: la evidencia es opcional */}
+}
+
+function renderSupervisionModal(row){
+  SUP_MODAL_STATE.row=row;
+  const ev=row.evidence, slaTxt=row.sla.first&&row.sla.resolution?"1ª respuesta y resolución vencidas":row.sla.first?"1ª respuesta vencida":row.sla.resolution?"Resolución vencida":"";
+  $("#dashSupTitle").textContent=`${row.folio} · ${row.titulo}`;
+  $("#dashSupBody").innerHTML=`
+    <div class="dash-sup-grid">
+      <div class="dash-sup-kv"><span class="dash-sup-k">Cliente</span><span>${esc(row.clienteName)}</span></div>
+      <div class="dash-sup-kv"><span class="dash-sup-k">Producto</span><span>${esc(row.producto||"—")}</span></div>
+      <div class="dash-sup-kv"><span class="dash-sup-k">Agente asignado</span><span>${esc(row.agentName)}</span></div>
+      <div class="dash-sup-kv"><span class="dash-sup-k">Escaló</span><span>${esc(row.escaladoBy)} · ${esc(ago(row.escaladoAt))}</span></div>
+      <div class="dash-sup-kv"><span class="dash-sup-k">Prioridad</span><span class="tag ${ticketPriorityCls(row.prioridad)}">${esc(row.prioridad)}</span></div>
+      <div class="dash-sup-kv"><span class="dash-sup-k">Estado</span><span class="tag ${ticketStateCls(row.estado)}">${esc(ticketStateLabel(row.estado))}</span></div>
+      <div class="dash-sup-kv"><span class="dash-sup-k">SLA</span><span>${slaTxt?`<span class="tag bad">${esc(slaTxt)}</span>`:'<span class="tag ok">Dentro de compromiso</span>'}</span></div>
+    </div>
+    <div class="dash-sup-block"><span class="dash-sup-k">Motivo de supervisión</span><p>${esc(row.motivo||"Sin comentario interno registrado.")}</p></div>
+    <div class="dash-sup-block"><span class="dash-sup-k">Evidencia</span>
+      <div class="dash-sup-evi" id="dashSupEvidence">${
+        ev.kind==="image"&&ev.hasImage
+          ? `<div class="dash-sup-evi-thumb" data-sup-evi-slot aria-label="Miniatura segura del adjunto">▧</div>${ev.fileName?`<span class="mut">${esc(ev.fileName)}${ev.fileSize?` · ${esc(ev.fileSize)}`:""}</span>`:""}`
+          : ev.kind==="file"
+            ? `<div class="dash-sup-evi-file">▣ <span>${esc(ev.fileName||"Archivo adjunto")}${ev.fileSize?` · ${esc(ev.fileSize)}`:""}</span></div><span class="mut">Vista previa no disponible para este tipo; revísalo desde el ticket completo (sin reproducción automática).</span>`
+            : '<div class="empty-state">Este caso no incluye imagen ni archivo adjunto.</div>'
+      }</div>
+    </div>
+    <div class="dash-sup-block"><span class="dash-sup-k">Historial breve</span>${row.history.length?`<ul class="dash-sup-history">${row.history.map(h=>`<li><span>${esc(h.label)}</span><span class="mut">${esc(h.by)} · ${esc(ago(h.at))}</span></li>`).join("")}</ul>`:'<p class="mut">Sin eventos de supervisión adicionales.</p>'}</div>`;
+  $("#dashSupOpen").href=`ticket.html?id=${encodeURIComponent(row.id)}`;
+  if(ev.kind==="image"&&ev.hasImage&&row.storagePath)loadSupModalThumb(row.storagePath);
+}
+
+function openSupervisionCase(absIndex,trigger){
+  if(!CTX.isAdmin)return;
+  const row=SUP_STATE.value?.rows?.[absIndex];if(!row)return;
+  renderSupervisionModal(row);
+  openDialog("#dashSupervisionModal",{trigger,initialFocus:"#dashSupClose",fallbackFocus:trigger,onCloseRequest:()=>closeDialog("#dashSupervisionModal")});
+}
+
+function bindSupervisionNav(){
+  if(document.documentElement.dataset.supNavBound==="1")return;
+  document.documentElement.dataset.supNavBound="1";
+  $("#dashSupPrev")?.addEventListener("click",()=>{if(SUP_PAGE>0){SUP_PAGE--;renderSupervision()}});
+  $("#dashSupNext")?.addEventListener("click",()=>{const pages=paginate({total:SUP_STATE.value?.rows.length||0,page:SUP_PAGE,size:SUP_PAGE_SIZE}).pages;if(SUP_PAGE<pages-1){SUP_PAGE++;renderSupervision()}});
+  $("#dashSupDots")?.addEventListener("click",e=>{const d=e.target.closest("[data-sup-page]");if(d){SUP_PAGE=Number(d.dataset.supPage)||0;renderSupervision()}});
+  $("#dashSupervisionList")?.addEventListener("click",e=>{const b=e.target.closest("[data-supervision-open]");if(b)openSupervisionCase(Number(b.dataset.supervisionOpen),b)});
+}
+
 async function loadSupervision(){
   if(!CTX.isAdmin){$("#dashSupervision")?.classList.add("hidden");return}
-  const box=$("#dashSupervisionList");
-  if(!box)return;
+  const box=$("#dashSupervisionList");if(!box)return;
+  bindSupervisionNav();
+  const token=supSeq.next();
+  if(!SUP_STATE.value)box.innerHTML='<div class="dash-skel"></div><div class="dash-skel"></div><div class="dash-skel"></div>';
   try{
     perfCountRequest();
-    let q=supabase.from("tickets").select("id,folio,titulo,tipo,cliente_id,requiere_supervision_en,asignado_a,prioridad").eq("requiere_supervision",true).order("requiere_supervision_en",{ascending:false}).limit(8);
-    if(!CTX.isAdmin&&CTX.me)q=q.eq("asignado_a",CTX.me);
-    const{data,error}=await q;
+    const{data,error,count}=await supabase.from("tickets")
+      .select("id,folio,titulo,tipo,cliente_id,requiere_supervision_en,asignado_a,prioridad,estado,sla_breached_first_response,sla_breached_resolution",{count:"exact"})
+      .eq("requiere_supervision",true).order("requiere_supervision_en",{ascending:false}).limit(SUP_CAP);
     if(error)throw error;
-    const rows=data||[],ticketIds=rows.map(x=>x.id),profileIds=[...new Set(rows.map(x=>x.asignado_a).filter(Boolean))],clientIds=[...new Set(rows.map(x=>x.cliente_id).filter(Boolean))];
-    let agentes={},clientes={},events=[];
-    if(ticketIds.length){perfCountRequest();const r=await supabase.from("ticket_eventos").select("id,ticket_id,created_at,created_by,texto,meta").in("ticket_id",ticketIds).order("created_at",{ascending:false}).limit(48);if(!r.error)events=(r.data||[]).filter(x=>x.meta?.requires_admin_review);profileIds.push(...events.map(x=>x.created_by).filter(Boolean));}
+    if(!supSeq.isCurrent(token))return; /* una carga posterior ya venció a ésta */
+    const rows=data||[], ticketIds=rows.map(x=>x.id), profileIds=[...new Set(rows.map(x=>x.asignado_a).filter(Boolean))];
+    let agentes={},clientes={},events=[],degraded=false;
+    if(ticketIds.length){perfCountRequest();const r=await supabase.from("ticket_eventos").select("id,ticket_id,created_at,created_by,texto,meta").in("ticket_id",ticketIds).order("created_at",{ascending:false}).limit(120);if(r.error)degraded=true;else{events=(r.data||[]).filter(x=>x.meta?.requires_admin_review);profileIds.push(...events.map(x=>x.created_by).filter(Boolean));}}
     const uniqueProfiles=[...new Set(profileIds)];
-    if(uniqueProfiles.length){perfCountRequest();const r=await supabase.from("perfiles").select("id,nombre").in("id",uniqueProfiles);if(!r.error)agentes=Object.fromEntries((r.data||[]).map(p=>[p.id,p.nombre||"Agente"]));}
-    if(clientIds.length){perfCountRequest();const r=await supabase.from("clientes").select("id,nombre").in("id",clientIds);if(!r.error)clientes=Object.fromEntries((r.data||[]).map(c=>[c.id,c.nombre||"Cliente"]));}
-    const latest={};events.forEach(e=>{if(!latest[e.ticket_id])latest[e.ticket_id]=e});
-    const typeLabel=e=>e?.meta?.content_type==="image"?"Imagen":e?.meta?.content_type==="file"?"Archivo":"Texto";
-    const headline=e=>e?.meta?.content_type==="image"?"Imagen enviada a supervisión":e?.meta?.content_type==="file"?"Archivo enviado a supervisión":"Mensaje enviado a supervisión";
-    const imageRows=[];
-    box.innerHTML=rows.length?rows.map((x,i)=>{const e=latest[x.id],file=e?.meta?.ref_archivo_meta||{},isImage=e?.meta?.content_type==="image",path=isImage?String(file.storage_path||""):"",messagePreview=e?.meta?.content_type==="text"?String(e?.meta?.comentario||e?.texto||"").replace(/\s+/g," ").trim().slice(0,220):"";if(path)imageRows.push({i,path});return`<article class="dash-supervision-card"><div class="dash-supervision-thumb${isImage?" is-image":""}" data-supervision-thumb="${i}" aria-label="${esc(typeLabel(e))}">${isImage?"▧":e?.meta?.content_type==="file"?"▣":"T"}</div><div class="dash-supervision-main"><div class="dash-supervision-title"><b>${esc(headline(e))}</b><span class="tag info">${esc(typeLabel(e))}</span></div><a href="ticket.html?id=${encodeURIComponent(x.id)}">${esc(x.folio||"—")} · ${esc(x.titulo||"Sin título")}</a><span>${esc(clientes[x.cliente_id]||"Cliente permitido por RLS")} · ${esc(agentes[e?.created_by]||agentes[x.asignado_a]||"Agente")}</span>${messagePreview?`<span>${esc(messagePreview)}</span>`:""}${file.nombre_archivo?`<span>${esc(file.nombre_archivo)}${file.tamano_bytes?` · ${esc(prettyBytes(file.tamano_bytes))}`:""}</span>`:""}</div><div class="dash-supervision-meta"><span>${esc(ago(e?.created_at||x.requiere_supervision_en))}</span><span>${esc(agentes[x.asignado_a]||"Sin responsable")}</span><a class="mini btn-ghost" href="ticket.html?id=${encodeURIComponent(x.id)}">Abrir ticket</a></div></article>`}).join(""):'<div class="empty-state">No hay tickets que requieran supervisión.</div>';
-    imageRows.forEach(async item=>{try{const{data:signed,error:signedErr}=await supabase.storage.from("soporte_adjuntos").createSignedUrl(item.path,90);if(signedErr||!signed?.signedUrl)return;const host=box.querySelector(`[data-supervision-thumb="${item.i}"]`);if(!host)return;const img=document.createElement("img");img.alt="Miniatura segura del adjunto";img.loading="lazy";img.src=signed.signedUrl;img.addEventListener("error",()=>img.remove(),{once:true});host.textContent="";host.appendChild(img);setTimeout(()=>{img.removeAttribute("src");img.remove()},85000)}catch{}});
-  }catch(err){box.innerHTML='<div class="empty-state">No se pudo cargar la cola de supervisión.</div>';console.error("SUPERVISION_DASHBOARD_LOAD_ERROR",err?.message||"query_failed")}
+    if(uniqueProfiles.length){perfCountRequest();const r=await supabase.from("perfiles").select("id,nombre").in("id",uniqueProfiles);if(r.error)degraded=true;else agentes=Object.fromEntries((r.data||[]).map(p=>[p.id,p.nombre||"Agente"]));}
+    const clientIds=[...new Set(rows.map(x=>x.cliente_id).filter(Boolean))];
+    if(clientIds.length){perfCountRequest();const r=await supabase.from("clientes").select("id,nombre").in("id",clientIds);if(r.error)degraded=true;else clientes=Object.fromEntries((r.data||[]).map(c=>[c.id,c.nombre||"Cliente"]));}
+    if(!supSeq.isCurrent(token))return;
+    const latest={},byTicket={};
+    events.forEach(e=>{if(!latest[e.ticket_id])latest[e.ticket_id]=e;(byTicket[e.ticket_id]||(byTicket[e.ticket_id]=[])).push(e)});
+    const evLabel=e=>e?.meta?.content_type==="image"?"Imagen a supervisión":e?.meta?.content_type==="file"?"Archivo a supervisión":"Mensaje a supervisión";
+    const enriched=rows.map(x=>{
+      const e=latest[x.id], meta=e?.meta||{}, ev=evidenceView(meta,{prettyBytes});
+      return {
+        id:x.id, folio:x.folio||"—", titulo:x.titulo||"Sin título", prioridad:x.prioridad||"media", estado:x.estado,
+        producto:x.tipo||"", clienteName:clientes[x.cliente_id]||"Cliente permitido por RLS",
+        agentName:agentes[x.asignado_a]||"Sin responsable",
+        escaladoBy:agentes[e?.created_by]||agentes[x.asignado_a]||"Agente", escaladoAt:e?.created_at||x.requiere_supervision_en,
+        motivo:internalMessagePreview(meta,{max:200}),
+        evidence:ev, storagePath:evidenceStoragePath(meta),
+        sla:{first:x.sla_breached_first_response===true, resolution:x.sla_breached_resolution===true},
+        history:(byTicket[x.id]||[]).slice(0,5).map(z=>({at:z.created_at, by:agentes[z.created_by]||"Agente", label:evLabel(z)})),
+      };
+    });
+    SUP_STATE=keepLastValid(SUP_STATE,{ok:true,value:{rows:enriched,total:count??enriched.length,degraded}});
+    renderSupervision();
+  }catch(err){
+    if(!supSeq.isCurrent(token))return;
+    SUP_STATE=keepLastValid(SUP_STATE,{ok:false,error:err});
+    renderSupervision();
+    console.error("SUPERVISION_DASHBOARD_LOAD_ERROR",classifyLoadError(err));
+  }
 }
 
 /* ---------- Adaptador de vistas B19B (sin asumir despliegue) ---------- */
@@ -1015,7 +1190,7 @@ export function createLogView(root, { pageSize = 10 } = {}) {
       <button class="mini btn-ghost" type="button" data-log-next>Siguiente</button>
       <label class="adm-log-size"><span class="mut">Por página</span><select class="select" data-lf="size" aria-label="Eventos por página">${[10, 25, 50].map(n => `<option value="${n}"${n === size ? " selected" : ""}>${n}</option>`).join("")}</select></label>
     </div>`;
-  if(urlState){const params=new URLSearchParams(location.search);root.querySelectorAll("[data-lf]").forEach(field=>{const value=params.get(`log_${field.dataset.lf}`);if(value!=null)field.value=value});page=Math.max(0,(parseInt(params.get("log_page")||"1",10)||1)-1);size=[10,25,50].includes(parseInt(params.get("log_size")||"",10))?parseInt(params.get("log_size"),10):size;el('[data-lf="size"]').value=String(size)}
+  if(urlState){const params=new URLSearchParams(location.search);root.querySelectorAll("[data-lf]").forEach(field=>{const value=params.get(`log_${field.dataset.lf}`);if(value!=null)field.value=value});page=Math.max(0,(parseInt(params.get("log_page")||"1",10)||1)-1);size=10;const sizeField=el('[data-lf="size"]');if(sizeField){sizeField.value="10";sizeField.disabled=true;sizeField.setAttribute("aria-label","10 eventos por página")}}
   const activeValues=()=>[...root.querySelectorAll('[data-lf]:not([data-lf="size"])')].filter(f=>String(f.value||"").trim());
   const syncFilterMeta=()=>{const count=activeValues().length,tag=el("[data-log-active-filters]");if(tag)tag.textContent=`${count} filtro${count===1?"":"s"} activo${count===1?"":"s"}`;if(urlState){const params=new URLSearchParams();root.querySelectorAll("[data-lf]").forEach(f=>{if(f.value&&!(f.dataset.lf==="size"&&Number(f.value)===pageSize))params.set(`log_${f.dataset.lf}`,f.value)});if(page)params.set("log_page",String(page+1));history.replaceState(null,"",`${location.pathname}${params.size?`?${params}`:""}`)}};
   logActorOptions().then(list => {
@@ -1171,7 +1346,7 @@ async function init() {
   const ctx = await mountNav("dashboard");
   if (!ctx) return; /* guardSession redirige a index.html */
   CTX.rol = ctx.rol;
-  CTX.isAdmin = ["admin", "jefe", "owner", "administrador"].includes(ctx.rol);
+  CTX.isAdmin = isAdminRole(ctx.rol);
   CTX.me = ctx.perfil?.id || ctx.user?.id || null;
   CTX.nombre = ctx.perfil?.nombre || "";
   document.body.dataset.accessRole=CTX.isAdmin?"admin":"soporte";
@@ -1208,6 +1383,9 @@ async function init() {
     $("#dashAgentModal")?.addEventListener("click",e=>{if(e.target.id==="dashAgentModal")closeDialog("#dashAgentModal")});
     $("#dashAgentPrev")?.addEventListener("click",()=>{if(AGENT_MODAL_STATE.page>0){AGENT_MODAL_STATE.page--;renderAgentModal()}});
     $("#dashAgentNext")?.addEventListener("click",()=>{AGENT_MODAL_STATE.page++;renderAgentModal()});
+    $("#dashSupClose")?.addEventListener("click",()=>closeDialog("#dashSupervisionModal"));
+    $("#dashSupervisionModal")?.addEventListener("click",e=>{if(e.target.id==="dashSupervisionModal")closeDialog("#dashSupervisionModal")});
+    $("#dashSupCopy")?.addEventListener("click",()=>{const f=SUP_MODAL_STATE.row?.folio;if(f&&f!=="—")copyTxt(f,`Folio ${f} copiado`)});
     bindAdmin();
   }
 

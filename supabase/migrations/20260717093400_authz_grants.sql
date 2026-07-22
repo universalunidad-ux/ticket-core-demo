@@ -13,7 +13,6 @@ revoke select, insert, update, delete on public.bitacora from anon;
 revoke select, insert, update, delete on public.rate_limit_events from anon;
 revoke select, insert, update, delete on public.ticket_eventos from anon;
 revoke select, insert, update, delete on public.archivos_ticket from anon;
-revoke select, insert, update, delete on public.site_config from anon;
 
 -- authenticated: grants de tabla mínimos; RLS acota las filas.
 grant select on public.perfiles to authenticated;
@@ -27,4 +26,3 @@ grant select on public.solicitudes_soporte to authenticated;
 grant select on public.bitacora to authenticated;
 grant select on public.ticket_eventos to authenticated;
 grant select on public.archivos_ticket to authenticated;
-grant select, insert, update on public.site_config to authenticated;

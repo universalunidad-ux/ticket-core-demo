@@ -137,7 +137,6 @@ const bindClientTabs = () => {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const returnTo = clientListReturn();
-  $("#cfBack").href = returnTo;
   const id = new URLSearchParams(location.search).get("id");
   if (!id) { location.replace(returnTo); return; }
   const ctx = await mountNav("cliente");

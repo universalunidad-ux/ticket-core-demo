@@ -1,0 +1,457 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
+
+const read = path =>
+  readFileSync(join(ROOT, path), "utf8");
+
+const migration = read(
+  "supabase/migrations/20260721014500_u15cd_consolidation_rpc.sql",
+);
+
+const workflow = read(
+  ".github/workflows/frontend-gates.yml",
+);
+
+const frontend = read(
+  "app/consolidacion-clientes.js",
+);
+
+let passed = 0;
+
+const test = (name, fn) => {
+  fn();
+  passed += 1;
+  console.log(`PASS ${name}`);
+};
+
+test("migración permanece PREPARED_NOT_APPLIED", () => {
+  assert.match(migration, /-- PREPARED_NOT_APPLIED/);
+  assert.match(migration, /-- TC-U15C-D/);
+});
+
+test("añade versión monotónica dedicada", () => {
+  assert.match(
+    migration,
+    /add column if not exists consolidacion_version bigint not null default 0/,
+  );
+
+  assert.match(
+    migration,
+    /tickets_consolidacion_version_nonnegative_chk/,
+  );
+});
+
+test("RPC es SECURITY DEFINER con search_path fijo", () => {
+  assert.match(
+    migration,
+    /create or replace function public\.tc_consolidar_cliente_ticket\(/,
+  );
+
+  assert.match(migration, /security definer/);
+
+  assert.match(
+    migration,
+    /set search_path = public, pg_temp/,
+  );
+});
+
+test("autorización v1 es exclusivamente admin", () => {
+  assert.match(
+    migration,
+    /v_role := public\.tc_current_role\(\)/,
+  );
+
+  assert.match(
+    migration,
+    /v_role is distinct from 'admin'/,
+  );
+
+  assert.doesNotMatch(
+    migration,
+    /v_role[^;\n]*(owner|administrador|supervisor)/,
+  );
+});
+
+test("grants son fail-closed", () => {
+  assert.match(
+    migration,
+    /revoke execute on function public\.tc_consolidar_cliente_ticket[\s\S]*from public/,
+  );
+
+  assert.match(
+    migration,
+    /revoke execute on function public\.tc_consolidar_cliente_ticket[\s\S]*from anon/,
+  );
+
+  assert.match(
+    migration,
+    /grant execute on function public\.tc_consolidar_cliente_ticket[\s\S]*to authenticated/,
+  );
+});
+
+test("bloquea ticket antes de comparar versión", () => {
+  const lock = migration.indexOf(
+    "where id = p_ticket_id\n    for update;",
+  );
+
+  const compare = migration.indexOf(
+    "v_ticket.consolidacion_version <> p_expected_version",
+  );
+
+  assert.ok(lock >= 0);
+  assert.ok(compare > lock);
+});
+
+test("no usa fecha_actualizacion como expected_version", () => {
+  assert.match(
+    migration,
+    /p_expected_version bigint/,
+  );
+
+  assert.match(
+    migration,
+    /consolidacion_version <> p_expected_version/,
+  );
+
+  assert.doesNotMatch(
+    migration,
+    /fecha_actualizacion\s*<>\s*p_expected_version/,
+  );
+});
+
+test("reutiliza edge_idempotency sin crear otra tabla", () => {
+  assert.match(
+    migration,
+    /insert into public\.edge_idempotency/,
+  );
+
+  assert.match(
+    migration,
+    /on conflict \(idempotency_key\) do nothing/,
+  );
+
+  assert.match(
+    migration,
+    /IDEMPOTENCY_PAYLOAD_MISMATCH/,
+  );
+
+  assert.match(
+    migration,
+    /'replayed', true/,
+  );
+
+  assert.doesNotMatch(
+    migration,
+    /create table[^;]*edge_idempotency/,
+  );
+});
+
+test("declara exactamente las cuatro acciones", () => {
+  for (const action of [
+    "associate_existing",
+    "create_new",
+    "discard_candidate",
+    "postpone",
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`'${action}'`),
+    );
+  }
+});
+
+test("contacto debe pertenecer al cliente", () => {
+  assert.match(
+    migration,
+    /from public\.clientes_contactos[\s\S]*cliente_id = v_final_cliente_id/,
+  );
+
+  assert.match(
+    migration,
+    /CONTACT_NOT_OWNED_BY_CLIENT/,
+  );
+});
+
+test("actualiza decisión, evento y bitácora", () => {
+  assert.match(
+    migration,
+    /update public\.ticket_match_decisiones/,
+  );
+
+  assert.match(
+    migration,
+    /insert into public\.ticket_eventos/,
+  );
+
+  assert.match(
+    migration,
+    /insert into public\.bitacora/,
+  );
+});
+
+test("incrementa la versión exactamente en uno", () => {
+  assert.match(
+    migration,
+    /consolidacion_version = consolidacion_version \+ 1/,
+  );
+
+  assert.match(
+    migration,
+    /'new_version', v_ticket\.consolidacion_version \+ 1/,
+  );
+});
+
+test("incluye los tres índices faltantes", () => {
+  for (const indexName of [
+    "idx_tickets_cliente_id_sugerido",
+    "idx_tickets_contacto_id",
+    "idx_tickets_contacto_id_sugerido",
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`create index if not exists ${indexName}`),
+    );
+  }
+});
+
+test("frontend permanece deshabilitado", () => {
+  assert.match(
+    frontend,
+    /CONSOLIDATION_EXECUTION_ENABLED = false/,
+  );
+
+  assert.doesNotMatch(
+    frontend,
+    /\.rpc\(/,
+  );
+
+  assert.doesNotMatch(
+    frontend,
+    /functions\.invoke/,
+  );
+});
+
+test("contract test está registrado en CI", () => {
+  assert.match(
+    workflow,
+    /node tools\/u15d-consolidation-rpc-contract\.test\.mjs/,
+  );
+});
+
+
+test("prueba U15C-D2: hash calculado en servidor", () => {
+  assert.doesNotMatch(
+    migration,
+    /\bp_request_hash\s+text\b/,
+  );
+
+  assert.ok(
+    migration.includes("v_request_hash := md5("),
+  );
+
+  assert.match(
+    migration,
+    /request_hash\s+is\s+distinct\s+from\s+v_request_hash/,
+  );
+});
+
+test("prueba U15C-D2: guard de contacto precede al INSERT", () => {
+  const createStart = migration.indexOf(
+    "elsif p_action = 'create_new' then",
+  );
+
+  const createEnd = migration.indexOf(
+    "elsif p_action = 'discard_candidate' then",
+  );
+
+  assert.ok(createStart >= 0);
+  assert.ok(createEnd > createStart);
+
+  const createBlock = migration.slice(
+    createStart,
+    createEnd,
+  );
+
+  const guard = createBlock.indexOf(
+    "CONTACT_OVERWRITE_NOT_ALLOWED",
+  );
+
+  const contactInsert = createBlock.indexOf(
+    "insert into public.clientes_contactos",
+  );
+
+  assert.ok(guard >= 0);
+  assert.ok(contactInsert > guard);
+});
+
+test("prueba U15C-D2: tickets terminales son rechazados", () => {
+  assert.match(
+    migration,
+    /v_ticket\.estado\s+in\s*\(\s*'resuelto'\s*,\s*'cerrado'\s*\)/,
+  );
+
+  assert.match(
+    migration,
+    /TICKET_TERMINAL_STATE/,
+  );
+});
+
+test("prueba U15C-D2: fallos no consumen idempotencia", () => {
+  const completedWrites =
+    migration.match(
+      /\bset\s+status\s*=\s*'completed'/g,
+    ) || [];
+
+  const completedReferences =
+    migration.match(
+      /\bstatus\s*=\s*'completed'/g,
+    ) || [];
+
+  assert.equal(
+    completedWrites.length,
+    1,
+  );
+
+  assert.equal(
+    completedReferences.length,
+    2,
+  );
+
+  assert.match(
+    migration,
+    /TC_U15CD_LOGICAL_FAILURE/,
+  );
+
+  assert.match(
+    migration,
+    /detail\s*=\s*v_response::text/,
+  );
+});
+
+test("prueba U15C-D2: decision usa el dominio válido", () => {
+  for (const decision of [
+    "aceptado",
+    "ignorado",
+    "creado_cliente",
+    "creado_contacto",
+    "pendiente",
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`v_decision := '${decision}'`),
+    );
+  }
+
+  const insertStart = migration.indexOf(
+    "insert into public.ticket_match_decisiones",
+  );
+
+  const insertEnd = migration.indexOf(
+    "returning id into v_decision_id;",
+    insertStart,
+  );
+
+  assert.ok(insertStart >= 0);
+  assert.ok(insertEnd > insertStart);
+
+  const decisionInsert = migration.slice(
+    insertStart,
+    insertEnd,
+  );
+
+  assert.match(
+    decisionInsert,
+    /\bv_decision\b/,
+  );
+
+  assert.doesNotMatch(
+    decisionInsert,
+    /values\s*\(\s*p_ticket_id\s*,\s*p_action\s*\)/,
+  );
+});
+
+
+test("prueba U15C-D2: revokes explícitos compatibles con el inventario global", () => {
+  const signature =
+    "uuid, text, bigint, text, uuid, uuid, jsonb, jsonb";
+
+  assert.ok(
+    migration.includes(
+      `revoke execute on function public.tc_consolidar_cliente_ticket(${signature}) from public;`,
+    ),
+  );
+
+  assert.ok(
+    migration.includes(
+      `revoke execute on function public.tc_consolidar_cliente_ticket(${signature}) from anon;`,
+    ),
+  );
+
+  assert.ok(
+    migration.includes(
+      `grant execute on function public.tc_consolidar_cliente_ticket(${signature}) to authenticated;`,
+    ),
+  );
+
+  assert.doesNotMatch(
+    migration,
+    /revoke\s+all\s+on\s+function\s+public\.tc_consolidar_cliente_ticket/i,
+  );
+});
+
+
+test("prueba U15C-D3: postpone no reabre consolidaciones resueltas", () => {
+  assert.match(
+    migration,
+    /if\s+v_ticket\.requiere_consolidacion\s+is\s+not\s+true\s+then/,
+  );
+
+  assert.doesNotMatch(
+    migration,
+    /if\s+p_action\s*<>\s*'postpone'[\s\S]{0,100}?requiere_consolidacion/,
+  );
+
+  const resolvedGuard = migration.indexOf(
+    "if v_ticket.requiere_consolidacion is not true then",
+  );
+
+  const postponeBranch = migration.indexOf(
+    "elsif p_action = 'postpone' then",
+  );
+
+  assert.ok(resolvedGuard >= 0);
+  assert.ok(postponeBranch > resolvedGuard);
+
+  const resolvedBlockEnd = migration.indexOf(
+    "end if;",
+    resolvedGuard,
+  );
+
+  assert.ok(resolvedBlockEnd > resolvedGuard);
+
+  const resolvedBlock = migration.slice(
+    resolvedGuard,
+    resolvedBlockEnd,
+  );
+
+  assert.match(
+    resolvedBlock,
+    /CONSOLIDATION_ALREADY_RESOLVED/,
+  );
+
+  assert.match(
+    resolvedBlock,
+    /TC_U15CD_LOGICAL_FAILURE/,
+  );
+});
+
+console.log(
+  `U15D_CONSOLIDATION_RPC_CONTRACT_TESTS=PASS (${passed})`,
+);
