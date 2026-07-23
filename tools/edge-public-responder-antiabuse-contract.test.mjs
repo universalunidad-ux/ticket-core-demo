@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = resolve(process.argv[2] || ".");
-const base = "e95b39fbb8c79740d70b558b0aa61bdbabb95906";
+// Contrato histórico anclado por objetos Git inmutables, no por el working tree.
+const W1_HEAD = "e95b39fbb8c79740d70b558b0aa61bdbabb95906";
+const PORTAL_U1_HEAD = "39ac85d36464367959816230cbee5620a2ba7fa3";
 const responderPath = "supabase/functions/estado-ticket-responder-ts/index.ts";
 const supportPath = "supabase/functions/support-submit-secure/index.ts";
 const helperPath = "supabase/functions/_shared/rate-limit.ts";
@@ -214,35 +216,61 @@ assert.equal(
   true,
 );
 
-const supportCurrent = readFileSync(join(root, supportPath));
-const supportBase = git(["show", `${base}:${supportPath}`], null);
-assert.deepEqual(supportCurrent, supportBase);
+// CONTRATO HISTÓRICO U1: se certifica contra el commit PORTAL_U1_HEAD y su
+// parent W1_HEAD usando objetos Git inmutables. No depende del working tree,
+// por lo que descendientes (p. ej. SEC02-W2) no lo invalidan.
 assert.equal(
-  git(["rev-parse", `${base}:${supportPath}`]).trim(),
-  "c81b9db0fc37fe630df346a9e7c62931925e9107",
+  git(["rev-parse", `${PORTAL_U1_HEAD}^`]).trim(),
+  W1_HEAD,
+  "W1_HEAD debe ser parent inmediato de PORTAL_U1_HEAD",
 );
-console.log("SUPPORT_SUBMIT_SECURE_UNCHANGED=PASS");
-
-const actual = new Map();
-for (const line of git(["diff", "--name-status", base, "--"])
+const historicalFootprint = new Map();
+for (const line of git([
+  "diff-tree", "--no-commit-id", "--name-status", "-r", PORTAL_U1_HEAD,
+])
   .trim()
   .split("\n")
   .filter(Boolean)) {
   const [action, path] = line.split("\t");
-  actual.set(path, action);
+  historicalFootprint.set(path, action);
 }
-for (const path of git(["ls-files", "--others", "--exclude-standard", "-z"])
-  .split("\0")
-  .filter(Boolean)) {
-  assert.equal(actual.has(path), false, `path duplicado: ${path}`);
-  actual.set(path, "A");
-}
+// deepEqual sobre entradas name-status (strings), nunca sobre buffers de archivo.
 assert.deepEqual(
-  [...actual.entries()].sort(),
+  [...historicalFootprint.entries()].sort(),
   [...allowlist.entries()].sort(),
 );
-console.log("ANTIABUSE_ALLOWLIST_EXACT=PASS");
+assert.equal(historicalFootprint.size, 5, `footprint histórico=${historicalFootprint.size}`);
+assert.equal(
+  historicalFootprint.has(supportPath),
+  false,
+  "support-submit no puede estar modificado dentro del commit histórico U1",
+);
+console.log("HISTORICAL_U1_FOOTPRINT_EXACT=PASS");
 
+// Byte-identidad histórica de support-submit vía blob IDs (SHA), sin deepEqual de buffers.
+const supportBlobW1 = git(["rev-parse", `${W1_HEAD}:${supportPath}`]).trim();
+const supportBlobU1 = git(["rev-parse", `${PORTAL_U1_HEAD}:${supportPath}`]).trim();
+assert.equal(supportBlobW1, "c81b9db0fc37fe630df346a9e7c62931925e9107");
+assert.equal(
+  supportBlobU1,
+  supportBlobW1,
+  "support-submit debe ser byte-identical (blob) entre PORTAL_U1_HEAD y W1_HEAD",
+);
+console.log("HISTORICAL_SUPPORT_SUBMIT_UNCHANGED=PASS");
+
+// CONTRATO DEL HEAD ACTUAL (descendant-safe): no exige diff exacto W1→HEAD ni
+// que support-submit siga igual a W1. Sólo exige ancestría y presencia del helper canónico.
+const ancestry = spawnSync("git", ["merge-base", "--is-ancestor", PORTAL_U1_HEAD, "HEAD"], { cwd: root });
+assert.equal(ancestry.status, 0, "PORTAL_U1_HEAD debe ser ancestro del HEAD actual");
+assert.equal(
+  existsSync(join(root, helperPath)),
+  true,
+  "el helper rate-limit canónico debe existir en el árbol actual",
+);
+console.log("CURRENT_HEAD_DESCENDS_FROM_U1=PASS");
+
+// Invariante de seguridad sobre archivos propiedad de U1 en el árbol actual:
+// ningún descendiente puede introducir comandos de mutación remota en ellos.
 const implementationText = [...allowlist.keys()]
   .map((path) => readFileSync(join(root, path), "utf8"))
   .join("\n");
@@ -259,12 +287,7 @@ for (const sentinel of remoteMutationSentinels) {
     `comando remoto prohibido: ${sentinel}`,
   );
 }
-for (const path of actual.keys()) {
-  assert.equal(path.endsWith(".sql"), false);
-  assert.equal(path.startsWith("supabase/migrations/"), false);
-  assert.equal(path.startsWith(".github/workflows/"), false);
-}
-console.log("ANTIABUSE_NO_SQL_MIGRATIONS_DEPLOY=PASS");
+console.log("U1_INVARIANTS_NO_REMOTE_MUTATION=PASS");
 
 const runner = readFileSync(join(root, runnerPath), "utf8");
 assert.equal(runner.includes(contractTestPath.split("/").pop()), true);
