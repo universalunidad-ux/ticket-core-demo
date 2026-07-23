@@ -1,4 +1,5 @@
 import{createClient}from"https://esm.sh/@supabase/supabase-js@2";
+import{rateLimit}from"../_shared/rate-limit.ts";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
 const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{...cors,"Content-Type":"application/json"}});
 const env=(k:string)=>{const v=Deno.env.get(k);if(!v)throw new Error(`${k} required`);return v};
@@ -8,13 +9,15 @@ const fileSafe=(name:string)=>name.normalize("NFD").replace(/[\u0300-\u036f]/g,"
 const getIp=(req:Request)=>req.headers.get("cf-connecting-ip")||req.headers.get("x-forwarded-for")||req.headers.get("x-real-ip")||"unknown";
 const allowedExt=new Set(["jpg","jpeg","png","webp","pdf","xml","xls","xlsx","csv","txt","zip"]);
 const allowedMime=new Set(["image/jpeg","image/png","image/webp","application/pdf","text/xml","application/xml","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","text/csv","text/plain","application/zip","application/x-zip-compressed"]);
-Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:cors});if(req.method!=="POST")return json({error:"Método no permitido"},405);try{
+const BODY_PRE_GUARD_BYTES=64*1024*1024,PORTAL_REPLY_RATE_LIMIT=8,PORTAL_REPLY_RATE_WINDOW_MINUTES=10;
+Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:cors});if(req.method!=="POST")return json({error:"Método no permitido"},405);const contentLength=Number(req.headers.get("content-length"));if(Number.isFinite(contentLength)&&contentLength>BODY_PRE_GUARD_BYTES)return json({error:"Solicitud demasiado grande"},413);try{
 const sb=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY")),form=await req.formData(),folio=clean(form.get("folio")),token=clean(form.get("token")),texto=clean(form.get("texto")),ip=getIp(req),user_agent=req.headers.get("user-agent")||"",now=new Date().toISOString();
 if(!folio||!token)return json({error:"Faltan datos"},400);
 const{data:t,error}=await sb.from("tickets").select("id,cliente_id,folio,estado,timeline_publica,adjuntos,evidencia_count,token_publico,token_publico_expira").eq("folio",folio).eq("token_publico",token).maybeSingle();
 if(error)return json({error:error.message},500);if(!t)return json({error:"No encontrado"},404);
 if(t.token_publico_expira&&new Date(String(t.token_publico_expira)).getTime()<Date.now())return json({error:"Enlace expirado"},410);
 if(["cerrado"].includes(lower(t.estado)))return json({error:"El ticket está cerrado"},409);
+if(!await rateLimit(sb,"portal_reply",`${ip}:${folio}`,PORTAL_REPLY_RATE_LIMIT,PORTAL_REPLY_RATE_WINDOW_MINUTES))return json({error:"Demasiadas solicitudes. Espera un momento e inténtalo de nuevo."},429);
 const files=[...form.entries()].filter(([k])=>k==="files").map(([,v])=>v).filter(v=>v instanceof File) as File[];
 if(!texto&&!files.length)return json({error:"Agrega un mensaje o al menos un archivo"},400);
 if(files.length>10)return json({error:"Máximo 10 archivos"},400);
