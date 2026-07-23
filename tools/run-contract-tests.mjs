@@ -254,4 +254,8 @@ const sensitivity = spawnSync(process.execPath, [join(root, "tools/support-secur
 if (sensitivity.stdout) process.stdout.write(sensitivity.stdout);
 if (sensitivity.stderr) process.stderr.write(sensitivity.stderr);
 assert.equal(sensitivity.status, 0, "sensitivity gate");
+const antiabuse = spawnSync(process.execPath, ["--experimental-strip-types", join(root, "tools/edge-public-responder-antiabuse-contract.test.mjs"), root], { cwd: root, encoding: "utf8" });
+if (antiabuse.stdout) process.stdout.write(antiabuse.stdout);
+if (antiabuse.stderr) process.stderr.write(antiabuse.stderr);
+assert.equal(antiabuse.status, 0, "edge public responder antiabuse gate");
 console.log(`CONTRACT_TESTS: PASS (positive=${positive} negative=${negative} sensitivity=16)`);
