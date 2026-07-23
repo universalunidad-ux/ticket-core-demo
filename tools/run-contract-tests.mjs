@@ -259,3 +259,17 @@ if (antiabuse.stdout) process.stdout.write(antiabuse.stdout);
 if (antiabuse.stderr) process.stderr.write(antiabuse.stderr);
 assert.equal(antiabuse.status, 0, "edge public responder antiabuse gate");
 console.log(`CONTRACT_TESTS: PASS (positive=${positive} negative=${negative} sensitivity=16)`);
+
+for (const script of [
+  "support-handler-wiring.test.mjs",
+  "support-handler-wiring-sensitivity.test.mjs",
+]) {
+  const result = spawnSync(process.execPath, [
+    "--experimental-strip-types",
+    join(root, "tools", script),
+    root,
+  ], { cwd: root, encoding: "utf8" });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  assert.equal(result.status, 0, `${script} failed`);
+}

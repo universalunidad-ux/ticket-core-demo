@@ -1,5 +1,18 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { ALLOWED_EXT, ALLOWED_MIME, extCategory, sniffCategory, MAX_FILES, MAX_IMG, MAX_VID, MAX_PDF, CAP_IMG, CAP_PDF, CAP_VID, MAX_TOTAL_BYTES } from "../_shared/upload-contract.ts";
+import { parsePublicSupportDto, type PublicSupportDto } from "../_shared/support-contract.ts";
+import { validateAttachmentBatch, type AttachmentInput, type ValidatedAttachment } from "../_shared/upload-contract.ts";
+import { escapeHtml, sanitizeEmailSubject } from "../_shared/security-primitives.ts";
+import {
+  SUPPORT_TURNSTILE_ACTION,
+  TURNSTILE_FETCH_TIMEOUT_MS,
+  TURNSTILE_TOKEN_MAX_LENGTH,
+  inspectSupportRequestHeaders,
+  parseSupportMultipartBody,
+  readBoundedRequestBody,
+  validateTurnstileSiteverify,
+  type ContractResult,
+  type SupportRequestErrorCode,
+} from "../_shared/support-request-contract.ts";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -16,6 +29,7 @@ const IS_DEV=["development","dev","local"].includes(ENVIRONMENT);
 const IS_PROD=!IS_DEV;
 const REQUIRE_TURNSTILE_EFFECTIVE=((Deno.env.get("REQUIRE_TURNSTILE")||(IS_PROD?"true":"false")).toLowerCase()==="true");
 const MAX_BODY_BYTES=Number(Deno.env.get("MAX_BODY_BYTES")||(64*1024*1024));
+const HANDLER_CONFIGURATION_VALID=Number.isSafeInteger(MAX_BODY_BYTES)&&MAX_BODY_BYTES>0;
 const DEFAULT_ORIGINS=[PUBLIC_APP_URL,"https://universalunidad-ux.github.io"].filter(Boolean);
 const ALLOWED_ORIGINS=new Set((Deno.env.get("CORS_ALLOWED_ORIGINS")||DEFAULT_ORIGINS.join(",")).split(",").map(o=>o.trim().replace(/\/+$/,"")).filter(Boolean));
 const corsBase={"Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, idempotency-key","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"};
@@ -28,20 +42,33 @@ const json=(body:Record<string,unknown>,status=200,origin="")=>new Response(JSON
 const getIp=(req:Request)=>{const xff=(req.headers.get("x-forwarded-for")||"").split(",")[0].trim();return req.headers.get("cf-connecting-ip")||xff||req.headers.get("x-real-ip")||"unknown";};
 const sha256hex=async(v:string)=>{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("");};
 const ipHashOf=async(ip:string)=>ip&&ip!=="unknown"?(await sha256hex(ip)).slice(0,16):"unknown";
-// Contrato de límites coherente (aplica aunque falte Content-Length).
-const sanitize=(v:unknown,max=3000)=>String(v??"").trim().replace(/\s+/g," ").slice(0,max);
 const digits=(v:unknown)=>String(v??"").replace(/\D+/g,"");
-const clean=(v:unknown)=>String(v??"").trim();
-const validMail=(v:unknown)=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||"").trim());
 const norm=(v:unknown)=>String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
 const domainOf=(mail:string)=>{const m=String(mail||"").trim().toLowerCase(),i=m.indexOf("@");return i>-1?m.slice(i+1):""};
 const randToken=()=>crypto.randomUUID().replace(/-/g,"")+crypto.randomUUID().replace(/-/g,"");
 const getNextFolio=async(prefix="EX")=>{const {data,error}=await sb.rpc("next_ticket_folio",{p_prefix:prefix});if(error)throw new Error(`FOLIO_RPC_ERROR: ${error.message}`);const folio=String(data||"").trim();if(!folio)throw new Error("FOLIO_EMPTY");return folio};
 const slaPack=(prioridad:string)=>{const p=String(prioridad||"media").toLowerCase(),now=Date.now();if(p==="urgente")return{sla_policy:"urgent_2h_8h",sla_first_response_deadline:new Date(now+2*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+8*60*60*1000).toISOString()};if(p==="alta")return{sla_policy:"high_4h_24h",sla_first_response_deadline:new Date(now+4*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+24*60*60*1000).toISOString()};if(p==="media")return{sla_policy:"medium_8h_48h",sla_first_response_deadline:new Date(now+8*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+48*60*60*1000).toISOString()};return{sla_policy:"low_24h_72h",sla_first_response_deadline:new Date(now+24*60*60*1000).toISOString(),sla_resolution_deadline:new Date(now+72*60*60*1000).toISOString()}};
-const allowedExt=ALLOWED_EXT;
-const allowedMime=ALLOWED_MIME;
-
-async function verifyTurnstile(token:string,ip:string){const form=new FormData();form.append("secret",TURNSTILE_SECRET);form.append("response",token);if(ip&&ip!=="unknown")form.append("remoteip",ip);const res=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});return await res.json()}
+async function verifyTurnstile(
+  token:string,
+  ip:string,
+  expected:{hostname:string;action:typeof SUPPORT_TURNSTILE_ACTION;nowMs:number},
+):Promise<ContractResult<Readonly<{challengeTs:string;hostname:string;action:string}>>>{
+  if(!token||token.length>TURNSTILE_TOKEN_MAX_LENGTH)return{ok:false,code:"TURNSTILE_TOKEN_INVALID"};
+  const form=new FormData();
+  form.append("secret",TURNSTILE_SECRET);
+  form.append("response",token);
+  if(ip&&ip!=="unknown")form.append("remoteip",ip);
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),TURNSTILE_FETCH_TIMEOUT_MS);
+  try{
+    const res=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form,signal:controller.signal});
+    if(!res.ok)return{ok:false,code:"TURNSTILE_UNAVAILABLE"};
+    let value:unknown;
+    try{value=await res.json()}catch{return{ok:false,code:"TURNSTILE_UNAVAILABLE"}}
+    return validateTurnstileSiteverify(value,expected);
+  }catch{return{ok:false,code:"TURNSTILE_UNAVAILABLE"}}
+  finally{clearTimeout(timeout)}
+}
 async function rateLimit(scope:string,key:string,limit:number,windowMinutes:number){const since=new Date(Date.now()-windowMinutes*60_000).toISOString();const {count,error}=await sb.from("rate_limit_events").select("*",{count:"exact",head:true}).eq("scope",scope).eq("key",key).gte("created_at",since);if(error)throw error;if((count||0)>=limit)return false;const ins=await sb.from("rate_limit_events").insert({scope,key});if(ins.error)throw ins.error;return true}
 const LOG_BLOCK=new Set(["correo","email","telefono","phone","token","token_publico","idempotency_key","idemkey","payload","stack","message","nombre","descripcion"]);
 async function logSecurity(accion:string,cliente_id:string|null,detalle:Record<string,unknown>){try{const safe:Record<string,unknown>={};for(const [k,v] of Object.entries(detalle||{})){const kl=k.toLowerCase();if(LOG_BLOCK.has(kl))continue;if(kl==="ip"){safe.ip_hash=await ipHashOf(String(v||""));continue;}safe[k]=v;}const {error}=await sb.from("bitacora").insert({accion,cliente_id,detalle:safe,visibilidad:"interna",tipo:"nota_interna"});if(error)console.error("LOG_SECURITY_DB_ERROR")}catch(_e){console.error("LOG_SECURITY_ERROR")}}
@@ -50,6 +77,38 @@ async function addTicketEvento(ticket_id:string,autor_tipo:"cliente"|"soporte"|"
 async function addArchivoTicket({ticket_id,solicitud_id,origen,visibilidad,nombre_archivo,storage_path,url_firma,mime_type,tamano_bytes,subido_por=null,meta={}}:{ticket_id:string;solicitud_id?:string|null;origen:"solicitud"|"ticket"|"portal"|"interno";visibilidad:"publica"|"interna";nombre_archivo:string;storage_path:string;url_firma?:string|null;mime_type?:string|null;tamano_bytes?:number|null;subido_por?:string|null;meta?:Record<string,unknown>}){const {error}=await sb.from("archivos_ticket").insert({ticket_id,solicitud_id:solicitud_id||null,origen,visibilidad,nombre_archivo,storage_path,url_firma:url_firma||null,mime_type:mime_type||null,tamano_bytes:tamano_bytes||null,subido_por,meta});if(error)throw new Error(`ARCHIVO_TICKET_ERROR: ${error.message}`)}
 
 type MatchResult={level:string;score:number;cliente_id:string|null;contacto_id:string|null;cliente_nombre:string|null;contacto_nombre:string|null;reasons:string[]};
+type ValidatedUpload=Readonly<{metadata:ValidatedAttachment;bytes:Uint8Array}>;
+type PublicSuccessResponse=Readonly<{ok:true;folio:string;token_publico:string;status:"ticket_creado"}>;
+
+const publicSuccessKeys=["folio","ok","status","token_publico"] as const;
+const isPublicSuccessResponse=(value:unknown):value is PublicSuccessResponse=>{
+  if(value===null||typeof value!=="object"||Array.isArray(value))return false;
+  const response=value as Record<string,unknown>;
+  return Object.keys(response).sort().join(",")===publicSuccessKeys.join(",")
+    &&response.ok===true
+    &&typeof response.folio==="string"&&response.folio.length>0
+    &&typeof response.token_publico==="string"&&response.token_publico.length>0
+    &&response.status==="ticket_creado";
+};
+
+const requestErrorStatus=(code:SupportRequestErrorCode):number=>{
+  if(code==="BODY_TOO_LARGE"||code==="PAYLOAD_TOO_LARGE")return 413;
+  if(code==="CONTENT_TYPE_REQUIRED"||code==="CONTENT_TYPE_UNSUPPORTED"||code==="CONTENT_ENCODING_UNSUPPORTED")return 415;
+  if(code==="ORIGIN_REQUIRED"||code==="ORIGIN_NOT_ALLOWED")return 403;
+  if(code==="TURNSTILE_UNAVAILABLE")return 503;
+  return 400;
+};
+const requestErrorMessage=(code:SupportRequestErrorCode):string=>{
+  if(code==="ORIGIN_REQUIRED")return"Origin requerido.";
+  if(code==="ORIGIN_NOT_ALLOWED")return"Origin no permitido.";
+  if(code==="CONTENT_TYPE_REQUIRED"||code==="CONTENT_TYPE_UNSUPPORTED")return"Content-Type no soportado.";
+  if(code==="CONTENT_ENCODING_UNSUPPORTED")return"Content-Encoding no soportado.";
+  if(code==="BODY_TOO_LARGE")return"Solicitud demasiado grande.";
+  if(code==="PAYLOAD_TOO_LARGE")return"Payload demasiado grande.";
+  if(code==="PAYLOAD_JSON_INVALID")return"Payload inválido.";
+  if(code.startsWith("TURNSTILE_"))return code==="TURNSTILE_UNAVAILABLE"?"Validación de seguridad no disponible.":"No se pudo validar la solicitud.";
+  return"Solicitud inválida.";
+};
 
 async function matchCliente(empresa:string,correo:string,telefono:string):Promise<MatchResult>{
   const empresaNorm=norm(empresa),mail=String(correo||"").trim().toLowerCase(),phone=digits(telefono||""),mailDomain=domainOf(mail);
@@ -88,78 +147,71 @@ for(const a of aliases){const arr=aliasMap.get(a.cliente_id)||[];arr.push(norm((
 
 export const handler=async(req:Request):Promise<Response>=>{
   const reqOrigin=resolveOrigin(req);
-  // Shadow por-request: aplica CORS por allowlist (fail-closed) a todas las respuestas.
   const json=(body:Record<string,unknown>,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(reqOrigin),"Content-Type":"application/json"}});
-  const originHeader=(req.headers.get("origin")||"").replace(/\/+$/,"");
+  const originHeader=req.headers.get("origin")||"";
+  if(!HANDLER_CONFIGURATION_VALID)return json({message:"Configuración no disponible.",code:"HANDLER_CONFIGURATION_INVALID"},503);
   if(req.method==="OPTIONS"){
-    if(originHeader&&!reqOrigin)return json({message:"Origin no permitido."},403);
+    if(originHeader&&!reqOrigin)return json({message:"Origin no permitido.",code:"ORIGIN_NOT_ALLOWED"},403);
     return json({ok:true},200);
   }
-  if(req.method!=="POST")return json({message:"Method not allowed"},405);
+  if(req.method!=="POST")return json({message:"Method not allowed",code:"METHOD_NOT_ALLOWED"},405);
+
+  const headerResult=inspectSupportRequestHeaders(req.headers,ALLOWED_ORIGINS,MAX_BODY_BYTES);
+  if(!headerResult.ok)return json({message:requestErrorMessage(headerResult.code),code:headerResult.code},requestErrorStatus(headerResult.code));
+  const bodyResult=await readBoundedRequestBody(req.body,MAX_BODY_BYTES);
+  if(!bodyResult.ok)return json({message:requestErrorMessage(bodyResult.code),code:bodyResult.code},requestErrorStatus(bodyResult.code));
+  const multipartResult=await parseSupportMultipartBody(bodyResult.value,headerResult.value.contentType);
+  if(!multipartResult.ok)return json({message:requestErrorMessage(multipartResult.code),code:multipartResult.code},requestErrorStatus(multipartResult.code));
+  if(multipartResult.value.honeypot)return json({ok:true,status:"received"},200);
+
+  const rawPayload=multipartResult.value.payload;
+  if(rawPayload.length>200000)return json({message:requestErrorMessage("PAYLOAD_TOO_LARGE"),code:"PAYLOAD_TOO_LARGE"},413);
+  let parsedPayload:unknown;
+  try{parsedPayload=JSON.parse(rawPayload)}catch{return json({message:requestErrorMessage("PAYLOAD_JSON_INVALID"),code:"PAYLOAD_JSON_INVALID"},400)}
+  const dtoResult=parsePublicSupportDto(parsedPayload);
+  if(!dtoResult.ok)return json({message:"Los datos de soporte no son válidos.",code:"DTO_INVALID",issues:dtoResult.issues},400);
+  const dto:PublicSupportDto=dtoResult.value;
+
+  const attachmentInputs:AttachmentInput[]=[];
+  for(const file of multipartResult.value.files){
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    attachmentInputs.push(Object.freeze({name:file.name,mimeType:file.type,bytes}));
+  }
+  const attachmentResult=await validateAttachmentBatch(attachmentInputs);
+  if(!attachmentResult.ok){
+    const codes=new Set(attachmentResult.issues.map(issue=>issue.code));
+    const status=codes.has("UPLOAD_FILE_TOO_LARGE")||codes.has("UPLOAD_TOTAL_TOO_LARGE")?413:
+      [...codes].some(code=>code.includes("MIME")||code.includes("MAGIC")||code.includes("EXTENSION"))?415:400;
+    return json({message:"Uno o más adjuntos no son válidos.",code:"UPLOAD_INVALID",issues:attachmentResult.issues},status);
+  }
+  const validatedUploads:readonly ValidatedUpload[]=Object.freeze(attachmentResult.value.map((metadata,index)=>Object.freeze({metadata,bytes:attachmentInputs[index].bytes})));
+
   const ip=getIp(req);
-  // Origin allowlist fail-closed (no se refleja un Origin arbitrario)
-  if(originHeader&&!reqOrigin){await logSecurity("cors_origin_blocked",null,{ip});return json({message:"Origin no permitido."},403)}
-  // Content-Type estricto
-  const ctype=(req.headers.get("content-type")||"").toLowerCase();
-  if(!ctype.includes("multipart/form-data"))return json({message:"Content-Type no soportado."},415);
-  // Límite duro de cuerpo (defensa temprana por Content-Length)
-  const clen=Number(req.headers.get("content-length")||"0");
-  if(clen>MAX_BODY_BYTES)return json({message:"Solicitud demasiado grande."},413);
+  if(REQUIRE_TURNSTILE_EFFECTIVE){
+    if(!TURNSTILE_SECRET)return json({message:"Validación de seguridad no disponible.",code:"TURNSTILE_UNCONFIGURED"},503);
+    const turnstileResult=await verifyTurnstile(multipartResult.value.turnstileToken,ip,{
+      hostname:headerResult.value.hostname,
+      action:SUPPORT_TURNSTILE_ACTION,
+      nowMs:Date.now(),
+    });
+    if(!turnstileResult.ok)return json({message:requestErrorMessage(turnstileResult.code),code:turnstileResult.code},requestErrorStatus(turnstileResult.code));
+  }
+
   const idemKey=String(req.headers.get("idempotency-key")||"").slice(0,120);
   const uploadedPaths:string[]=[];
+  let validationBarrierReached=false;
+  const nombre=dto.nombre,empresa=dto.empresa,correo=dto.correo,telefono=dto.telefono,categoria=dto.categoria,sistema=dto.sistema,objetivo=dto.objetivo,titulo=dto.titulo,descripcion=dto.descripcion,impacto=dto.impacto,prioridad=dto.impacto,canal=dto.canal,desde_cuando=dto.desde_cuando,afecta_a=dto.afecta_a,ultimo_cambio=dto.cambio_previo,horario_contacto=dto.horario_disponible,horario_desde=dto.horario_desde,horario_hasta=dto.horario_hasta,horario_notas=dto.horario_notas,contexto_adicional=dto.contexto_extra,anydesk=dto.remote_access,origen="soporte_publico";
+  const totalBytes=validatedUploads.reduce((sum,upload)=>sum+upload.metadata.size,0);
   try{
-    const form=await req.formData();
-    // Honeypot anti-bot: campos ocultos que un humano deja vacíos.
-    const honeypot=String(form.get("website")||form.get("hp_field")||"").trim();
-    if(honeypot){await logSecurity("honeypot_triggered",null,{ip});return json({ok:true,status:"received"},200)}
-    const turnstileToken=String(form.get("turnstile_token")||"");
-    const rawPayload=String(form.get("payload")||"{}");
-    if(rawPayload.length>200000)return json({message:"Payload demasiado grande."},413);
-    let payload:any={};
-    try{payload=JSON.parse(rawPayload)}catch{return json({message:"Payload inválido."},400)}
-
-    if(REQUIRE_TURNSTILE_EFFECTIVE){
-      if(!TURNSTILE_SECRET){await logSecurity("turnstile_unconfigured",null,{ip});return json({message:"Validación de seguridad no disponible."},503)}
-      if(!turnstileToken){await logSecurity("turnstile_missing",null,{ip});return json({message:"Falta validación de seguridad."},400)}
-      const ts=await verifyTurnstile(turnstileToken,ip);
-      if(!ts?.success){await logSecurity("turnstile_failed",null,{ip,errors:ts?.["error-codes"]||[]});return json({message:"No se pudo validar la solicitud."},400)}
-    }
-
+    // VALIDATION_BARRIER_REACHED
+    validationBarrierReached=true;
     const rlOk=await rateLimit("support_submit",ip,5,10);
-if(!rlOk){await logSecurity("rate_limit_blocked",null,{ip,scope:"support_submit"});return json({message:"Ha enviado varias solicitudes en poco tiempo. Intente más tarde."},429)}
-    // Límite global de respaldo: no depende de un header por-cliente spoofable.
+    if(!rlOk){await logSecurity("rate_limit_blocked",null,{ip,scope:"support_submit"});return json({message:"Ha enviado varias solicitudes en poco tiempo. Intente más tarde.",code:"RATE_LIMIT_IP"},429)}
     const rlGlobal=await rateLimit("support_submit_global","ALL",300,10);
-    if(!rlGlobal){await logSecurity("rate_limit_blocked",null,{scope:"support_submit_global"});return json({message:"Servicio con alta demanda. Intente más tarde."},429)}
-const nombre=sanitize(payload?.nombre,120),empresa=sanitize(payload?.empresa,160)||null,correo=sanitize(payload?.correo,160),telefono=digits(payload?.telefono),categoria=sanitize(payload?.categoria,40),sistema=sanitize(payload?.sistema,120),objetivo=sanitize(payload?.objetivo,300),titulo=sanitize(payload?.titulo,120),descripcion=sanitize(payload?.descripcion,3000),impacto=sanitize(payload?.impacto,20),prioridad=sanitize(payload?.prioridad,20)||((impacto==="alta")?"alta":(impacto==="media")?"media":"baja"),canal=sanitize(payload?.canal,20),desde_cuando=sanitize(payload?.desde_cuando,160),afecta_a=sanitize(payload?.afecta_a,40),ultimo_cambio=sanitize(payload?.cambio_previo||payload?.ultimo_cambio,60),horario_contacto=sanitize(payload?.horario_disponible||payload?.horario_contacto,160),horario_desde=sanitize(payload?.horario_desde,20),horario_hasta=sanitize(payload?.horario_hasta,20),horario_notas=sanitize(payload?.horario_notas||payload?.horario_disponible||payload?.horario_contacto,200),contexto_adicional=sanitize(payload?.contexto_extra||payload?.contexto_adicional,3000),anydesk=sanitize(payload?.anydesk,120),origen="soporte_publico";
-
-
-    if(!nombre||!titulo||!descripcion||!sistema)return json({message:"Faltan campos obligatorios."},400);
- if(!correo)return json({message:"Falta el correo."},400);
-if(!validMail(correo))return json({message:"El correo no parece válido."},400);
+    if(!rlGlobal){await logSecurity("rate_limit_blocked",null,{scope:"support_submit_global"});return json({message:"Servicio con alta demanda. Intente más tarde.",code:"RATE_LIMIT_GLOBAL"},429)}
     const rlMail=await rateLimit("support_submit_mail",correo.toLowerCase(),5,60);
-    if(!rlMail){await logSecurity("rate_limit_blocked",null,{ip,scope:"support_submit_mail"});return json({message:"Ha enviado varias solicitudes con este correo. Intente más tarde."},429)}
-if(!telefono)return json({message:"Falta el teléfono."},400);
-if(telefono.length<10)return json({message:"El teléfono parece incompleto."},400);
+    if(!rlMail){await logSecurity("rate_limit_blocked",null,{ip,scope:"support_submit_mail"});return json({message:"Ha enviado varias solicitudes con este correo. Intente más tarde.",code:"RATE_LIMIT_EMAIL"},429)}
 
-
-    const files=[...form.entries()].filter(([k])=>k.startsWith("file_")).map(([,v])=>v).filter(v=>v instanceof File) as File[];
-    if(files.length>MAX_FILES)return json({message:"Máximo de archivos excedido."},400);
-
-    let totalBytes=0,nImg=0,nVid=0,nPdf=0;
-    for(const file of files){
-const safe=file.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9._()-]/g,"").slice(0,140)||"archivo",ext=(safe.split(".").pop()||"").toLowerCase(),mime=(file.type||"").toLowerCase(),size=Number(file.size||0),cat=extCategory(ext);
-      totalBytes+=size;
-      if(!allowedExt.has(ext)||cat==="other")return json({message:`Tipo no permitido: ${safe}`},400);
-      if(mime&&!allowedMime.has(mime))return json({message:`MIME no permitido: ${safe}`},400);
-  if(size<=0)return json({message:`Archivo vacío: ${safe||file.name}`},400);
-      if(cat==="image"){if(++nImg>MAX_IMG)return json({message:"Máximo 3 imágenes."},400);if(size>CAP_IMG)return json({message:`Imagen demasiado grande: ${safe}`},400);}
-      else if(cat==="video"){if(++nVid>MAX_VID)return json({message:"Máximo 1 video."},400);if(size>CAP_VID)return json({message:`Video demasiado grande: ${safe}`},400);}
-      else if(cat==="pdf"){if(++nPdf>MAX_PDF)return json({message:"Máximo 1 PDF."},400);if(size>CAP_PDF)return json({message:`PDF demasiado grande: ${safe}`},400);}
-      if(totalBytes>MAX_TOTAL_BYTES)return json({message:"El total de archivos excede el máximo permitido."},400);
-    }
-
-    const empresa_confirmada=!!payload?.empresa_confirmada,contacto_confirmado=!!payload?.contacto_confirmado,contacto_es_nuevo=!!payload?.contacto_es_nuevo,cliente_id_confirmado=clean(payload?.cliente_id_confirmado),contacto_id_confirmado=clean(payload?.contacto_id_confirmado);
-    // Idempotencia ATÓMICA (reemplaza SELECT->INSERT). Ver support_idem_claim.
     let idemActive=false;
     if(idemKey){
       const fp=(await sha256hex(`${correo}|${titulo}|${descripcion}`)).slice(0,32);
@@ -167,75 +219,84 @@ const safe=file.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s
       if(claim.error){console.error("IDEM_CLAIM_ERROR")}
       else{const c=Array.isArray(claim.data)?claim.data[0]:claim.data;
         if(c&&c.claimed===false){
-          if(c.status==="succeeded"&&c.response){await logSecurity("idempotent_replay_served",null,{ip});return json(c.response as Record<string,unknown>,200)}
-          await logSecurity("idempotent_inflight",null,{ip});return json({message:"Solicitud en curso."},409);
-        } else { idemActive=true; }
+          if(c.status==="succeeded"&&isPublicSuccessResponse(c.response)){await logSecurity("idempotent_replay_served",null,{ip});return json(c.response,200)}
+          await logSecurity("idempotent_inflight",null,{ip});return json({message:"Solicitud en curso.",code:"IDEMPOTENCY_IN_FLIGHT"},409);
+        }else{idemActive=true}
       }
     }
+
     const match=await matchCliente(empresa||"",correo,telefono);
+    const empresaOk=match.reasons.includes("empresa_exacta")||match.reasons.includes("alias_exacto")||match.reasons.includes("razon_social_exacta")||match.reasons.includes("rfc_exacto");
+    const empresa_confirmada=match.level==="alto"&&empresaOk&&!!match.cliente_id;
+    const cliente_id=empresa_confirmada?match.cliente_id:null;
+    const contacto_confirmado=empresa_confirmada&&!!match.contacto_id;
+    const contacto_es_nuevo=empresa_confirmada&&!match.contacto_id;
+    const contacto_id=contacto_confirmado?match.contacto_id:null;
+    const requiere_consolidacion=!empresa_confirmada||!contacto_confirmado;
+    const matchNivelEfectivo=requiere_consolidacion&&match.level==="alto"&&!empresaOk?"medio":match.level;
 
-
-
-
-let cliente_id:string|null=null,contacto_id:string|null=null,requiere_consolidacion=false;const empresaOk=match.reasons.includes("empresa_exacta")||match.reasons.includes("alias_exacto")||match.reasons.includes("razon_social_exacta")||match.reasons.includes("rfc_exacto");if(cliente_id_confirmado&&empresa_confirmada){cliente_id=cliente_id_confirmado;requiere_consolidacion=contacto_es_nuevo||!contacto_confirmado;if(contacto_id_confirmado&&contacto_confirmado&&!contacto_es_nuevo)contacto_id=contacto_id_confirmado}else if(match.level==="alto"&&empresaOk){cliente_id=match.cliente_id;if(match.contacto_id&&!contacto_es_nuevo)contacto_id=match.contacto_id;requiere_consolidacion=!contacto_id}else{cliente_id=null;contacto_id=null;requiere_consolidacion=true}const matchNivelEfectivo=requiere_consolidacion&&match.level==="alto"&&!empresaOk?"medio":match.level;
-
-
-
-    const folio=await getNextFolio("EX"),token_publico=randToken(),token_publico_expira=new Date(Date.now()+1000*60*60*24*30).toISOString(),sla=slaPack(prioridad||"media");
-
-    const {data:solicitud,error:errSolicitud}=await sb.from("solicitudes_soporte").insert({folio,nombre,empresa:empresa||null,correo:correo||null,telefono:telefono||null,categoria:categoria||null,sistema:sistema||null,objetivo:objetivo||null,titulo,descripcion,impacto:impacto||null,prioridad:prioridad||"media",canal:canal||null,desde_cuando:desde_cuando||null,afecta_a:afecta_a||null,ultimo_cambio:ultimo_cambio||null,horario_contacto:horario_contacto||null,horario_desde:horario_desde||null,horario_hasta:horario_hasta||null,horario_notas:horario_notas||null,contexto_adicional:`${contexto_adicional}${anydesk?`\n\nAnyDesk: ${anydesk}`:""}`||null,archivos_count:files.length,total_peso:totalBytes,cliente_id,contacto_id,origen,estatus:"nuevo",actualizado_en:new Date().toISOString(),empresa_capturada:empresa||null,nombre_capturado:nombre,correo_capturado:correo||null,telefono_capturado:telefono||null,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id,match_nivel:matchNivelEfectivo,match_score:match.score,match_confirmado:empresa_confirmada,contacto_confirmado,contacto_es_nuevo,requiere_consolidacion}).select("id").single();
+    const folio=await getNextFolio("EX"),token_publico=randToken(),token_publico_expira=new Date(Date.now()+1000*60*60*24*30).toISOString(),sla=slaPack(prioridad);
+    const contextoPersistido=`${contexto_adicional}${anydesk?`\n\nAnyDesk: ${anydesk}`:""}`||null;
+    const {data:solicitud,error:errSolicitud}=await sb.from("solicitudes_soporte").insert({folio,nombre,empresa:empresa||null,correo,telefono,categoria,sistema,objetivo:objetivo||null,titulo,descripcion,impacto,prioridad,canal,desde_cuando:desde_cuando||null,afecta_a,ultimo_cambio:ultimo_cambio||null,horario_contacto:horario_contacto||null,horario_desde,horario_hasta,horario_notas,contexto_adicional:contextoPersistido,archivos_count:validatedUploads.length,total_peso:totalBytes,cliente_id,contacto_id,origen,estatus:"nuevo",actualizado_en:new Date().toISOString(),empresa_capturada:empresa||null,nombre_capturado:nombre,correo_capturado:correo,telefono_capturado:telefono,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id,match_nivel:matchNivelEfectivo,match_score:match.score,match_confirmado:empresa_confirmada,contacto_confirmado,contacto_es_nuevo,requiere_consolidacion}).select("id").single();
     if(errSolicitud)throw new Error(`Error creando solicitud: ${errSolicitud.message}`);
 
-    const tipoTicket=["soporte","renovacion","facturacion","configuracion"].includes(categoria)?categoria:"soporte";
-const timeline_inicial=[{kind:"mensaje",autor:"soporte",titulo:"Solicitud recibida",texto:"Su caso fue recibido correctamente y ya entró a nuestra mesa de soporte.",fecha:new Date().toISOString()}];
-    const {data:ticket,error:errTicket}=await sb.from("tickets").insert({cliente_id,titulo,descripcion,prioridad:prioridad||"media",estado:"abierto",tipo:tipoTicket,origen:"soporte_publico",impacto:impacto||null,afecta_a:afecta_a||null,desde_cuando:desde_cuando||null,ultimo_cambio:ultimo_cambio||null,horario_contacto:horario_contacto||null,horario_desde:horario_desde||null,horario_hasta:horario_hasta||null,horario_notas:horario_notas||null,contexto_adicional:`${contexto_adicional}${anydesk?`\n\nAnyDesk: ${anydesk}`:""}`||null,canal:canal||null,solicitud_soporte_id:solicitud.id,correo_cliente:correo||null,nombre_cliente_contacto:nombre||null,contacto_id,folio,token_publico,token_publico_expira,timeline_publica:timeline_inicial,adjuntos:[],evidencia_count:0,empresa_capturada:empresa||null,nombre_capturado:nombre,correo_capturado:correo||null,telefono_capturado:telefono||null,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id,match_nivel:matchNivelEfectivo,match_score:match.score,match_confirmado:empresa_confirmada,contacto_confirmado,contacto_es_nuevo,requiere_consolidacion,sla_policy:sla.sla_policy,sla_first_response_deadline:sla.sla_first_response_deadline,sla_resolution_deadline:sla.sla_resolution_deadline,sla_breached_first_response:false,sla_breached_resolution:false}).select("id,folio,token_publico").single();
+    const tipoTicket=categoria;
+    const timeline_inicial=[{kind:"mensaje",autor:"soporte",titulo:"Solicitud recibida",texto:"Su caso fue recibido correctamente y ya entró a nuestra mesa de soporte.",fecha:new Date().toISOString()}];
+    const {data:ticket,error:errTicket}=await sb.from("tickets").insert({cliente_id,titulo,descripcion,prioridad,estado:"abierto",tipo:tipoTicket,origen:"soporte_publico",impacto,afecta_a,desde_cuando:desde_cuando||null,ultimo_cambio:ultimo_cambio||null,horario_contacto:horario_contacto||null,horario_desde,horario_hasta,horario_notas,contexto_adicional:contextoPersistido,canal,solicitud_soporte_id:solicitud.id,correo_cliente:correo,nombre_cliente_contacto:nombre,contacto_id,folio,token_publico,token_publico_expira,timeline_publica:timeline_inicial,adjuntos:[],evidencia_count:0,empresa_capturada:empresa||null,nombre_capturado:nombre,correo_capturado:correo,telefono_capturado:telefono,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id,match_nivel:matchNivelEfectivo,match_score:match.score,match_confirmado:empresa_confirmada,contacto_confirmado,contacto_es_nuevo,requiere_consolidacion,sla_policy:sla.sla_policy,sla_first_response_deadline:sla.sla_first_response_deadline,sla_resolution_deadline:sla.sla_resolution_deadline,sla_breached_first_response:false,sla_breached_resolution:false}).select("id,folio,token_publico").single();
     if(errTicket)throw new Error(`Error creando ticket: ${errTicket.message}`);
 
-await addTicketEvento(ticket.id,"sistema","publica","sistema","Su caso fue recibido correctamente y ya entró a nuestra mesa de soporte.",{origen:"soporte_publico",folio});
-if(requiere_consolidacion)await addTicketEvento(ticket.id,"sistema","interna","sistema","Pendiente de consolidar empresa o contacto capturado.",{requiere_consolidacion:true,empresa_capturada:empresa||null,nombre_capturado:nombre,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id});
+    await addTicketEvento(ticket.id,"sistema","publica","sistema","Su caso fue recibido correctamente y ya entró a nuestra mesa de soporte.",{origen:"soporte_publico",folio});
+    if(requiere_consolidacion)await addTicketEvento(ticket.id,"sistema","interna","sistema","Pendiente de consolidar empresa o contacto capturado.",{requiere_consolidacion:true,empresa_capturada:empresa||null,nombre_capturado:nombre,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id});
     await logSecurity("ticket_creado",cliente_id,{ticket_id:ticket.id,solicitud_id:solicitud.id,folio,origen:"soporte_publico"});
-    if(match.level==="alto"&&empresa_confirmada)await logSecurity("cliente_confirmado",cliente_id,{ticket_id:ticket.id,folio,cliente_id,contacto_id});
+    if(empresa_confirmada)await logSecurity("cliente_confirmado",cliente_id,{ticket_id:ticket.id,folio,cliente_id,contacto_id});
     if(requiere_consolidacion)await logSecurity("contacto_consolidado",cliente_id,{ticket_id:ticket.id,folio,pendiente:true});
 
     const adjuntos:Array<Record<string,unknown>>=[];
-    for(const file of files){
-const safe=file.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9._()-]/g,"").slice(0,140)||"archivo",ext=(safe.split(".").pop()||"").toLowerCase(),mime=(file.type||"").toLowerCase(),path=`${ticket.id}/${Date.now()}_${crypto.randomUUID()}_${safe}`,bytes=new Uint8Array(await file.arrayBuffer());
-      // Validación por FIRMA real: la categoría sniffeada debe coincidir con la extensión.
-      const sniff=sniffCategory(bytes.subarray(0,16)),expected=extCategory(ext);
-      if(sniff==="unknown"||sniff!==expected)return json({message:`Contenido no coincide con el tipo declarado: ${safe}`},415);
-      const up=await sb.storage.from("soporte_adjuntos").upload(path,bytes,{contentType:mime||"application/octet-stream",upsert:false});
-      if(up.error)throw new Error(`Error subiendo ${safe}: ${up.error.message}`);
+    for(const upload of validatedUploads){
+      const {metadata,bytes}=upload;
+      const path=`${ticket.id}/${Date.now()}_${crypto.randomUUID()}_${metadata.normalizedName}`;
+      const up=await sb.storage.from("soporte_adjuntos").upload(path,bytes,{contentType:metadata.mimeType,upsert:false});
+      if(up.error)throw new Error(`Error subiendo ${metadata.normalizedName}: ${up.error.message}`);
       uploadedPaths.push(path);
-      const arch=await sb.from("solicitud_archivos").insert({solicitud_id:solicitud.id,nombre_archivo:file.name,storage_path:path,mime_type:file.type||null,tamano_bytes:file.size,tipo_detectado:"soporte_publico"});
-      if(arch.error)throw new Error(`Error guardando metadata de solicitud para ${safe}: ${arch.error.message}`);
-const archTicket=await sb.from("ticket_archivos").insert({ticket_id:ticket.id,nombre_archivo:file.name,url_archivo:path,mime_type:file.type||null,tamano_bytes:file.size});
-if(archTicket.error)console.error("LEGACY_TICKET_ARCHIVOS_ERROR",archTicket.error.message);
+      const arch=await sb.from("solicitud_archivos").insert({solicitud_id:solicitud.id,nombre_archivo:metadata.normalizedName,storage_path:path,mime_type:metadata.mimeType,tamano_bytes:metadata.size,tipo_detectado:metadata.detectedType});
+      if(arch.error)throw new Error(`Error guardando metadata de solicitud para ${metadata.normalizedName}: ${arch.error.message}`);
+      const archTicket=await sb.from("ticket_archivos").insert({ticket_id:ticket.id,nombre_archivo:metadata.normalizedName,url_archivo:path,mime_type:metadata.mimeType,tamano_bytes:metadata.size});
+      if(archTicket.error)console.error("LEGACY_TICKET_ARCHIVOS_ERROR",archTicket.error.message);
+      await addArchivoTicket({ticket_id:ticket.id,solicitud_id:solicitud.id,origen:"solicitud",visibilidad:"publica",nombre_archivo:metadata.normalizedName,storage_path:path,url_firma:null,mime_type:metadata.mimeType,tamano_bytes:metadata.size,meta:{canal:"soporte_publico",detectedType:metadata.detectedType,contentSha256:metadata.contentSha256}});
+      adjuntos.push({nombre:metadata.normalizedName,tipo:metadata.mimeType,peso:metadata.size,storage_path:path,url:null,origen:"soporte_publico"});
+    }
 
-await addArchivoTicket({ticket_id:ticket.id,solicitud_id:solicitud.id,origen:"solicitud",visibilidad:"publica",nombre_archivo:file.name,storage_path:path,url_firma:null,mime_type:file.type||null,tamano_bytes:file.size,meta:{canal:"soporte_publico"}});
-adjuntos.push({nombre:file.name,tipo:file.type||null,peso:file.size,storage_path:path,url:null,origen:"soporte_publico"});
-}
-
-if(adjuntos.length)await addTicketEvento(ticket.id,"sistema","publica","archivo",`Se recibieron ${adjuntos.length} archivo(s) junto con la solicitud.`,{archivos_count:adjuntos.length,adjuntos});
-
+    if(adjuntos.length)await addTicketEvento(ticket.id,"sistema","publica","archivo",`Se recibieron ${adjuntos.length} archivo(s) junto con la solicitud.`,{archivos_count:adjuntos.length,adjuntos});
     const timeline_publica=[...timeline_inicial,...(adjuntos.length?[{kind:"mensaje",autor:"soporte",titulo:"Evidencia adjunta",texto:`Se recibieron ${adjuntos.length} archivo(s) junto con la solicitud.`,fecha:new Date().toISOString(),adjuntos}]:[])];
     const upTicket=await sb.from("tickets").update({fecha_actualizacion:new Date().toISOString(),timeline_publica,adjuntos,evidencia_count:adjuntos.length}).eq("id",ticket.id);
     if(upTicket.error)throw new Error(`Error actualizando ticket con evidencia: ${upTicket.error.message}`);
-
     const upSolicitud=await sb.from("solicitudes_soporte").update({ticket_id:ticket.id,actualizado_en:new Date().toISOString(),estatus:"ticket_creado"}).eq("id",solicitud.id);
     if(upSolicitud.error)throw new Error(`Error vinculando solicitud y ticket: ${upSolicitud.error.message}`);
 
-try{const {error}=await sb.from("bitacora").insert({accion:"ticket_creado_desde_soporte_publico",cliente_id,detalle:{ticket_id:ticket?.id||null,solicitud_soporte_id:solicitud.id,folio,sistema,categoria,impacto,afecta_a,desde_cuando,match_nivel:matchNivelEfectivo,match_score:match.score,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id,match_confirmado:empresa_confirmada,contacto_confirmado,contacto_es_nuevo,requiere_consolidacion},visibilidad:"interna",tipo:"nota_interna"});if(error)console.error("BITACORA_TICKET_CREATED_DB_ERROR",error.message)}catch(e){console.error("BITACORA_TICKET_CREATED_ERROR",e)}
+    try{const {error}=await sb.from("bitacora").insert({accion:"ticket_creado_desde_soporte_publico",cliente_id,detalle:{ticket_id:ticket?.id||null,solicitud_soporte_id:solicitud.id,folio,sistema,categoria,impacto,afecta_a,desde_cuando,match_nivel:matchNivelEfectivo,match_score:match.score,cliente_id_sugerido:match.cliente_id,contacto_id_sugerido:match.contacto_id,match_confirmado:empresa_confirmada,contacto_confirmado,contacto_es_nuevo,requiere_consolidacion},visibilidad:"interna",tipo:"nota_interna"});if(error)console.error("BITACORA_TICKET_CREATED_DB_ERROR",error.message)}catch(e){console.error("BITACORA_TICKET_CREATED_ERROR",e)}
 
-const appUrl=PUBLIC_APP_URL||"https://universalunidad-ux.github.io";
-const magic_link=`${appUrl}/estado.html?folio=${encodeURIComponent(folio)}&token=${encodeURIComponent(token_publico)}`;
-    if(correo&&magic_link)await sendMail({to:correo,subject:`Recibimos su solicitud ${folio}`,html:`<div style="font-family:Arial,sans-serif;line-height:1.55;color:#111"><h2 style="margin:0 0 12px">Recibimos su caso de soporte</h2><p style="margin:0 0 10px"><b>Folio:</b> ${folio}</p><p style="margin:0 0 10px"><b>Título:</b> ${titulo}</p><p style="margin:0 0 10px"><b>Sistema:</b> ${sistema}</p><p style="margin:0 0 10px">Su caso fue enviado y entró a nuestra mesa de soporte.</p><p style="margin:0 0 14px"><a href="${magic_link}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff">Abrir seguimiento</a></p><p style="margin:0 0 10px">Disponible hasta: <b>${new Date(token_publico_expira).toLocaleString("es-MX")}</b></p><p style="margin:0">${requiere_consolidacion?"Estamos validando la asociación de empresa o contacto para registrar su caso correctamente.":"Si necesitamos XML, capturas o más información, podrás responder desde ese mismo enlace."}</p></div>`}).catch(()=>null);
+    const appUrl=PUBLIC_APP_URL||"https://universalunidad-ux.github.io";
+    const magic_link=`${appUrl}/estado.html?folio=${encodeURIComponent(folio)}&token=${encodeURIComponent(token_publico)}`;
+    const availableUntil=new Date(token_publico_expira).toLocaleString("es-MX");
+    const consolidationCopy=requiere_consolidacion?"Estamos validando la asociación de empresa o contacto para registrar su caso correctamente.":"Si necesitamos XML, capturas o más información, podrás responder desde ese mismo enlace.";
+    await sendMail({
+      to:correo,
+      subject:sanitizeEmailSubject(`Recibimos su solicitud ${folio}`),
+      html:`<div style="font-family:Arial,sans-serif;line-height:1.55;color:#111"><h2 style="margin:0 0 12px">Recibimos su caso de soporte</h2><p style="margin:0 0 10px"><b>Folio:</b> ${escapeHtml(folio)}</p><p style="margin:0 0 10px"><b>Título:</b> ${escapeHtml(titulo)}</p><p style="margin:0 0 10px"><b>Sistema:</b> ${escapeHtml(sistema)}</p><p style="margin:0 0 10px">Su caso fue enviado y entró a nuestra mesa de soporte.</p><p style="margin:0 0 14px"><a href="${escapeHtml(magic_link)}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff">Abrir seguimiento</a></p><p style="margin:0 0 10px">Disponible hasta: <b>${escapeHtml(availableUntil)}</b></p><p style="margin:0">${escapeHtml(consolidationCopy)}</p></div>`,
+    }).catch(()=>null);
 
-    // SECURITY U1: respuesta pública mínima. NO exponer datos internos de CRM
-    // (nombres/IDs de cliente, match_score, candidatos, solicitud_id, ticket_id).
-    // soporte.js solo consume folio + token_publico; el enlace lo construye el cliente.
-    const resp={ok:true,folio,token_publico,status:"ticket_creado"};
+    const resp:PublicSuccessResponse={ok:true,folio,token_publico,status:"ticket_creado"};
     if(idemActive)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"succeeded",p_response:resp})}catch(_e){console.error("IDEM_FINISH_ERROR")}
     return json(resp,200);
-}catch(err:any){const reqId=crypto.randomUUID();console.error("SUPPORT_FATAL",reqId);if(uploadedPaths.length)try{await sb.storage.from("soporte_adjuntos").remove(uploadedPaths)}catch(_e){console.error("COMPENSATION_REMOVE_ERROR")}if(idemKey)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"failed",p_response:null})}catch(_e){/* noop */}try{await logSecurity("support_submit_error",null,{ip,request_id:reqId})}catch(_e){console.error("SUPPORT_LOG_ERROR")}return json({message:"No se pudo procesar la solicitud.",request_id:reqId},500)}
+  }catch(_err:unknown){
+    const reqId=crypto.randomUUID();
+    console.error("SUPPORT_FATAL",reqId);
+    if(validationBarrierReached){
+      if(uploadedPaths.length)try{await sb.storage.from("soporte_adjuntos").remove(uploadedPaths)}catch(_e){console.error("COMPENSATION_REMOVE_ERROR")}
+      if(idemKey)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"failed",p_response:null})}catch(_e){/* noop */}
+      try{await logSecurity("support_submit_error",null,{ip,request_id:reqId})}catch(_e){console.error("SUPPORT_LOG_ERROR")}
+    }
+    return json({message:"No se pudo procesar la solicitud.",code:"INTERNAL_ERROR",request_id:reqId},500);
+  }
 };
-Deno.serve(handler);
+if(import.meta.main)Deno.serve(handler);

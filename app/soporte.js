@@ -228,7 +228,11 @@ const send=async e=>{
     "contacto_id_confirmado",
     "empresa_confirmada",
     "contacto_confirmado",
-    "contacto_es_nuevo"
+    "contacto_es_nuevo",
+    "cliente_id_sugerido",
+    "contacto_id_sugerido",
+    "match_nivel",
+    "match_score"
   ].forEach(key=>delete payload[key]);
 
   const err=validate();

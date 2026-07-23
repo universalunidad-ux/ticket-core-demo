@@ -36,6 +36,22 @@ function readObject(s, start) {
 }
 
 const failures = [];
+const success = src.match(/const resp(?::PublicSuccessResponse)?=\{([^}]+)\};/u);
+if (!success) failures.push("no se encontró el objeto resp de éxito normal");
+else {
+  const keys = success[1].split(",").map((item) => item.trim().split(":")[0]).sort();
+  const expected = ["folio", "ok", "status", "token_publico"];
+  if (JSON.stringify(keys) !== JSON.stringify(expected)) {
+    failures.push(`respuesta normal no tiene allowlist exacta: ${keys.join(",")}`);
+  }
+  if (!/\bok:true\b/u.test(success[1]) || !/\bstatus:"ticket_creado"/u.test(success[1])) {
+    failures.push("respuesta normal no conserva ok/status exactos");
+  }
+}
+if (!/return json\(resp,200\)/u.test(src)) failures.push("respuesta normal no retorna resp con status 200");
+if (!/isPublicSuccessResponse\(c\.response\)/u.test(src)) failures.push("replay idempotente no valida la forma pública exacta");
+if (!/publicSuccessKeys=\["folio","ok","status","token_publico"\] as const/u.test(src)) failures.push("allowlist pública exacta ausente");
+
 let idx = 0, checked = 0;
 const marker = "json(";
 while ((idx = src.indexOf(marker, idx)) !== -1) {
