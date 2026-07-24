@@ -21,6 +21,15 @@ drop policy if exists ticket_match_decisiones_update_auth
 drop policy if exists ticket_match_decisiones_admin_select_v1
   on public.ticket_match_decisiones;
 
+-- Políticas heredadas del baseline canónico 20260715.
+-- Se retiran explícitamente para que esta migración deje un único
+-- owner de lectura directa: la política admin versionada abajo.
+drop policy if exists admin_select
+  on public.ticket_match_decisiones;
+
+drop policy if exists match_support_scope
+  on public.ticket_match_decisiones;
+
 create policy ticket_match_decisiones_admin_select_v1
   on public.ticket_match_decisiones
   for select
