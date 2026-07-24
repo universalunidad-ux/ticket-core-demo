@@ -20,7 +20,26 @@ on conflict (id) do update set
   allowed_mime_types = excluded.allowed_mime_types;
 
 -- 2) RLS de objetos. anon: sin policy => denegado. Escritura: solo service_role.
-alter table storage.objects enable row level security;
+-- storage.objects es administrada por Supabase Storage y pertenece a
+-- un rol interno. No modificar owner ni RLS desde esta migración.
+-- Verificación fail-closed: el runtime debe entregarla con RLS habilitado.
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n
+      on n.oid = c.relnamespace
+    where n.nspname = 'storage'
+      and c.relname = 'objects'
+      and c.relkind = 'r'
+      and c.relrowsecurity
+  ) then
+    raise exception
+      'E_STORAGE_OBJECTS_RLS_DISABLED: storage.objects debe existir con RLS habilitado';
+  end if;
+end
+$$;
 
 -- Lectura de adjuntos: staff con alcance al ticket (la 1ª carpeta del path = ticket.id,
 -- exactamente como sube el Edge: `${ticket.id}/...`).
