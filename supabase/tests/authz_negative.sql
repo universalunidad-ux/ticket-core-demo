@@ -402,14 +402,14 @@ select public.admin_disable_access('44444444-4444-4444-4444-444444444444');
 select pg_temp.reset_su();
 
 do $$
-declare current_role text;
+declare v_profile_role text;
 begin
-  select rol into current_role
-  from public.perfiles
+  select p.rol into v_profile_role
+  from public.perfiles p
   where id='44444444-4444-4444-4444-444444444444';
 
-  if current_role is not null then
-    raise exception 'FAIL: admin_disable_access no dejó rol NULL (rol=%)', current_role;
+  if v_profile_role is not null then
+    raise exception 'FAIL: admin_disable_access no dejó rol NULL (rol=%)', v_profile_role;
   end if;
 
   raise notice 'PASS: acceso desactivado mediante rol NULL';
