@@ -1,10 +1,74 @@
 {
   "legacy_to_drop": {
+    "public.archivos_ticket": [
+      "admin_select",
+      "archivos_support_scope"
+    ],
+    "public.avisos_globales": [
+      "admin_select",
+      "public_active_notices_anon_select",
+      "public_active_notices_authenticated_select"
+    ],
+    "public.bitacora": [
+      "bitacora_admin_select",
+      "bitacora_support_own_select"
+    ],
+    "public.cliente_accesos": [
+      "accesos_support_scope",
+      "admin_select"
+    ],
+    "public.cliente_aliases": [
+      "admin_select",
+      "aliases_support_scope"
+    ],
     "public.cliente_sistemas": [
-      "cliente_sistemas_select_staff"
+      "admin_select",
+      "cliente_sistemas_select_staff",
+      "sistemas_support_scope"
     ],
     "public.clientes": [
-      "clientes_admin_select_ticket_core"
+      "admin_select",
+      "clientes_admin_select_ticket_core",
+      "clientes_support_scope"
+    ],
+    "public.clientes_contactos": [
+      "admin_select",
+      "contactos_support_scope"
+    ],
+    "public.perfiles": [
+      "profiles_admin_safe_update",
+      "profiles_admin_select",
+      "profiles_self_update",
+      "profiles_team_select"
+    ],
+    "public.reglas_asignacion": [
+      "admin_select",
+      "assignment_rules_support_select"
+    ],
+    "public.site_config": [
+      "admin_select",
+      "public_site_config_anon_select",
+      "public_site_config_authenticated_select"
+    ],
+    "public.solicitudes_soporte": [
+      "admin_select",
+      "solicitudes_support_scope"
+    ],
+    "public.ticket_archivos": [
+      "ticket_archivos_admin_read",
+      "ticket_archivos_support_read"
+    ],
+    "public.ticket_eventos": [
+      "admin_select",
+      "eventos_support_scope"
+    ],
+    "public.ticket_respuestas_rapidas": [
+      "admin_select",
+      "quick_replies_support_select"
+    ],
+    "public.tickets": [
+      "admin_select",
+      "tickets_support_select"
     ]
   },
   "recognized": {
