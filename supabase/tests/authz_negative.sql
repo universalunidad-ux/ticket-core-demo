@@ -22,6 +22,29 @@ begin
   perform set_config('role', 'anon', true);
   perform set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
 end $$;
+-- TC_SERVICE_ROLE_HELPER_BEGIN
+create or replace function pg_temp.act_service()
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config(
+    'role',
+    'service_role',
+    true
+  );
+
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'role',
+      'service_role'
+    )::text,
+    true
+  );
+end
+$$;
+
 create or replace function pg_temp.reset_su()
 returns void language plpgsql as $$
 begin perform set_config('role', 'postgres', true); end $$;
@@ -186,6 +209,53 @@ begin
   end;
 end $$;
 select pg_temp.reset_su();
+
+
+-- TC_SERVICE_ROLE_ROLE_GUARD_BEGIN
+-- service_role conserva el canal de aprovisionamiento, pero el cambio se
+-- revierte dentro de una subtransacción para no alterar los demás escenarios.
+select pg_temp.act_service();
+
+do $tc_service_role_guard$
+declare
+  observed_role text;
+begin
+  begin
+    update public.perfiles
+    set rol = 'ventas'
+    where id =
+      '44444444-4444-4444-4444-444444444444';
+
+    select profile.rol
+    into observed_role
+    from public.perfiles profile
+    where profile.id =
+      '44444444-4444-4444-4444-444444444444';
+
+    if observed_role is distinct from 'ventas' then
+      raise exception
+        'FAIL: service_role no pudo administrar rol (rol=%)',
+        coalesce(observed_role, 'NULL');
+    end if;
+
+    raise exception
+      'TC_SERVICE_ROLE_ASSERTION_ROLLBACK'
+      using errcode = 'P0001';
+
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm <> 'TC_SERVICE_ROLE_ASSERTION_ROLLBACK' then
+        raise;
+      end if;
+
+      raise notice
+        'PASS: service_role administra rol sin persistir cambio';
+  end;
+end
+$tc_service_role_guard$;
+
+select pg_temp.reset_su();
+-- TC_SERVICE_ROLE_ROLE_GUARD_END
 
 -- ---- 2) TICKETS scope (positiva+negativa): A ve su ticket; B no lo ve ----------
 select pg_temp.act('33333333-3333-3333-3333-333333333333');
