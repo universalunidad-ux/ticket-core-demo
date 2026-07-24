@@ -257,20 +257,189 @@ function supabaseStart(ctx) {
     });
   }
   ctx.dbUrl = parsed.url;
+
+  // Resolver el contenedor PostgreSQL por el puerto local publicado.
+  // No depende del nombre del proyecto ni requiere psql en el host.
+  const dbPort = new URL(parsed.url).port;
+
+  if (!dbPort) {
+    stop(
+      STOP.E_SUPABASE_START_FAILED,
+      PHASE.SUPABASE_START,
+      "DB URL local sin puerto publicado",
+      {
+        ACTUAL: "puerto ausente",
+      },
+    );
+  }
+
+  const dockerPs = run(
+    "docker",
+    [
+      "ps",
+      "--format",
+      "{{.Names}}|||{{.Ports}}",
+    ],
+  );
+
+  if (dockerPs.code !== 0) {
+    stop(
+      STOP.E_SUPABASE_START_FAILED,
+      PHASE.SUPABASE_START,
+      "no se pudo inventariar contenedores Docker",
+      {
+        FAILED_COMMAND:
+          "docker ps --format <names-and-ports>",
+        ACTUAL:
+          redact(
+            `${dockerPs.stdout}\n${dockerPs.stderr}`,
+          ).slice(-500),
+      },
+    );
+  }
+
+  const dbContainers = dockerPs.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, ports = ""] = line.split("|||");
+
+      return {
+        name: name.trim(),
+        ports: ports.trim(),
+      };
+    })
+    .filter(
+      ({ name, ports }) =>
+        name.startsWith("supabase_db_")
+        && ports.includes(`:${dbPort}->5432/tcp`),
+    );
+
+  if (dbContainers.length !== 1) {
+    stop(
+      STOP.E_SUPABASE_START_FAILED,
+      PHASE.SUPABASE_START,
+      "no se pudo resolver un único contenedor DB local",
+      {
+        EXPECTED:
+          `1 contenedor supabase_db_* publicado en ${dbPort}`,
+        ACTUAL:
+          dbContainers.map(({ name }) => name).join(",")
+          || "ninguno",
+      },
+    );
+  }
+
+  ctx.dbContainer = dbContainers[0].name;
   ctx.localStatus = "up";
-  ctx.log.push(`supabase_start=OK (host=${parsed.host})`);
+
+  ctx.log.push(
+    `supabase_start=OK `
+    + `(host=${parsed.host}, db_container=${ctx.dbContainer})`,
+  );
 }
 
 // psql local con guarda de destino en cada invocación.
 function psql(ctx, { file = null, sql = null, args = [] } = {}) {
   const c = classifyTarget(ctx.dbUrl);
+
   if (c.classification !== "LOCAL") {
-    stop(STOP.E_REMOTE_TARGET_DETECTED, PHASE.RLS_MATRIX, "intento de psql contra host no local", { ACTUAL: `host=${c.host ?? "?"}` });
+    stop(
+      STOP.E_REMOTE_TARGET_DETECTED,
+      PHASE.RLS_MATRIX,
+      "intento de psql contra host no local",
+      {
+        ACTUAL: `host=${c.host ?? "?"}`,
+      },
+    );
   }
-  const base = [ctx.dbUrl, "-v", "ON_ERROR_STOP=1", "-X", "-q", "--no-psqlrc", ...args];
-  if (file) base.push("-f", file);
-  if (sql) base.push("-c", sql);
-  return run("psql", base, { timeout: 180000 });
+
+  if (
+    typeof ctx.dbContainer !== "string"
+    || !ctx.dbContainer.startsWith("supabase_db_")
+  ) {
+    return {
+      code: 125,
+      stdout: "",
+      stderr:
+        "contenedor PostgreSQL local no resuelto",
+    };
+  }
+
+  const command = [
+    "exec",
+    ctx.dbContainer,
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-X",
+    "-q",
+    "--no-psqlrc",
+    ...args,
+  ];
+
+  let stagedFile = null;
+
+  if (file) {
+    stagedFile = "/tmp/tc-local-db-harness.sql";
+
+    const copy = run(
+      "docker",
+      [
+        "cp",
+        file,
+        `${ctx.dbContainer}:${stagedFile}`,
+      ],
+      {
+        timeout: 180000,
+      },
+    );
+
+    if (copy.code !== 0) {
+      return copy;
+    }
+
+    command.push("-f", stagedFile);
+  }
+
+  if (sql) {
+    command.push("-c", sql);
+  }
+
+  const result = run(
+    "docker",
+    command,
+    {
+      timeout: 180000,
+    },
+  );
+
+  if (stagedFile) {
+    const cleanup = run(
+      "docker",
+      [
+        "exec",
+        ctx.dbContainer,
+        "rm",
+        "-f",
+        stagedFile,
+      ],
+      {
+        timeout: 30000,
+      },
+    );
+
+    if (result.code === 0 && cleanup.code !== 0) {
+      return cleanup;
+    }
+  }
+
+  return result;
 }
 
 function dbResetApply(ctx) {
