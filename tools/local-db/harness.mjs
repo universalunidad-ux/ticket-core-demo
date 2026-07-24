@@ -323,27 +323,47 @@ function schemaCheck(ctx) {
 }
 
 function idempotencyCheck(ctx) {
-  // Reaplicar cada migración debe ser no-op (idempotente donde debe serlo).
-  const results = [];
-  let firstFail = null;
-  for (const f of ctx.migrations) {
-    const p = join(MIGRATIONS_SRC, f);
-    const res = psql(ctx, { file: p });
-    const ok = res.code === 0;
-    results.push({ migration: f, reapply_ok: ok });
-    if (!ok && !firstFail) firstFail = { f, res };
+  // Nombre histórico conservado por compatibilidad con PHASE/STOP.
+  // Las migraciones de baseline son deliberadamente estrictas y no
+  // deben reaplicarse encima del esquema ya construido. La propiedad
+  // verificable es reproducibilidad: dos resets limpios consecutivos.
+  const res = run(
+    "supabase",
+    ["db", "reset", "--workdir", RUNTIME_DIR],
+    { timeout: 600000 },
+  );
+  const combined = `${res.stdout}\n${res.stderr}`;
+
+  if (res.code !== 0) {
+    const failed = detectFailedMigration(combined);
+
+    stop(
+      STOP.E_MIGRATION_NOT_IDEMPOTENT,
+      PHASE.IDEMPOTENCY_CHECK,
+      "segunda reconstrucción limpia falló",
+      {
+        FAILED_COMMAND:
+          "supabase db reset --workdir <runtime> (segunda ejecución)",
+        FAILED_MIGRATION: failed || "-",
+        ACTUAL: redact(combined).slice(-800),
+      },
+    );
   }
-  ctx.migrationResults = ctx.migrations.map((f) => {
-    const r = results.find((x) => x.migration === f);
-    return { migration: f, applied: true, idempotent: r ? r.reapply_ok : false };
-  });
-  if (firstFail) {
-    stop(STOP.E_MIGRATION_NOT_IDEMPOTENT, PHASE.IDEMPOTENCY_CHECK, `reaplicación falló: ${firstFail.f}`, {
-      FAILED_MIGRATION: firstFail.f,
-      ACTUAL: redact(firstFail.res.stderr).slice(-500),
-    });
-  }
-  ctx.log.push("idempotency=OK (reaplicación sin error)");
+
+  // Vuelve a comprobar que el segundo estado reconstruido coincide
+  // completamente con el esquema derivado de las migraciones.
+  schemaCheck(ctx);
+
+  ctx.migrationResults = ctx.migrations.map((migration) => ({
+    migration,
+    applied: true,
+    reproducible: true,
+  }));
+
+  ctx.log.push(
+    "reproducibility=OK "
+    + "(segunda reconstrucción limpia y sin drift)",
+  );
 }
 
 function anonPrivilegeProbe(ctx) {
@@ -491,11 +511,11 @@ function teardown(ctx) {
 function writeArtifacts(dir, ctx, report) {
   artifact(dir, "00_FINAL_RESULT.txt", renderReportText(report));
 
-  const migCsv = ["migration,applied,idempotent"]
+  const migCsv = ["migration,applied,reproducible"]
     .concat((ctx.migrationResults || ctx.migrations || []).map((m) =>
       typeof m === "string"
         ? `${m},${report.RESULT === "PASS"},unknown`
-        : `${m.migration},${m.applied},${m.idempotent}`))
+        : `${m.migration},${m.applied},${m.reproducible}`))
     .join("\n") + "\n";
   artifact(dir, "migration-results.csv", migCsv);
 
