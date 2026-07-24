@@ -2,14 +2,14 @@
 -- DO_NOT_APPLY_WITHOUT_STAGING_REVIEW
 -- TC-SEC-SD-GRANTS
 
-revoke execute on function public.current_user_role()
+revoke execute on function public.tc_current_role()
   from public, anon;
-grant execute on function public.current_user_role()
+grant execute on function public.tc_current_role()
   to authenticated;
 
-revoke execute on function public.is_admin()
+revoke execute on function public.tc_is_admin()
   from public, anon;
-grant execute on function public.is_admin()
+grant execute on function public.tc_is_admin()
   to authenticated;
 
 revoke execute on function public.is_internal_user()
@@ -17,9 +17,9 @@ revoke execute on function public.is_internal_user()
 grant execute on function public.is_internal_user()
   to authenticated;
 
-revoke execute on function public.is_support_or_admin()
+revoke execute on function public.tc_is_manager()
   from public, anon;
-grant execute on function public.is_support_or_admin()
+grant execute on function public.tc_is_manager()
   to authenticated;
 
 revoke execute on function public.log_ticket_assignment_event()
@@ -32,18 +32,18 @@ declare
 begin
   if not has_function_privilege(
     'authenticated',
-    'public.current_user_role()',
+    'public.tc_current_role()',
     'EXECUTE'
   ) then
-    raise exception 'current_user_role authenticated EXECUTE missing';
+    raise exception 'tc_current_role authenticated EXECUTE missing';
   end if;
 
   if not has_function_privilege(
     'authenticated',
-    'public.is_admin()',
+    'public.tc_is_admin()',
     'EXECUTE'
   ) then
-    raise exception 'is_admin authenticated EXECUTE missing';
+    raise exception 'tc_is_admin authenticated EXECUTE missing';
   end if;
 
   if not has_function_privilege(
@@ -56,10 +56,10 @@ begin
 
   if not has_function_privilege(
     'authenticated',
-    'public.is_support_or_admin()',
+    'public.tc_is_manager()',
     'EXECUTE'
   ) then
-    raise exception 'is_support_or_admin authenticated EXECUTE missing';
+    raise exception 'tc_is_manager authenticated EXECUTE missing';
   end if;
 
   if has_function_privilege(
