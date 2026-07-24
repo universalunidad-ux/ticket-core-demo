@@ -273,3 +273,40 @@ for (const script of [
   if (result.stderr) process.stderr.write(result.stderr);
   assert.equal(result.status, 0, `${script} failed`);
 }
+
+{
+  const authzPolicySsotResult = spawnSync(
+    process.execPath,
+    [
+      join(
+        root,
+        "tools",
+        "generate-authz-policy-reconciliation.mjs",
+      ),
+      root,
+      "--check",
+    ],
+    {
+      cwd: root,
+      encoding: "utf8",
+    },
+  );
+
+  if (authzPolicySsotResult.stdout) {
+    process.stdout.write(
+      authzPolicySsotResult.stdout,
+    );
+  }
+
+  if (authzPolicySsotResult.stderr) {
+    process.stderr.write(
+      authzPolicySsotResult.stderr,
+    );
+  }
+
+  assert.equal(
+    authzPolicySsotResult.status,
+    0,
+    "AuthZ policy single-source drift gate",
+  );
+}
