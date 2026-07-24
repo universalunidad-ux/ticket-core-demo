@@ -27,6 +27,132 @@ returns void language plpgsql as $$
 begin perform set_config('role', 'postgres', true); end $$;
 
 -- ---- Fixtures (como superusuario; RLS se prueba luego cambiando de rol) --------
+-- TC_LOCAL_AUTH_FIXTURES_BEGIN
+--
+-- public.perfiles.id y tickets.asignado_a dependen de auth.users.id.
+-- No se crean identities ni contraseñas porque la matriz simula auth.uid()
+-- mediante request.jwt.claims y revierte toda la transacción al terminar.
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+values
+  (
+    '11111111-1111-1111-1111-111111111111',
+    'authenticated',
+    'authenticated',
+    'tc-local-admin@example.invalid',
+    now(),
+    '{"provider":"email","providers":["email"],"fixture":"tc-local-db"}'::jsonb,
+    '{"fixture":"tc-local-db","persona":"admin"}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'authenticated',
+    'authenticated',
+    'tc-local-supervisor@example.invalid',
+    now(),
+    '{"provider":"email","providers":["email"],"fixture":"tc-local-db"}'::jsonb,
+    '{"fixture":"tc-local-db","persona":"supervisor"}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '33333333-3333-3333-3333-333333333333',
+    'authenticated',
+    'authenticated',
+    'tc-local-support-a@example.invalid',
+    now(),
+    '{"provider":"email","providers":["email"],"fixture":"tc-local-db"}'::jsonb,
+    '{"fixture":"tc-local-db","persona":"support-a"}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '44444444-4444-4444-4444-444444444444',
+    'authenticated',
+    'authenticated',
+    'tc-local-support-b@example.invalid',
+    now(),
+    '{"provider":"email","providers":["email"],"fixture":"tc-local-db"}'::jsonb,
+    '{"fixture":"tc-local-db","persona":"support-b"}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '55555555-5555-5555-5555-555555555555',
+    'authenticated',
+    'authenticated',
+    'tc-local-no-profile@example.invalid',
+    now(),
+    '{"provider":"email","providers":["email"],"fixture":"tc-local-db"}'::jsonb,
+    '{"fixture":"tc-local-db","persona":"no-profile"}'::jsonb,
+    now(),
+    now()
+  )
+on conflict (id) do nothing;
+
+do $fixture_auth_users$
+declare
+  missing_users text;
+begin
+  select string_agg(
+    expected.id::text,
+    ', '
+    order by expected.id::text
+  )
+  into missing_users
+  from (
+    values
+      ('11111111-1111-1111-1111-111111111111'::uuid),
+      ('22222222-2222-2222-2222-222222222222'::uuid),
+      ('33333333-3333-3333-3333-333333333333'::uuid),
+      ('44444444-4444-4444-4444-444444444444'::uuid),
+      ('55555555-5555-5555-5555-555555555555'::uuid)
+  ) expected(id)
+  left join auth.users auth_user
+    on auth_user.id = expected.id
+  where auth_user.id is null;
+
+  if missing_users is not null then
+    raise exception
+      'TC_FIXTURE_AUTH_USERS_MISSING: %',
+      missing_users
+      using errcode = '23503';
+  end if;
+
+  if exists (
+    select 1
+    from public.perfiles profile
+    where profile.id = any (
+      array[
+        '11111111-1111-1111-1111-111111111111'::uuid,
+        '22222222-2222-2222-2222-222222222222'::uuid,
+        '33333333-3333-3333-3333-333333333333'::uuid,
+        '44444444-4444-4444-4444-444444444444'::uuid
+      ]
+    )
+  ) then
+    raise exception
+      'TC_FIXTURE_PROFILE_COLLISION'
+      using errcode = '23505';
+  end if;
+
+  raise notice
+    'FIXTURE PASS: 5 auth.users sintéticos disponibles';
+end
+$fixture_auth_users$;
+
+-- TC_LOCAL_AUTH_FIXTURES_READY
 insert into public.perfiles (id, rol, nombre, tema) values
  ('11111111-1111-1111-1111-111111111111','admin','Admin Uno','light'),
  ('22222222-2222-2222-2222-222222222222','supervisor','Super Uno','light'),
