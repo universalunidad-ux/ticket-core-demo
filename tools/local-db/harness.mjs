@@ -621,6 +621,24 @@ function rlsMatrix(ctx, dir) {
     stop(STOP.E_RLS_MATRIX_FAILED, PHASE.RLS_MATRIX, "authz_negative.sql ausente (matriz requerida)", {});
   }
   const res = psql(ctx, { file: f });
+
+  // Evidencia bruta, redactada y persistente del proceso psql.
+  // Debe existir incluso cuando el parser no reconoce la clase de error.
+  const rawRlsOutput = [
+    `exit_code=${res.code}`,
+    `spawn_error=${redact(res.error || "-")}`,
+    "===== STDOUT =====",
+    redact(res.stdout || ""),
+    "===== STDERR =====",
+    redact(res.stderr || ""),
+  ].join("\n") + "\n";
+
+  artifact(dir, "rls-psql-raw.txt", rawRlsOutput);
+
+  const rawRlsTail = redact(
+    `${res.stderr || ""}\n${res.stdout || ""}`,
+  ).trim().slice(-1200);
+
   const parsed = parseRlsMatrixOutput(res);
   // rls-matrix.csv
   const rows = [["assertion", "result"]];
@@ -635,10 +653,26 @@ function rlsMatrix(ctx, dir) {
     if (line.includes("anon")) code = STOP.E_ANON_LEAK;
     else if (line.includes("rol") || line.includes("escal")) code = STOP.E_PRIVILEGE_ESCALATION;
     else if (line.includes("cliente") || line.includes("ticket de a") || line.includes("ajen")) code = STOP.E_CROSS_TENANT_LEAK;
-    stop(code, PHASE.RLS_MATRIX, `matriz RLS negativa falló: ${parsed.failLine}`, {
-      FAILED_ROLE: parsed.failedRole || "-",
-      ACTUAL: parsed.failLine || "sin PASS suficientes",
-    });
+    stop(
+      code,
+      PHASE.RLS_MATRIX,
+      `matriz RLS negativa falló: ${
+        parsed.failLine || `psql exit=${res.code}`
+      }`,
+      {
+        FAILED_COMMAND:
+          "docker exec <local-supabase-db> "
+          + "psql -f authz_negative.sql",
+        FAILED_ROLE: parsed.failedRole || "-",
+        EXPECTED:
+          "psql exit=0; sin ERROR/FAIL; "
+          + "aserciones PASS presentes",
+        ACTUAL:
+          parsed.failLine
+          || rawRlsTail
+          || `psql exit=${res.code}`,
+      },
+    );
   }
 
   // Idempotencia de concurrencia (si existe).
