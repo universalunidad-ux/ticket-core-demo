@@ -11,12 +11,38 @@ import { classifyTarget } from "./guards.mjs";
  */
 export function parseSupabaseStatusDbUrl(statusText) {
   if (typeof statusText !== "string") return null;
-  // Analiza la línea DB URL emitida por el estado del stack local.
-  const m = statusText.match(/DB URL:\s*(\S+)/i);
-  if (!m) return null;
-  const url = m[1].trim();
+
+  // Preferencia: salida estructurada de `supabase status -o env`.
+  // Se mantienen fallbacks para versiones anteriores y salida pretty.
+  const patterns = [
+    /(?:^|\n)\s*(?:DB_URL|DATABASE_URL)\s*=\s*"([^"]+)"/i,
+    /(?:^|\n)\s*(?:DB_URL|DATABASE_URL)\s*=\s*'([^']+)'/i,
+    /(?:^|\n)\s*(?:DB_URL|DATABASE_URL)\s*=\s*([^\s]+)/i,
+    /DB URL:\s*(\S+)/i,
+    /(?:^|\n)\s*[│|]?\s*(?:DB URL|URL)\s*[│|]\s*(postgres(?:ql)?:\/\/[^\s│|]+)/i,
+  ];
+
+  let url = null;
+
+  for (const pattern of patterns) {
+    const match = statusText.match(pattern);
+
+    if (match?.[1]) {
+      url = match[1].trim();
+      break;
+    }
+  }
+
+  if (!url) return null;
+
   const c = classifyTarget(url);
-  return { url, host: c.host, classification: c.classification, reason: c.reason };
+
+  return {
+    url,
+    host: c.host,
+    classification: c.classification,
+    reason: c.reason,
+  };
 }
 
 /**

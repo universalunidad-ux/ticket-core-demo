@@ -215,10 +215,38 @@ function supabaseStart(ctx) {
       ACTUAL: redact(res.stderr || res.stdout).slice(-800),
     });
   }
-  const status = run("supabase", ["status", "--workdir", RUNTIME_DIR]);
-  const parsed = parseSupabaseStatusDbUrl(status.stdout);
+  const status = run(
+    "supabase",
+    ["status", "-o", "env", "--workdir", RUNTIME_DIR],
+  );
+  if (status.code !== 0) {
+    stop(
+      STOP.E_SUPABASE_START_FAILED,
+      PHASE.SUPABASE_START,
+      "supabase status estructurado falló",
+      {
+        FAILED_COMMAND:
+          "supabase status -o env --workdir <runtime>",
+        ACTUAL:
+          `exit=${status.code}; salida omitida porque contiene credenciales locales`,
+      },
+    );
+  }
+  const parsed = parseSupabaseStatusDbUrl(
+    `${status.stdout}\n${status.stderr}`,
+  );
   if (!parsed) {
-    stop(STOP.E_SUPABASE_START_FAILED, PHASE.SUPABASE_START, "no se pudo leer DB URL local", { FAILED_COMMAND: "supabase status" });
+    stop(
+      STOP.E_SUPABASE_START_FAILED,
+      PHASE.SUPABASE_START,
+      "no se pudo leer DB URL local desde salida estructurada",
+      {
+        FAILED_COMMAND:
+          "supabase status -o env --workdir <runtime>",
+        ACTUAL:
+          "DB_URL ausente o no reconocida; salida omitida por seguridad",
+      },
+    );
   }
   // GUARDA CRÍTICA: el target DEBE ser local. Nunca remoto.
   if (parsed.classification !== "LOCAL") {
