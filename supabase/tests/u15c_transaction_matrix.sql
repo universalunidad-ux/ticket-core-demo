@@ -142,11 +142,6 @@ begin
   perform set_config('role', 'postgres', true);
 end $$;
 
-create or replace function pg_temp.fx(p_key text) returns uuid
-language sql stable as $$
-  select id from tc_fixtures where key = p_key;
-$$;
-
 create temporary table tc_fixtures (key text primary key, id uuid not null);
 insert into tc_fixtures (key, id) values
   ('admin',   '91111111-1111-4111-8111-111111111101'),
@@ -177,6 +172,12 @@ insert into tc_fixtures (key, id) values
   ('t21', '94444444-0000-4444-8444-000000000021'),
   ('t22', '94444444-0000-4444-8444-000000000022'),
   ('t23', '94444444-0000-4444-8444-000000000023');
+
+create or replace function pg_temp.fx(p_key text) returns uuid
+language sql stable as $$
+  select id from tc_fixtures where key = p_key;
+$$;
+
 
 create or replace function pg_temp.new_key() returns text
 language sql as $$
