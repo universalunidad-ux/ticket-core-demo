@@ -90,11 +90,51 @@ exception when others then
   return format('sqlstate=%s ok=false code=%s replayed=n/a', sqlstate, v_code);
 end $$;
 
--- Sesión autenticada como admin (is_local=false: debe sobrevivir al autocommit).
-select set_config('request.jwt.claims',
-  json_build_object('sub', '95555555-5555-4555-8555-555555555501', 'role', 'authenticated')::text,
-  false);
+-- Sesión autenticada como admin.
+-- Se establecen tanto los claims escalares como el JSON para reproducir
+-- de forma robusta el contexto que consumen auth.uid() y los helpers AuthZ.
 select set_config('role', 'authenticated', false);
+select set_config(
+  'request.jwt.claim.sub',
+  '95555555-5555-4555-8555-555555555501',
+  false
+);
+select set_config(
+  'request.jwt.claim.role',
+  'authenticated',
+  false
+);
+select set_config(
+  'request.jwt.claims',
+  json_build_object(
+    'sub', '95555555-5555-4555-8555-555555555501',
+    'role', 'authenticated'
+  )::text,
+  false
+);
+
+-- Fail-closed antes de lanzar la carrera: no medir concurrencia con una
+-- identidad que la RPC no reconoce como admin.
+do $auth_context_guard$
+declare
+  v_uid uuid := auth.uid();
+  v_role text := public.tc_current_role();
+begin
+  if v_uid is distinct from '95555555-5555-4555-8555-555555555501'::uuid then
+    raise exception
+      'U15C_AUTH_CONTEXT_FAIL: auth.uid()=% expected=95555555-5555-4555-8555-555555555501',
+      coalesce(v_uid::text, 'null')
+      using errcode = '42501';
+  end if;
+
+  if v_role is distinct from 'admin' then
+    raise exception
+      'U15C_AUTH_CONTEXT_FAIL: tc_current_role()=% expected=admin',
+      coalesce(v_role, 'null')
+      using errcode = '42501';
+  end if;
+end
+$auth_context_guard$;
 
 -- Barrera de reloj: ambas sesiones despiertan en :t0 y compiten por la clave.
 select pg_sleep(greatest(0, extract(epoch from (:'t0'::timestamptz - clock_timestamp()))));
