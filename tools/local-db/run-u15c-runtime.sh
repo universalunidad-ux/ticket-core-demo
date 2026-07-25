@@ -221,8 +221,8 @@ psql_file() {
 
 # --- 5) APPLY_MIGRATIONS (opt-in explícito) ---------------------------------
 if [[ "${APPLY}" -eq 1 ]]; then
-	[[ -f "${WORKDIR}/config.toml" ]] ||
-		fail "E_WORKDIR_INVALID" "APPLY_MIGRATIONS" "no existe ${WORKDIR}/config.toml" 62 \
+	[[ -f "${WORKDIR}/supabase/config.toml" ]] ||
+		fail "E_WORKDIR_INVALID" "APPLY_MIGRATIONS" "no existe ${WORKDIR}/supabase/config.toml" 62 \
 			"apuntar --workdir al workdir efímero con config.toml y migraciones"
 	supabase db reset --workdir "${WORKDIR}" >"${ARTIFACTS}/db-reset.log" 2>&1 ||
 		fail "E_MIGRATION_FAILED" "APPLY_MIGRATIONS" "supabase db reset falló (ver db-reset.log)" 73 \
