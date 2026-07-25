@@ -1,0 +1,3 @@
+# Efímeros del harness local — no versionar.
+.runtime/
+.artifacts/

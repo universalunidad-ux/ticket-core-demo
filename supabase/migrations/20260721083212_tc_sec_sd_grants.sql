@@ -2,14 +2,14 @@
 -- DO_NOT_APPLY_WITHOUT_STAGING_REVIEW
 -- TC-SEC-SD-GRANTS
 
-revoke execute on function public.current_user_role()
+revoke execute on function public.tc_current_role()
   from public, anon;
-grant execute on function public.current_user_role()
+grant execute on function public.tc_current_role()
   to authenticated;
 
-revoke execute on function public.is_admin()
+revoke execute on function public.tc_is_admin()
   from public, anon;
-grant execute on function public.is_admin()
+grant execute on function public.tc_is_admin()
   to authenticated;
 
 revoke execute on function public.is_internal_user()
@@ -17,33 +17,52 @@ revoke execute on function public.is_internal_user()
 grant execute on function public.is_internal_user()
   to authenticated;
 
-revoke execute on function public.is_support_or_admin()
+revoke execute on function public.tc_is_manager()
   from public, anon;
-grant execute on function public.is_support_or_admin()
+grant execute on function public.tc_is_manager()
   to authenticated;
 
-revoke execute on function public.log_ticket_assignment_event()
-  from public, anon, authenticated;
+-- Compatibilidad de transición:
+-- esta función existe en el esquema legacy vivo, pero no forma parte
+-- del baseline fresco reproducible. Si existe, se cierra su ejecución
+-- directa; si no existe, no se inventa ni redefine.
+do $legacy_assignment$
+declare
+  v_assignment_fn regprocedure :=
+    to_regprocedure('public.log_ticket_assignment_event()');
+begin
+  if v_assignment_fn is not null then
+    execute
+      'revoke execute on function '
+      'public.log_ticket_assignment_event() '
+      'from public, anon, authenticated';
+  end if;
+end
+$legacy_assignment$;
 
 do $verify$
 declare
   v_public_exposed integer;
   v_anon_unexpected integer;
+  v_assignment_fn regprocedure :=
+    to_regprocedure('public.log_ticket_assignment_event()');
+  v_portal_fn regprocedure :=
+    to_regprocedure('public.get_ticket_portal(text,text)');
 begin
   if not has_function_privilege(
     'authenticated',
-    'public.current_user_role()',
+    'public.tc_current_role()',
     'EXECUTE'
   ) then
-    raise exception 'current_user_role authenticated EXECUTE missing';
+    raise exception 'tc_current_role authenticated EXECUTE missing';
   end if;
 
   if not has_function_privilege(
     'authenticated',
-    'public.is_admin()',
+    'public.tc_is_admin()',
     'EXECUTE'
   ) then
-    raise exception 'is_admin authenticated EXECUTE missing';
+    raise exception 'tc_is_admin authenticated EXECUTE missing';
   end if;
 
   if not has_function_privilege(
@@ -56,29 +75,38 @@ begin
 
   if not has_function_privilege(
     'authenticated',
-    'public.is_support_or_admin()',
+    'public.tc_is_manager()',
     'EXECUTE'
   ) then
-    raise exception 'is_support_or_admin authenticated EXECUTE missing';
+    raise exception 'tc_is_manager authenticated EXECUTE missing';
   end if;
 
-  if has_function_privilege(
-    'anon',
-    'public.log_ticket_assignment_event()',
-    'EXECUTE'
-  ) or has_function_privilege(
-    'authenticated',
-    'public.log_ticket_assignment_event()',
-    'EXECUTE'
-  ) then
+  if v_assignment_fn is not null
+    and (
+      has_function_privilege(
+        'anon',
+        v_assignment_fn::oid,
+        'EXECUTE'
+      )
+      or has_function_privilege(
+        'authenticated',
+        v_assignment_fn::oid,
+        'EXECUTE'
+      )
+    )
+  then
     raise exception 'assignment trigger remains directly executable';
   end if;
 
-  if not has_function_privilege(
-    'anon',
-    'public.get_ticket_portal(text,text)',
-    'EXECUTE'
-  ) then
+  -- get_ticket_portal pertenece al esquema legacy. Cuando existe,
+  -- debe conservar su acceso anónimo intencional por folio+token.
+  if v_portal_fn is not null
+    and not has_function_privilege(
+      'anon',
+      v_portal_fn::oid,
+      'EXECUTE'
+    )
+  then
     raise exception 'intentional portal anon access was removed';
   end if;
 

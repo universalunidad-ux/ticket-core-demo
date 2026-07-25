@@ -29,6 +29,8 @@ const specs = [
     slug: "estado-ticket-responder-ts",
     remoteVersion: 39,
     sourceSha256: "a91eb85f0910b9becd74f5203b5099e8c7d397832efd553f1d013e4f2991bac6",
+    localSourceSha256: "4b39404103e3ff300775bd740b5c58febf01c0febea6ce5ad6cc9f7318b843dc",
+    hardeningCommit: "39ac85d36464367959816230cbee5620a2ba7fa3",
     recoveredAt: "2026-07-21T20:16:51-06:00",
   },
 ];
@@ -60,7 +62,13 @@ for (const spec of specs) {
   const metadataPath = `supabase/functions/${spec.slug}/source-current.json`;
   const source = read(sourcePath);
   assert.ok(source.length > 0, `${sourcePath} must not be empty`);
-  assert.equal(sha256(source), spec.sourceSha256, `${sourcePath} must preserve the recovered bytes`);
+  const expectedLocalSha256 =
+    spec.localSourceSha256 ?? spec.sourceSha256;
+  assert.equal(
+    sha256(source),
+    expectedLocalSha256,
+    `${sourcePath} must match the governed local source`,
+  );
 
   const metadataText = read(metadataPath);
   const metadata = JSON.parse(metadataText);
@@ -74,7 +82,57 @@ for (const spec of specs) {
   assert.equal(metadata.status, "ACTIVE");
   assert.equal(metadata.provenance, "READ_ONLY_SUPABASE_CLI_DOWNLOAD");
   assert.equal(metadata.deployed_by_this_unit, false);
-  assert.equal(metadata.source_sha256, sha256(source), `${metadataPath} hash must match its source`);
+  if (spec.localSourceSha256) {
+    assert.equal(
+      spec.slug,
+      "estado-ticket-responder-ts",
+      "only the responder may be a locally hardened derivative",
+    );
+    assert.equal(
+      metadata.source_sha256,
+      spec.sourceSha256,
+      `${metadataPath} must retain the recovered remote hash`,
+    );
+    assert.notEqual(
+      metadata.source_sha256,
+      sha256(source),
+      `${sourcePath} must not be misrepresented as byte-identical to remote`,
+    );
+
+    const recoveredSource = execFileSync(
+      "git",
+      ["show", `${spec.hardeningCommit}^:${sourcePath}`],
+      { cwd: root },
+    );
+    const hardenedSource = execFileSync(
+      "git",
+      ["show", `${spec.hardeningCommit}:${sourcePath}`],
+      { cwd: root },
+    );
+
+    assert.equal(
+      sha256(recoveredSource),
+      spec.sourceSha256,
+      `${spec.hardeningCommit} parent must match the recovered remote source`,
+    );
+    assert.equal(
+      sha256(hardenedSource),
+      spec.localSourceSha256,
+      `${spec.hardeningCommit} must produce the governed hardened source`,
+    );
+
+    execFileSync(
+      "git",
+      ["merge-base", "--is-ancestor", spec.hardeningCommit, "HEAD"],
+      { cwd: root },
+    );
+  } else {
+    assert.equal(
+      metadata.source_sha256,
+      sha256(source),
+      `${metadataPath} hash must match its recovered source`,
+    );
+  }
 
   assert.doesNotMatch(metadataText, /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/);
   assert.doesNotMatch(metadataText, /(?:sb_secret_|service[_-]?role|anon[_-]?key|access[_-]?token|refresh[_-]?token|private[_-]?key)/i);

@@ -12,10 +12,10 @@ const workflow = readFileSync(
 );
 
 for (const name of [
-  "current_user_role",
-  "is_admin",
+  "tc_current_role",
+  "tc_is_admin",
   "is_internal_user",
-  "is_support_or_admin",
+  "tc_is_manager",
 ]) {
   assert.match(
     sql,
@@ -36,7 +36,12 @@ for (const name of [
 
 assert.match(
   sql,
-  /log_ticket_assignment_event\(\)[\s\S]*from public, anon, authenticated;/,
+  /to_regprocedure\('public\.log_ticket_assignment_event\(\)'\)/,
+);
+
+assert.match(
+  sql,
+  /'revoke execute on function '\s*'public\.log_ticket_assignment_event\(\) '\s*'from public, anon, authenticated'/,
 );
 
 const revokeStatements = [
