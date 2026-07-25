@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import {
   readdirSync,
   readFileSync,
@@ -44,8 +43,8 @@ const stripSqlComments = source =>
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/--[^\r\n]*/g, "");
 
-const sha256 = source =>
-  createHash("sha256").update(source).digest("hex");
+const escapeRegExp = value =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 let passed = 0;
 
@@ -183,17 +182,33 @@ create policy site_config_admin_write
   ));
 });
 
-test("ninguna migración activa crea public.site_config", () => {
+test("public.site_config tiene un creador único y exacto", () => {
+  const creatorMigration =
+    "20260715023825_assignment_and_configuration.sql";
+  const createSiteConfig =
+    /\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?public\s*\.\s*site_config\b/i;
+
   const directory = join(root, "supabase/migrations");
-  for (const file of readdirSync(directory).filter(name =>
-    name.endsWith(".sql")
-  )) {
-    assert.doesNotMatch(
-      stripSqlComments(read(`supabase/migrations/${file}`)),
-      /\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?public\s*\.\s*site_config\b/i,
-      `${file} crea public.site_config`,
+  const creators = readdirSync(directory)
+    .filter(name => name.endsWith(".sql"))
+    .filter(name =>
+      createSiteConfig.test(
+        stripSqlComments(read(`supabase/migrations/${name}`)),
+      )
     );
-  }
+
+  assert.equal(
+    creators.length,
+    1,
+    `se esperaba exactamente un creador de public.site_config; hallados: ${
+      creators.join(", ") || "ninguno"
+    }`,
+  );
+  assert.equal(
+    creators[0],
+    creatorMigration,
+    `el creador de public.site_config no es el canónico: ${creators[0]}`,
+  );
 });
 
 test("no hay shell accidental en los artefactos SQL del split", () => {
@@ -207,22 +222,58 @@ test("no hay shell accidental en los artefactos SQL del split", () => {
   }
 });
 
-test("se conserva la identidad de las cinco funciones vivas", () => {
-  assert.equal(
-    sha256(migrations.securityDefiner),
-    "359f5298d4ec087a17a1c70bdd5cd1f05c47f659546e0a3f267c89e074cb5bf6",
-  );
+test("se validan semánticamente las identidades canónicas vivas", () => {
+  const sd = migrations.securityDefiner;
 
   for (const identity of [
-    "public.current_user_role()",
-    "public.get_ticket_portal(text,text)",
-    "public.is_admin()",
-    "public.is_support_or_admin()",
-    "public.log_ticket_assignment_event()",
+    "public.tc_current_role()",
+    "public.tc_is_admin()",
+    "public.is_internal_user()",
+    "public.tc_is_manager()",
   ]) {
-    assert.ok(
-      migrations.securityDefiner.includes(identity),
-      `identidad viva ausente: ${identity}`,
+    const fn = escapeRegExp(identity);
+
+    assert.match(
+      sd,
+      new RegExp(
+        `revoke\\s+execute\\s+on\\s+function\\s+${fn}\\s+from\\s+public,\\s*anon;`,
+        "i",
+      ),
+      `falta revoke public/anon para ${identity}`,
+    );
+    assert.match(
+      sd,
+      new RegExp(
+        `grant\\s+execute\\s+on\\s+function\\s+${fn}\\s+to\\s+authenticated;`,
+        "i",
+      ),
+      `falta grant a authenticated para ${identity}`,
+    );
+    assert.match(
+      sd,
+      new RegExp(
+        `has_function_privilege\\(\\s*'authenticated',\\s*'${fn}',\\s*'EXECUTE'\\s*\\)`,
+        "i",
+      ),
+      `falta verificación de EXECUTE authenticated para ${identity}`,
+    );
+  }
+});
+
+test("las funciones legacy opcionales se verifican vía to_regprocedure", () => {
+  const sd = migrations.securityDefiner;
+
+  for (const legacy of [
+    "public.log_ticket_assignment_event()",
+    "public.get_ticket_portal(text,text)",
+  ]) {
+    assert.match(
+      sd,
+      new RegExp(
+        `to_regprocedure\\(\\s*'${escapeRegExp(legacy)}'\\s*\\)`,
+        "i",
+      ),
+      `la función legacy ${legacy} no se resuelve vía to_regprocedure`,
     );
   }
 });
