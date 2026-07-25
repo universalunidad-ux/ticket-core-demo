@@ -246,6 +246,10 @@ create temporary table tc_results (
   recorded_at timestamptz not null default clock_timestamp()
 );
 
+-- pass()/fail() se ejecutan temporalmente como authenticated/anon.
+-- Esta tabla desaparece al terminar la sesión de la matriz.
+grant select, insert, update on tc_results to authenticated, anon;
+
 create or replace function pg_temp.pass(p_test text) returns void language sql as $$
   insert into tc_results (test_id, status) values (p_test, 'PASS')
   on conflict (test_id) do update set status = 'PASS', detail = null, recorded_at = clock_timestamp();
@@ -558,8 +562,9 @@ declare r pg_temp.tc_call_result; v_key text; v_hash text;
 begin
   perform pg_temp.reset_ticket(pg_temp.fx('t11'));
   v_key := pg_temp.new_key();
-  v_hash := md5(
-    jsonb_build_object(
+  v_hash := encode(
+    sha256(convert_to(
+      jsonb_build_object(
       'ticket_id', pg_temp.fx('t11'),
       'action', 'associate_existing',
       'expected_version', 0,
@@ -567,7 +572,10 @@ begin
       'contacto_id', null::uuid,
       'cliente', '{}'::jsonb,
       'contacto', '{}'::jsonb
-    )::text
+    )::text,
+      'UTF8'
+    )),
+    'hex'
   );
   perform pg_temp.reset_su();
   insert into public.edge_idempotency (idempotency_key, action, resource_id, request_hash, status)

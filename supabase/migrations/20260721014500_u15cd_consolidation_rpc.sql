@@ -153,8 +153,9 @@ begin
     );
   end if;
 
-  v_request_hash := md5(
-    jsonb_build_object(
+  v_request_hash := encode(
+    sha256(convert_to(
+      jsonb_build_object(
       'ticket_id', p_ticket_id,
       'action', p_action,
       'expected_version', p_expected_version,
@@ -162,7 +163,10 @@ begin
       'contacto_id', p_contacto_id,
       'cliente', coalesce(p_cliente, '{}'::jsonb),
       'contacto', coalesce(p_contacto, '{}'::jsonb)
-    )::text
+    )::text,
+      'UTF8'
+    )),
+    'hex'
   );
 
   insert into public.edge_idempotency (

@@ -247,18 +247,21 @@ test("contract test está registrado en CI", () => {
 
 
 test("prueba U15C-D2: hash calculado en servidor", () => {
-  assert.doesNotMatch(
-    migration,
-    /\bp_request_hash\s+text\b/,
-  );
-
-  assert.ok(
-    migration.includes("v_request_hash := md5("),
-  );
-
   assert.match(
     migration,
-    /request_hash\s+is\s+distinct\s+from\s+v_request_hash/,
+    /v_request_hash\s*:=\s*encode\s*\(/
+  );
+  assert.match(
+    migration,
+    /sha256\s*\(\s*convert_to\s*\(/
+  );
+  assert.match(
+    migration,
+    /jsonb_build_object\s*\(/
+  );
+  assert.doesNotMatch(
+    migration,
+    /v_request_hash\s*:=\s*md5\s*\(/
   );
 });
 
