@@ -173,6 +173,10 @@ insert into tc_fixtures (key, id) values
   ('t22', '94444444-0000-4444-8444-000000000022'),
   ('t23', '94444444-0000-4444-8444-000000000023');
 
+-- pg_temp.fx se ejecuta después de cambiar a authenticated/anon.
+-- La tabla es temporal y existe únicamente durante esta transacción de prueba.
+grant select on tc_fixtures to authenticated, anon;
+
 create or replace function pg_temp.fx(p_key text) returns uuid
 language sql stable as $$
   select id from tc_fixtures where key = p_key;
