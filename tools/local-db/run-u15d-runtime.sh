@@ -561,13 +561,16 @@ if [[ "${SETUP_RESULT}" == "PASS" ]]; then
       "se exige side=a ganador, side=b 40001 y exactamente un exit 0" 91
   fi
 
+  VERIFY_RC=0
   psql "${DB_URL}" -v ON_ERROR_STOP=1 -v phase=verify \
     -f "${CONC_SQL}" >"${VERIFY_OUT}" 2>&1 || VERIFY_RC=$?
   if [[ "${VERIFY_RC}" -eq 0 && -s "${VERIFY_OUT}" ]] &&
-    grep -q 'PASS: dos actores admin concurrentes' "${VERIFY_OUT}"; then
+    grep -Fxq 'U15D_VERIFY_EXACTLY_ONCE_PASS' "${VERIFY_OUT}"; then
     VERIFY_RESULT="PASS"
+    AUDIT_EXACTLY_ONCE="PASS"
   else
     VERIFY_RESULT="FAIL"
+    AUDIT_EXACTLY_ONCE="FAIL"
     if [[ ! -s "${VERIFY_OUT}" ]]; then
       set_stop_reason "E_U15D_VERIFY_ARTIFACT_MISSING" "CONCURRENCY_VERIFY" \
         "concurrency-verify.out ausente o vacío" 92
@@ -612,7 +615,6 @@ if [[ "${SETUP_RESULT}" == "PASS" &&
   "${VERIFY_RESULT}" == "PASS" &&
   "${TEARDOWN_RESULT}" == "PASS" ]]; then
   CONCURRENCY_RESULT="PASS"
-  AUDIT_EXACTLY_ONCE="PASS"
 fi
 echo "[u15d] concurrency suite -> ver ${ARTIFACT_LABEL}/u15d_assignment_concurrency.log"
 

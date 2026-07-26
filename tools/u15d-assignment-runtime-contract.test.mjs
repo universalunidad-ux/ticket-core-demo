@@ -33,6 +33,76 @@ const stripShellComments = (src) =>
     .join("\n");
 
 const VERIFY_NOTICE = "PASS: dos actores admin concurrentes";
+const VERIFY_MARKER = "U15D_VERIFY_EXACTLY_ONCE_PASS";
+
+function verifyPhase(src) {
+  const start = src.indexOf("\\if :phase_verify");
+  const end = src.indexOf("\n\\endif", start);
+  assert.ok(start >= 0 && end > start, "no se pudo aislar la fase verify");
+  return src.slice(start, end);
+}
+
+function classifyVerifyResult(rc, output) {
+  const hasExactMarker = output
+    .split(/\r?\n/)
+    .some((line) => line === VERIFY_MARKER);
+  return rc === 0 && hasExactMarker ? "PASS" : "FAIL";
+}
+
+function validateVerifyExactlyOnceContract(sqlSrc, runnerSrc) {
+  const phase = stripSqlComments(verifyPhase(sqlSrc));
+  const doIndex = phase.indexOf("do $$");
+  const doEndIndex = phase.indexOf("end $$;", doIndex);
+  const markerLine = `\\qecho ${VERIFY_MARKER}`;
+  const markerIndex = phase.indexOf(markerLine);
+
+  assert.ok(doIndex >= 0 && doEndIndex > doIndex, "verify requiere DO completo");
+  assert.ok(
+    markerIndex > doEndIndex,
+    "el marcador exactly-once debe emitirse después del DO exitoso",
+  );
+  assert.equal(
+    phase.split(markerLine).length - 1,
+    1,
+    "verify debe emitir exactamente un marcador estable",
+  );
+  assert.match(
+    phase,
+    /select count\(\*\) into v_evt_count from public\.ticket_eventos[\s\S]*?if v_evt_count <> 1 then[\s\S]*?end if;/,
+    "verify debe exigir exactamente 1 ticket_eventos",
+  );
+  assert.match(
+    phase,
+    /select count\(\*\) into v_bit_count from public\.bitacora[\s\S]*?if v_bit_count <> 1 then[\s\S]*?end if;/,
+    "verify debe exigir exactamente 1 bitacora",
+  );
+
+  const cleanRunner = stripShellComments(runnerSrc);
+  assert.match(
+    cleanRunner,
+    /VERIFY_RC=0\s+psql "\$\{DB_URL\}" -v ON_ERROR_STOP=1 -v phase=verify[\s\S]*?\|\| VERIFY_RC=\$\?/,
+    "VERIFY_RC debe provenir de la ejecución real de psql verify",
+  );
+  assert.match(
+    cleanRunner,
+    new RegExp(
+      `if \\[\\[ "\\$\\{VERIFY_RC\\}" -eq 0 && -s "\\$\\{VERIFY_OUT\\}" \\]\\] &&\\s*` +
+        `grep -Fxq '${VERIFY_MARKER}' "\\$\\{VERIFY_OUT\\}"; then\\s*` +
+        `VERIFY_RESULT="PASS"\\s*AUDIT_EXACTLY_ONCE="PASS"`,
+    ),
+    "VERIFY_RESULT y AUDIT_EXACTLY_ONCE requieren rc=0 y marcador exacto",
+  );
+  assert.equal(
+    (cleanRunner.match(/AUDIT_EXACTLY_ONCE="PASS"/g) || []).length,
+    1,
+    "AUDIT_EXACTLY_ONCE sólo puede pasar en el verify exitoso",
+  );
+  assert.doesNotMatch(
+    cleanRunner,
+    /grep[^\n]*PASS: dos actores admin concurrentes[^\n]*VERIFY_OUT/,
+    "el parser no debe depender del NOTICE narrativo",
+  );
+}
 
 function sideBBranch(src) {
   const start = src.indexOf("\\elif :side_b");
@@ -94,6 +164,7 @@ function validateRaceHarnessContract(sqlSrc, runnerSrc) {
   const waitB = cleanRunner.indexOf('wait "${PID_B}"');
   const verifyInvocation = cleanRunner.indexOf("-v phase=verify");
 
+  validateVerifyExactlyOnceContract(sqlSrc, runnerSrc);
   assert.match(
     cleanRunner,
     /if \[\[ "\$\{RC_A\}" -eq 0 \]\][\s\S]*?RACE_A_RESULT="PASS"/,
@@ -118,21 +189,6 @@ function validateRaceHarnessContract(sqlSrc, runnerSrc) {
   assert.ok(
     sqlSrc.includes(VERIFY_NOTICE),
     "el SQL verify debe emitir el NOTICE PASS real",
-  );
-  assert.match(
-    cleanRunner,
-    new RegExp(
-      `VERIFY_RC\\}" -eq 0[\\s\\S]*?grep -q '${VERIFY_NOTICE.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      )}' "\\$\\{VERIFY_OUT\\}"[\\s\\S]*?VERIFY_RESULT="PASS"`,
-    ),
-    "el NOTICE real de verify debe clasificar VERIFY_RESULT=PASS",
-  );
-  assert.match(
-    cleanRunner,
-    /VERIFY_RESULT\}" == "PASS"[\s\S]*?TEARDOWN_RESULT\}" == "PASS"[\s\S]*?AUDIT_EXACTLY_ONCE="PASS"/,
-    "AUDIT_EXACTLY_ONCE debe derivarse del verify exactly-once",
   );
 }
 
@@ -368,6 +424,7 @@ test("concurrency.sql verifica auditoría exactamente una vez y ganador único",
   assert.match(concurrencySql, /PASS: dos actores admin concurrentes/);
   assert.match(concurrencySql, /esperaba exactamente 1 ticket_eventos/);
   assert.match(concurrencySql, /esperaba exactamente 1 bitacora/);
+  validateVerifyExactlyOnceContract(concurrencySql, runnerSh);
 });
 
 test("side=b conserva auth local y RPC dentro de una sola transacción", () => {
@@ -600,12 +657,9 @@ test("éxito exige dos resultados de carrera y un ganador único", () => {
 
 test("éxito exactly-once exige verify real y su marcador de auditoría", () => {
   assert.match(runnerSh, /VERIFY_RC\}" -eq 0/);
-  assert.match(runnerSh, /PASS: dos actores admin concurrentes/);
+  assert.match(runnerSh, /grep -Fxq 'U15D_VERIFY_EXACTLY_ONCE_PASS'/);
   assert.match(runnerSh, /E_U15D_AUDIT_MARKER_MISSING/);
-  assert.match(
-    runnerSh,
-    /VERIFY_RESULT\}" == "PASS"[\s\S]*?TEARDOWN_RESULT\}" == "PASS"[\s\S]*?AUDIT_EXACTLY_ONCE="PASS"/,
-  );
+  validateVerifyExactlyOnceContract(concurrencySql, runnerSh);
 });
 
 test("runner conserva el contrato completo de carrera y verify", () => {
@@ -644,20 +698,63 @@ test("regresión: cero exits 0 quedan rechazados", () => {
   assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
 });
 
-test("regresión: NOTICE verify PASS no puede clasificarse como FAIL", () => {
+test("regresión: verify rc=0 más marker exacto clasifica PASS", () => {
+  assert.equal(classifyVerifyResult(0, `${VERIFY_MARKER}\n`), "PASS");
+});
+
+test("regresión: eliminar el capture rc=0 de verify invalida el runner", () => {
   const mutant = runnerSh.replace(
-    VERIFY_NOTICE,
-    "FAIL: dos actores admin concurrentes",
+    "  VERIFY_RC=0\n  psql \"${DB_URL}\" -v ON_ERROR_STOP=1 -v phase=verify",
+    "  psql \"${DB_URL}\" -v ON_ERROR_STOP=1 -v phase=verify",
   );
+  assert.notEqual(mutant, runnerSh, "la mutación debe eliminar el reset rc=0");
   assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
+});
+
+test("regresión: verify rc!=0 más marker clasifica FAIL", () => {
+  assert.equal(classifyVerifyResult(3, `${VERIFY_MARKER}\n`), "FAIL");
+});
+
+test("regresión: verify rc=0 sin marker clasifica FAIL", () => {
+  assert.equal(classifyVerifyResult(0, ""), "FAIL");
+});
+
+test("regresión: NOTICE narrativo sin marker clasifica FAIL", () => {
+  assert.equal(classifyVerifyResult(0, `${VERIFY_NOTICE}\n`), "FAIL");
+});
+
+test("regresión: marker alterado o parcial clasifica FAIL", () => {
+  assert.equal(classifyVerifyResult(0, "U15D_VERIFY_EXACTLY_ONCE\n"), "FAIL");
+  assert.equal(
+    classifyVerifyResult(0, `prefix ${VERIFY_MARKER}\n`),
+    "FAIL",
+  );
 });
 
 test("regresión: AUDIT_EXACTLY_ONCE no puede independizarse de verify", () => {
   const mutant = runnerSh.replace(
-    '  "${VERIFY_RESULT}" == "PASS" &&\n  "${TEARDOWN_RESULT}" == "PASS"',
-    '  "${TEARDOWN_RESULT}" == "PASS"',
+    '    VERIFY_RESULT="PASS"\n    AUDIT_EXACTLY_ONCE="PASS"',
+    '    VERIFY_RESULT="PASS"\n  fi\n  if [[ -s "${VERIFY_OUT}" ]]; then\n    AUDIT_EXACTLY_ONCE="PASS"',
   );
   assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
+});
+
+test("regresión: eliminar el conteo SQL de ticket_eventos invalida verify", () => {
+  const mutant = concurrencySql.replace(
+    /  select count\(\*\) into v_evt_count from public\.ticket_eventos[\s\S]*?  end if;\n/,
+    "",
+  );
+  assert.notEqual(mutant, concurrencySql, "la mutación debe alterar el SQL");
+  assert.throws(() => validateVerifyExactlyOnceContract(mutant, runnerSh));
+});
+
+test("regresión: mover el marker antes del DO invalida verify", () => {
+  const markerLine = `\\qecho ${VERIFY_MARKER}\n`;
+  const mutant = concurrencySql
+    .replace(markerLine, "")
+    .replace("\\if :phase_verify\n\ndo $$", `\\if :phase_verify\n\n${markerLine}\ndo $$`);
+  assert.notEqual(mutant, concurrencySql, "la mutación debe mover el marker");
+  assert.throws(() => validateVerifyExactlyOnceContract(mutant, runnerSh));
 });
 
 // ---------------------------------------------------------------------------

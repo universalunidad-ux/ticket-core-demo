@@ -210,6 +210,8 @@ begin
   raise notice 'PASS: dos actores admin concurrentes sobre el mismo ticket -> exactamente uno gana (side=a), el otro recibe 40001, sin filas duplicadas';
 end $$;
 
+\qecho U15D_VERIFY_EXACTLY_ONCE_PASS
+
 \endif
 
 -- ---------------------------------------------------------------------------
