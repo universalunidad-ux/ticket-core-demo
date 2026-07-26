@@ -12,8 +12,11 @@ SOURCE_PROJECT_ID="tc_local_db_harness"
 SOURCE_DB_PORT="54329"
 SOURCE_RUNTIME="tools/local-db/.runtime-recovery-source"
 DEST_PROJECT_ID="tc_recovery_v2"
+EXPECTED_POSTGRES_VERSION="18.4"
+EXPECTED_POSTGRES_VERSION_ERE='18\.4'
 PSQL_BIN="/opt/homebrew/opt/libpq/bin/psql"
 PG_DUMP_BIN="/opt/homebrew/opt/libpq/bin/pg_dump"
+PG_RESTORE_BIN="/opt/homebrew/opt/libpq/bin/pg_restore"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-synthetic"
 ARTIFACTS_DIR="tools/local-db/.artifacts-recovery/${RUN_ID}"
 LOCK_DIR="tools/local-db/.recovery-v2-synthetic.lock"
@@ -111,6 +114,86 @@ result_field() {
   sed -n "s/^${key}=//p" "${file}" | head -n 1
 }
 
+resolve_postgres_tool() {
+  local tool="$1" candidate="" libpq_prefix=""
+
+  candidate="$(command -v "${tool}" 2>/dev/null || true)"
+  if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    libpq_prefix="$(brew --prefix libpq 2>/dev/null || true)"
+    candidate="${libpq_prefix}/bin/${tool}"
+    if [[ -n "${libpq_prefix}" && -x "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
+
+  for libpq_prefix in "/opt/homebrew/opt/libpq" "/usr/local/opt/libpq"; do
+    candidate="${libpq_prefix}/bin/${tool}"
+    if [[ -x "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+parse_postgres_tool_version() {
+  local tool="$1" raw="$2" normalized=""
+
+  normalized="${raw//$'\r'/}"
+  if [[ "${normalized}" =~ ^[[:space:]]*${tool}[[:space:]]+\(PostgreSQL\)[[:space:]]+([0-9]+\.[0-9]+(\.[0-9]+)?)[[:space:]]*(\(Homebrew\))?[[:space:]]*$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  return 1
+}
+
+postgres_tool_versions_aligned() {
+  local psql_version="$1" pg_dump_version="$2" pg_restore_version="$3"
+  [[ -n "${psql_version}" \
+    && "${psql_version}" == "${pg_dump_version}" \
+    && "${psql_version}" == "${pg_restore_version}" ]]
+}
+
+read_postgres_tool_version() {
+  local tool="$1" path="$2" failure_prefix="$3" raw="" version=""
+
+  raw="$("${path}" --version 2>/dev/null)" \
+    || fail "${failure_prefix}_VERSION_UNREADABLE"
+  version="$(parse_postgres_tool_version "${tool}" "${raw}")" \
+    || fail "${failure_prefix}_VERSION_UNRECOGNIZED"
+  printf '%s\n' "${version}"
+}
+
+assert_postgres_toolchain() {
+  local psql_version="" pg_dump_version="" pg_restore_version=""
+
+  PSQL_BIN="$(resolve_postgres_tool psql)" || fail "PSQL_NOT_FOUND"
+  PG_DUMP_BIN="$(resolve_postgres_tool pg_dump)" || fail "PG_DUMP_NOT_FOUND"
+  PG_RESTORE_BIN="$(resolve_postgres_tool pg_restore)" || fail "PG_RESTORE_NOT_FOUND"
+
+  psql_version="$(read_postgres_tool_version psql "${PSQL_BIN}" PSQL)"
+  pg_dump_version="$(read_postgres_tool_version pg_dump "${PG_DUMP_BIN}" PG_DUMP)"
+  pg_restore_version="$(read_postgres_tool_version pg_restore "${PG_RESTORE_BIN}" PG_RESTORE)"
+
+  [[ "${psql_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
+    || fail "PSQL_VERSION_NOT_18_4"
+  [[ "${pg_dump_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
+    || fail "PG_DUMP_VERSION_NOT_18_4"
+  [[ "${pg_restore_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
+    || fail "PG_RESTORE_VERSION_NOT_18_4"
+  postgres_tool_versions_aligned \
+    "${psql_version}" "${pg_dump_version}" "${pg_restore_version}" \
+    || fail "POSTGRES_TOOL_VERSION_MISMATCH"
+}
+
 # Identidad y exclusión mutua antes de cualquier llamada a Docker/Supabase.
 [[ "$(git branch --show-current)" == "${EXPECTED_BRANCH}" ]] \
   || fail "WRONG_BRANCH"
@@ -124,9 +207,7 @@ assert_no_active_runners
 mkdir "${LOCK_DIR}" 2>/dev/null || fail "ORCHESTRATOR_LOCK_PRESENT"
 
 # Herramientas y contratos estáticos. No hay stack activo todavía.
-[[ -x "${PSQL_BIN}" ]] || fail "PSQL_NOT_FOUND"
-[[ -x "${PG_DUMP_BIN}" ]] || fail "PG_DUMP_NOT_FOUND"
-"${PSQL_BIN}" --version | grep -q ' 18\.4 ' || fail "PSQL_VERSION_NOT_18_4"
+assert_postgres_toolchain
 command -v docker >/dev/null 2>&1 || fail "DOCKER_NOT_FOUND"
 docker info >/dev/null 2>&1 || fail "DOCKER_NOT_RUNNING"
 command -v supabase >/dev/null 2>&1 || fail "SUPABASE_CLI_NOT_FOUND"
