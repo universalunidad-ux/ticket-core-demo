@@ -252,18 +252,17 @@ T0="$(psql_exec -t -A -c "select (clock_timestamp() + interval '5 seconds')::tex
 
 docker cp "${REPO_ROOT}/${CONC_PROBE}" "${DB_CONTAINER}:/tmp/u15c_concurrency_probe.sql" >/dev/null
 
-CONC_PIDS=""
+CONC_PIDS=()
 for slot in 1 2; do
 	docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres -X -q --no-psqlrc \
 		-v ON_ERROR_STOP=1 -v "slot=${slot}" -v "key=${CONC_KEY}" -v "ticket=${CONC_TICKET}" -v "t0=${T0}" \
 		-f /tmp/u15c_concurrency_probe.sql >"${ARTIFACTS}/concurrency-slot${slot}.log" 2>&1 &
-	CONC_PIDS="${CONC_PIDS} $!"
+	CONC_PIDS+=("$!")
 done
 # Ambas sondas deben terminar; su código de salida NO decide el veredicto (se
 # espera que una pierda la carrera). El veredicto lo dan verify + los conteos.
 CONC_RC=0
-# shellcheck disable=SC2086 # división en palabras deliberada: CONC_PIDS es una lista de PIDs
-for pid in ${CONC_PIDS}; do
+for pid in "${CONC_PIDS[@]}"; do
 	wait "${pid}" || CONC_RC=1
 done
 
