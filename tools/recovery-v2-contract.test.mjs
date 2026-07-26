@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// TC-RECOVERY-P5-P9-CLOSE-05
+// TC-RECOVERY-SEQUENTIAL-SCORABLE-01
 // recovery-v2-contract.test.mjs — Contratos SEMÁNTICOS (sin Docker, sin
 // Supabase CLI, sin red).
 //
@@ -42,6 +42,7 @@ import {
 } from "../tools/local-db/lib/auth-seed.mjs";
 
 const SH_PATH = "tools/local-db/run-recovery-v2.sh";
+const SYNTH_SH_PATH = "tools/local-db/run-recovery-v2-synthetic.sh";
 const SQL_PATH = "tools/local-db/recovery-signature.sql";
 const FK_SQL_PATH = "tools/local-db/fk-integrity.sql";
 const ORDER_PATH = "tools/local-db/recovery-data-order.txt";
@@ -49,6 +50,8 @@ const RUNBOOK_PATH = "docs/operations/RECOVERY_V2_RUNBOOK.md";
 const BOOTSTRAP_PATH = "tools/local-db/lib/bootstrap.mjs";
 const ALLOWLIST_PATH = "tools/local-db/lib/dump-allowlist.mjs";
 const AUTHSEED_PATH = "tools/local-db/lib/auth-seed.mjs";
+const LOCAL_AUTH_PATH = "tools/local-db/lib/local-auth-users.mjs";
+const LOCAL_AUTH_TEST_PATH = "test/local-db/local-auth-users.test.mjs";
 const MIGRATIONS_DIR = "supabase/migrations";
 
 function read(path) {
@@ -57,6 +60,7 @@ function read(path) {
 }
 
 const sh = read(SH_PATH);
+const synthSh = read(SYNTH_SH_PATH);
 const sql = read(SQL_PATH);
 const fkSql = read(FK_SQL_PATH);
 const order = read(ORDER_PATH);
@@ -108,19 +112,22 @@ function bashIfBlock(text, needle) {
 }
 
 const shExec = stripBashComments(sh);
+const synthExec = stripBashComments(synthSh);
 const bootstrapExec = stripJsComments(bootstrapSrc);
 
 // ===========================================================================
 // 1) Artefactos de la unidad
 // ===========================================================================
 for (const p of [SH_PATH, SQL_PATH, FK_SQL_PATH, ORDER_PATH, RUNBOOK_PATH,
-  BOOTSTRAP_PATH, ALLOWLIST_PATH, AUTHSEED_PATH]) {
+  BOOTSTRAP_PATH, ALLOWLIST_PATH, AUTHSEED_PATH, SYNTH_SH_PATH,
+  LOCAL_AUTH_PATH, LOCAL_AUTH_TEST_PATH]) {
   assert.ok(statSync(p).size > 0, `${p} esta vacio o no existe`);
 }
 assert.ok((statSync(SH_PATH).mode & 0o111) !== 0, `${SH_PATH} debe ser ejecutable`);
+assert.ok((statSync(SYNTH_SH_PATH).mode & 0o111) !== 0, `${SYNTH_SH_PATH} debe ser ejecutable`);
 assert.match(sh, /^#!\/usr\/bin\/env bash/, "shebang bash esperado");
 assert.match(shExec, /set -Eeuo pipefail/, "modo fail-closed requerido");
-console.log("PASS\tartifacts_exist\tcount=8");
+console.log("PASS\tartifacts_exist\tcount=11");
 
 // ===========================================================================
 // 2) MUTACIÓN: reintroducir `head -1` ejecutable
@@ -232,7 +239,8 @@ console.log("PASS\tblocking_parity_aborts_informative_does_not");
   assert.ok(guardAt < passAt, "el invariante debe evaluarse ANTES de RESULT=PASS");
   for (const field of ["STRUCTURE_PARITY", "DATA_PARITY", "RLS_RESTORE_RESULT",
     "ACL_RESTORE_RESULT", "DUMP_ALLOWLIST_RESULT", "DUMP_CONTENT_SCAN",
-    "AUTH_SEED_RESULT", "OWNERSHIP_CHECK", "INTEGRITY_RESTORE_RESULT", "FK_INTEGRITY"]) {
+    "AUTH_SEED_RESULT", "OWNERSHIP_CHECK", "INTEGRITY_RESTORE_RESULT", "FK_INTEGRITY",
+    "SOURCE_SIGNATURE_RESULT"]) {
     assert.match(
       shExec.slice(shExec.lastIndexOf("for parity_field in", guardAt), guardAt),
       new RegExp(`\\$\\{${field}\\}`),
@@ -240,7 +248,7 @@ console.log("PASS\tblocking_parity_aborts_informative_does_not");
     );
   }
 }
-console.log("PASS\tno_pass_with_diff_found\tfields=10");
+console.log("PASS\tno_pass_with_diff_found\tfields=11");
 
 // ===========================================================================
 // 9) MUTACIÓN: abort sin teardown · Ctrl-C con resultado PASS
@@ -529,10 +537,11 @@ for (const field of [
   "AUTH_SEED_RESULT=", "OWNERSHIP_CHECK=", "CIRCULAR_FK_STRATEGY=",
   "INTEGRITY_RESTORE_RESULT=", "FK_INTEGRITY=", "RUNTIME_DELETED=",
   "RUNTIME_PRESERVED=", "INTERRUPTED=", "STOP_CODE=",
+  "SOURCE_SIGNATURE_MODE=", "SOURCE_SIGNATURE_RESULT=", "SOURCE_CUTOFF_EPOCH=",
 ]) {
   assert.ok(sh.includes(field), `la salida final debe incluir el campo: ${field}`);
 }
-console.log("PASS\tfinal_output_contract\tfields=34");
+console.log("PASS\tfinal_output_contract\tfields=37");
 
 // ===========================================================================
 // 18) recovery-signature.sql (REPORT_ONLY, 5 dimensiones, sin datos sensibles)
@@ -633,7 +642,113 @@ assert.doesNotMatch(migrationsCorpus, /create table\s+(if not exists\s+)?app_pri
 console.log("PASS\tdata_order_matches_migrations\ttables=26,migrations=31");
 
 // ===========================================================================
-// 20) MUTACIÓN: runbook desincronizado del código
+// 20) Fuente persistida: combinaciones, archivos y métricas fail-closed
+// ===========================================================================
+for (const flag of [
+  "--dump", "--source-signature-file", "--source-cutoff-epoch", "--source-db-url",
+]) {
+  assert.ok(shExec.includes(flag), `runner missing flag ${flag}`);
+}
+assert.match(
+  bashIfBlock(shExec, 'if [[ -n "${SOURCE_SIGNATURE_FILE}" ]]; then'),
+  /--source-signature-file exige --dump[\s\S]*--source-cutoff-epoch[\s\S]*assert_regular_local_file/,
+  "firma persistida exige dump+cutoff y archivos locales",
+);
+assert.match(
+  bashIfBlock(shExec, 'elif [[ -n "${SOURCE_CUTOFF_EPOCH}" ]]; then'),
+  /abort\s+"PRECHECK_SCOPE_GUARD"/,
+  "cutoff sin firma debe abortar",
+);
+{
+  const localFile = bashFunction(shExec, "assert_regular_local_file");
+  assert.match(localFile, /!\s+-L/, "no se puede seguir un symlink de dump/firma");
+  assert.match(localFile, /-f/, "dump/firma deben ser archivos regulares");
+  assert.match(localFile, /\*:\/\/\*/, "una URL no es un archivo local");
+}
+assert.match(
+  shExec,
+  /SOURCE_SIGNATURE_MODE="PERSISTED_SEQUENTIAL"/,
+  "dump+firma+cutoff debe activar el candidato secuencial",
+);
+assert.match(
+  shExec,
+  /SOURCE_SIGNATURE_MODE="NONE_DUMP_ONLY"/,
+  "dump solo debe quedar explícitamente sin fuente",
+);
+assert.match(
+  bashFunction(shExec, "assert_complete_source_signature"),
+  /RECOVERY_SIGNATURE_COMPLETE=YES[\s\S]*STRUCTURE FUNCTIONS POLICIES ACL DATA/,
+  "la firma source debe estar completa antes de iniciar recovery",
+);
+assert.match(
+  shExec,
+  /RPO_SECONDS="\$\(\( DUMP_COMPLETE_EPOCH - SOURCE_CUTOFF_EPOCH \)\)"/,
+  "RPO debe medir corte source -> dump completo",
+);
+assert.match(
+  shExec,
+  /RTO_SECONDS="\$\(\( T_END - RECOVERY_START_EPOCH \)\)"/,
+  "RTO debe medir inicio recovery -> validacion final",
+);
+assert.match(
+  shExec.slice(shExec.indexOf('if [[ "${DOCKER_USED}" == "YES"'), shExec.indexOf('SCORABLE="YES"')),
+  /DOCKER_STOPPED[\s\S]*SOURCE_SIGNATURE_RESULT[\s\S]*RPO_SECONDS[\s\S]*RTO_SECONDS/,
+  "SCORABLE exige teardown, firma source y métricas numéricas",
+);
+assert.match(
+  bashIfBlock(shExec, '-n "${ACTIVE_SUPABASE_STACKS}"'),
+  /abort\s+"PRECHECK_HOST"/,
+  "el destino no puede iniciar mientras exista otro stack Supabase",
+);
+console.log("PASS\tpersisted_source_scorable_contract");
+
+// ===========================================================================
+// 21) Orquestador canónico: fuente cerrada antes del destino
+// ===========================================================================
+assert.match(synthExec, /set -Eeuo pipefail/, "orquestador debe usar bash estricto");
+assert.match(synthExec, /EXPECTED_BRANCH="test\/recovery-v2-20260725"/);
+assert.match(synthExec, /AUTHORIZED_BASE_HEAD="39605ffa44e228671fd3576932afea4fb352a6d9"/);
+assert.match(synthExec, /PSQL_BIN="\/opt\/homebrew\/opt\/libpq\/bin\/psql"/);
+assert.match(synthExec, /18\\\.4/, "orquestador debe exigir psql 18.4");
+assert.match(synthExec, /assert_no_active_runners/, "debe impedir runners concurrentes");
+assert.match(synthExec, /assert_no_supabase_stacks/, "debe exigir exclusividad de stacks");
+assert.match(synthExec, /local-auth-users\.mjs/, "debe crear usuarios por Auth Admin API local");
+assert.match(
+  synthExec,
+  /SUPABASE_SERVICE_ROLE_KEY="\$\{LOCAL_SERVICE_ROLE_KEY\}"[\s\S]*node tools\/local-db\/lib\/local-auth-users\.mjs/,
+  "service role sólo se entrega por entorno",
+);
+assert.doesNotMatch(
+  synthExec,
+  /local-auth-users\.mjs[^\n]*--(?:service|token|key)/,
+  "service role nunca puede ir en argumentos visibles",
+);
+assert.match(synthExec, /SEED_RC=\$\?/, "debe conservar el rc real del seed");
+assert.match(synthExec, /SEED_RC.*-ne 0[\s\S]*SOURCE_SEED_NONZERO/, "rc!=0 bloquea");
+assert.match(synthExec, /grep -Fxq 'STAGING_SYNTHETIC_SEED=PASS'/, "rc=0 sin marker bloquea");
+{
+  const sourceStart = synthExec.indexOf('SOURCE_BOOTSTRAP="$(');
+  const sourceStop = synthExec.indexOf('stop_source || fail "SOURCE_TEARDOWN_FAILED"');
+  const noStacksAfterSource = synthExec.indexOf("assert_no_supabase_stacks", sourceStop);
+  const destinationStart = synthExec.indexOf('RECOVERY_RUN_ID="${RUN_ID}" tools/local-db/run-recovery-v2.sh');
+  assert.ok(sourceStart >= 0 && sourceStart < sourceStop, "fuente debe iniciar antes de detenerse");
+  assert.ok(sourceStop < noStacksAfterSource, "debe verificar teardown fuente");
+  assert.ok(noStacksAfterSource < destinationStart, "destino sólo inicia tras cero stacks");
+}
+assert.match(
+  synthExec,
+  /--dump "\$\{SOURCE_DUMP\}"[\s\S]*--source-signature-file "\$\{SOURCE_SIGNATURE\}"[\s\S]*--source-cutoff-epoch "\$\{SOURCE_CUTOFF_EPOCH\}"/,
+  "destino debe consumir las tres evidencias source persistidas",
+);
+assert.match(synthExec, /SCORABLE[\s\S]*== "YES"/, "orquestador adjudica SCORABLE=YES");
+assert.match(synthExec, /HEAD_CHANGED_DURING_RUNTIME/, "HEAD debe permanecer igual");
+assert.match(synthExec, /WORKTREE_CHANGED_DURING_RUNTIME/, "worktree debe permanecer igual");
+assert.doesNotMatch(synthExec, /git\s+(?:add|commit|push|reset|clean|stash)\b/,
+  "el runtime no modifica Git");
+console.log("PASS\tsequential_source_destination_orchestrator");
+
+// ===========================================================================
+// 22) MUTACIÓN: runbook desincronizado del código
 // No se comprueba "que mencione algo", sino que los VALORES del runbook sean
 // los del código y que no queden referencias al diseño anterior.
 // ===========================================================================
