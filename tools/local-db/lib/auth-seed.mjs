@@ -97,7 +97,7 @@ export function renderAuthSeedSql(ids) {
     "insert into auth.users (instance_id, id, aud, role, email,",
     "  encrypted_password, email_confirmed_at, created_at, updated_at,",
     "  raw_app_meta_data, raw_user_meta_data)",
-    "select v.instance_id, v.id, v.aud, v.role, v.email,",
+    "select v.instance_id::uuid, v.id::uuid, v.aud, v.role, v.email,",
     `  '${SYNTHETIC_PASSWORD_MARKER}', '${SYNTHETIC_TIMESTAMP}'::timestamptz,`,
     `  '${SYNTHETIC_TIMESTAMP}'::timestamptz, '${SYNTHETIC_TIMESTAMP}'::timestamptz,`,
     "  '{\"provider\":\"synthetic\",\"providers\":[\"synthetic\"]}'::jsonb, '{}'::jsonb",

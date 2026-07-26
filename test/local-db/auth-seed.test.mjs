@@ -61,6 +61,16 @@ test("el SQL deduplica, ordena y es idempotente", () => {
   assert.ok(sql.indexOf(ID_A) < sql.indexOf(ID_B), "orden determinista");
   assert.equal(sql.split(ID_A).length - 1, 1, "el id duplicado se siembra una sola vez");
   assert.ok(sql.includes(syntheticEmail(ID_A)), "cada id lleva su correo sintetico");
+  assert.match(
+    sql,
+    /select v\.instance_id::uuid, v\.id::uuid, v\.aud, v\.role, v\.email,/i,
+    "instance_id e id deben llegar tipados como uuid",
+  );
+  assert.doesNotMatch(
+    sql,
+    /select\s+v\.instance_id\s*,\s*v\.id\s*,/i,
+    "el patron antiguo sin casts queda prohibido",
+  );
   assert.match(sql, /on conflict \(id\) do nothing/i);
   assert.match(sql, /AUTH_SEED_ROWS=2/);
 });
@@ -73,8 +83,25 @@ test("las cuentas sembradas no pueden autenticarse", () => {
 
 test("el seed solo toca auth.users", () => {
   const sql = renderAuthSeedSql([ID_A]);
+  assert.match(sql, /insert into auth\.users/i);
   assert.equal((sql.match(/insert into/gi) || []).length, 1);
   assert.doesNotMatch(sql, /auth\.(identities|sessions|refresh_tokens)/i);
+  assert.match(sql, /@example\.invalid/i);
+});
+
+test("el SQL generado no copia PII del dump", () => {
+  const ids = parsePerfilesIds([
+    "COPY public.perfiles (id, nombre, email, telefono) FROM stdin;",
+    `${ID_A}\tNombre Privado\tcorreo.real@empresa.com\t+52 55 1234 5678`,
+    "\\.",
+  ].join("\n"));
+  const sql = renderAuthSeedSql(ids);
+  assert.doesNotMatch(sql, /Nombre Privado|correo\.real@empresa\.com|\+52 55 1234 5678/i);
+  assert.match(sql, /@example\.invalid/i);
+});
+
+test("un UUID invalido en renderAuthSeedSql falla cerrado", () => {
+  assert.throws(() => renderAuthSeedSql(["no-es-uuid"]), /uuid invalido en el seed/);
 });
 
 test("isUuid es estricto", () => {
