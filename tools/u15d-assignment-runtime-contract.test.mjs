@@ -203,16 +203,44 @@ test("concurrency.sql define las 4 fases requeridas", () => {
   for (const phase of ["setup", "race", "verify", "teardown"]) {
     assert.match(
       concurrencySql,
-      new RegExp(`\\\\if :phase = '${phase}'`),
-      `falta fase ${phase}`,
+      new RegExp(`:'phase' = '${phase}' as phase_${phase}`),
+      `falta booleano phase_${phase}`,
+    );
+    assert.match(
+      concurrencySql,
+      new RegExp(`\\\\if :phase_${phase}`),
+      `falta dispatch booleano de ${phase}`,
     );
   }
+  assert.match(concurrencySql, /\\gset/);
+  assert.match(concurrencySql, /:'phase' in \('setup', 'race', 'verify', 'teardown'\) as phase_valid/);
 });
 
 test("concurrency.sql exige phase y valida side en la fase race", () => {
   assert.match(concurrencySql, /\\if :\{\?phase\}/);
-  assert.match(concurrencySql, /\\if :side = 'a'/);
-  assert.match(concurrencySql, /\\elif :side = 'b'/);
+  assert.match(concurrencySql, /\\if :\{\?side\}/);
+  assert.match(concurrencySql, /:'side' = 'a' as side_a/);
+  assert.match(concurrencySql, /:'side' = 'b' as side_b/);
+  assert.match(concurrencySql, /\\if :side_a/);
+  assert.match(concurrencySql, /\\elif :side_b/);
+
+  const raceStart = concurrencySql.indexOf("\\if :phase_race");
+  const verifyStart = concurrencySql.indexOf("\\if :phase_verify");
+  const sideValidation = concurrencySql.indexOf("\\if :{?side}");
+  assert.ok(raceStart < sideValidation && sideValidation < verifyStart);
+});
+
+test("concurrency.sql no intenta evaluar comparaciones SQL dentro de \\if", () => {
+  const ifLines = stripSqlComments(concurrencySql)
+    .split("\n")
+    .filter((line) => /^\s*\\(?:if|elif)\b/.test(line));
+  for (const line of ifLines) {
+    assert.doesNotMatch(
+      line,
+      /(?:=|<>|!=|<=|>=|\s+in\s+)/i,
+      `comparación inválida dentro de psql ${line.trim()}`,
+    );
+  }
 });
 
 test("concurrency.sql serializa con FOR UPDATE y detecta versión obsoleta", () => {
@@ -261,7 +289,7 @@ test("run-u15d-runtime.sh nunca hace push/deploy y detiene supabase al final", (
   assert.doesNotMatch(runnerSh, /\bgit push\b/);
   assert.doesNotMatch(runnerSh, /\bgit commit\b/);
   assert.match(runnerSh, /supabase stop/);
-  assert.match(runnerSh, /trap stop_supabase EXIT/);
+  assert.match(runnerSh, /trap 'handle_exit \$\?' EXIT/);
 });
 
 test("run-u15d-runtime.sh soporta --dry-run y --keep-up sin tocar Docker en dry-run", () => {
@@ -295,6 +323,154 @@ test("run-u15d-runtime.sh ejecuta ambas suites y produce 00_FINAL_RESULT.txt", (
       `falta campo de reporte ${field}`,
     );
   }
+});
+
+test("runner usa rutas absolutas y sólo borra runtime después de stop exitoso", () => {
+  assert.match(
+    runnerSh,
+    /ARTIFACT_DIR="\$\{REPO_ROOT\}\/tools\/local-db\/\.artifacts\/u15d-\$\{TS\}"/,
+  );
+  assert.match(
+    runnerSh,
+    /RUNTIME_DIR="\$\{REPO_ROOT\}\/tools\/local-db\/\.runtime-u15d"/,
+  );
+  assert.match(
+    runnerSh,
+    /remove_runtime_after_stop\(\)[\s\S]*?DOCKER_STOPPED\}" == "YES"[\s\S]*?rm -rf "\$\{RUNTIME_DIR\}"/,
+  );
+  assert.match(runnerSh, /E_RUNTIME_ALREADY_EXISTS/);
+  assert.equal(
+    (stripShellComments(runnerSh).match(/rm -rf "\$\{RUNTIME_DIR\}"/g) || [])
+      .length,
+    1,
+    "el único borrado de runtime debe vivir detrás del stop exitoso",
+  );
+  const finishBody = runnerSh.slice(
+    runnerSh.indexOf("finish() {"),
+    runnerSh.indexOf("handle_error() {"),
+  );
+  const stopIndex = finishBody.indexOf("stop_supabase");
+  const deleteIndex = finishBody.indexOf("remove_runtime_after_stop");
+  const reportIndex = finishBody.indexOf("write_final_report");
+  assert.ok(
+    stopIndex >= 0 && stopIndex < deleteIndex && deleteIndex < reportIndex,
+    "el orden definitivo debe ser stop -> delete -> report",
+  );
+});
+
+test("stop es idempotente, máximo una vez y su fallo no se silencia", () => {
+  assert.match(runnerSh, /PROJECT_ID="tc-u15d-runtime-\$\(date -u/);
+  assert.match(runnerSh, /project_id = "\$\{PROJECT_ID\}"/);
+  assert.match(runnerSh, /STOP_ATTEMPTED=0/);
+  assert.match(
+    runnerSh,
+    /if \[\[ "\$\{STOP_ATTEMPTED\}" -eq 1 \]\]; then[\s\S]*?return/,
+  );
+  assert.equal(
+    (stripShellComments(runnerSh).match(/\bsupabase stop\b/g) || []).length,
+    1,
+    "debe existir una sola invocación real de supabase stop",
+  );
+  assert.doesNotMatch(runnerSh, /supabase stop[^\n]*(?:\|\|\s*true|\|\|\s*:)/);
+  assert.match(runnerSh, /E_SUPABASE_STOP_FAILED/);
+});
+
+test("reporte definitivo ocurre después de stop y nunca conserva pending-trap", () => {
+  assert.doesNotMatch(runnerSh, /pending-trap/);
+  assert.match(runnerSh, /DOCKER_STOPPED=\$\{DOCKER_STOPPED\}/);
+  assert.match(
+    runnerSh,
+    /if ! stop_supabase[\s\S]*?write_final_report "\$\{result\}"/,
+  );
+  assert.doesNotMatch(
+    runnerSh.slice(runnerSh.indexOf("STACK_OWNED=1")),
+    /write_final_report[\s\S]*?stop_supabase/,
+  );
+});
+
+test("INT, TERM y ERR fuerzan cierre FAIL del stack propio", () => {
+  assert.match(runnerSh, /trap 'handle_error \$\? \$\{LINENO\}' ERR/);
+  assert.match(runnerSh, /trap 'handle_signal INT 130' INT/);
+  assert.match(runnerSh, /trap 'handle_signal TERM 143' TERM/);
+  assert.match(
+    runnerSh,
+    /if \[\[ "\$\{result\}" != "PASS" \]\]; then\s*force_stop=1/,
+  );
+  assert.match(runnerSh, /handle_signal\(\)[\s\S]*?finish "FAIL"/);
+});
+
+test("runtime-pass-count tolera el prefijo psql y PASS exige marcadores", () => {
+  assert.match(
+    runnerSh,
+    /grep -Ec 'NOTICE:\[\[:space:\]\]\+PASS' "\$\{RUNTIME_LOG\}"/,
+  );
+  assert.doesNotMatch(runnerSh, /grep\s+-[^\n]*'\^NOTICE/);
+  assert.match(runnerSh, /RUNTIME_PASS_COUNT\}" -lt 14/);
+  for (const marker of [
+    "PASS: asignación inicial",
+    "PASS: reasignación",
+    "PASS: desasignación",
+    "PASS: replay idempotente",
+    "PASS: escalada de rol bloqueada",
+  ]) {
+    assert.ok(runnerSh.includes(marker), `falta marcador runtime: ${marker}`);
+  }
+  assert.match(runnerSh, /E_U15D_RUNTIME_MARKERS_MISSING/);
+});
+
+test("setup, dos carreras, verify y teardown exigen artefactos propios", () => {
+  for (const artifact of [
+    "concurrency-setup.out",
+    "race-a.out",
+    "race-b.out",
+    "race-exit-codes.txt",
+    "concurrency-verify.out",
+    "concurrency-teardown.out",
+  ]) {
+    assert.ok(runnerSh.includes(artifact), `falta artefacto ${artifact}`);
+  }
+  for (const code of [
+    "E_U15D_SETUP_ARTIFACT_MISSING",
+    "E_U15D_RACE_A_ARTIFACT_MISSING",
+    "E_U15D_RACE_B_ARTIFACT_MISSING",
+    "E_U15D_VERIFY_ARTIFACT_MISSING",
+    "E_U15D_TEARDOWN_ARTIFACT_MISSING",
+  ]) {
+    assert.ok(runnerSh.includes(code), `falta código específico ${code}`);
+  }
+});
+
+test("teardown se ejecuta siempre después del bloque de carrera", () => {
+  const setupInvocation = runnerSh.indexOf("-v phase=setup");
+  const raceInvocation = runnerSh.indexOf("-v phase=race");
+  const verifyInvocation = runnerSh.indexOf("-v phase=verify");
+  const teardownInvocation = runnerSh.indexOf("-v phase=teardown");
+  assert.ok(
+    setupInvocation < raceInvocation &&
+      raceInvocation < verifyInvocation &&
+      verifyInvocation < teardownInvocation,
+  );
+  assert.match(runnerSh, /TEARDOWN_RESULT="PASS"/);
+  assert.match(runnerSh, /grep -q 'TEARDOWN_OK'/);
+});
+
+test("éxito exige dos resultados de carrera y un ganador único", () => {
+  assert.match(runnerSh, /race_a_exit=%s\\nrace_b_exit=%s/);
+  assert.match(runnerSh, /grep -Ec '\^race_\[ab\]_exit=\[0-9\]\+\$'/);
+  assert.match(runnerSh, /RACE_SUCCESS_COUNT\}" -ne 1/);
+  assert.match(runnerSh, /RACE_A_RESULT\}" != "PASS"/);
+  assert.match(runnerSh, /RACE_B_RESULT\}" != "PASS"/);
+  assert.match(runnerSh, /E_U15D_UNIQUE_WINNER_MISSING/);
+});
+
+test("éxito exactly-once exige verify real y su marcador de auditoría", () => {
+  assert.match(runnerSh, /VERIFY_RC\}" -eq 0/);
+  assert.match(runnerSh, /PASS: dos actores admin concurrentes/);
+  assert.match(runnerSh, /E_U15D_AUDIT_MARKER_MISSING/);
+  assert.match(
+    runnerSh,
+    /VERIFY_RESULT\}" == "PASS"[\s\S]*?TEARDOWN_RESULT\}" == "PASS"[\s\S]*?AUDIT_EXACTLY_ONCE="PASS"/,
+  );
 });
 
 // ---------------------------------------------------------------------------

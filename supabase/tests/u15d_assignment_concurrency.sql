@@ -42,10 +42,27 @@
   \quit 1
 \endif
 
+-- `\if` sólo evalúa booleanos después de interpolar variables. Calculamos
+-- una vez el dispatch mediante SQL + \gset y rechazamos cualquier fase que
+-- no pertenezca al conjunto cerrado.
+select
+  :'phase' = 'setup' as phase_setup,
+  :'phase' = 'race' as phase_race,
+  :'phase' = 'verify' as phase_verify,
+  :'phase' = 'teardown' as phase_teardown,
+  :'phase' in ('setup', 'race', 'verify', 'teardown') as phase_valid
+\gset
+
+\if :phase_valid
+\else
+  \echo 'STOP=phase_invalid (setup|race|verify|teardown)'
+  \quit 1
+\endif
+
 -- ---------------------------------------------------------------------------
 -- FASE: setup
 -- ---------------------------------------------------------------------------
-\if :phase = 'setup'
+\if :phase_setup
 
 insert into auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -82,7 +99,7 @@ from public.tickets where id = 'd15dc222-0000-0000-0000-000000000001' \gset
 -- ---------------------------------------------------------------------------
 -- FASE: race (side=a | side=b), requiere -v shared_expected='<timestamptz>'
 -- ---------------------------------------------------------------------------
-\if :phase = 'race'
+\if :phase_race
 
 \if :{?shared_expected}
 \else
@@ -90,7 +107,25 @@ from public.tickets where id = 'd15dc222-0000-0000-0000-000000000001' \gset
   \quit 1
 \endif
 
-\if :side = 'a'
+\if :{?side}
+\else
+  \echo 'STOP=side_required (a|b)'
+  \quit 1
+\endif
+
+select
+  :'side' = 'a' as side_a,
+  :'side' = 'b' as side_b,
+  :'side' in ('a', 'b') as side_valid
+\gset
+
+\if :side_valid
+\else
+  \echo 'STOP=side_invalid (a|b)'
+  \quit 1
+\endif
+
+\if :side_a
   -- Gana la carrera: toma el lock explícito primero y duerme para ampliar
   -- la ventana de contención antes de llamar al RPC real.
   begin;
@@ -113,7 +148,7 @@ from public.tickets where id = 'd15dc222-0000-0000-0000-000000000001' \gset
   select set_config('role','postgres', true);
   commit;
   \echo RACE_SIDE_A_DONE
-\elif :side = 'b'
+\elif :side_b
   -- Pierde la carrera: su `for update` interno queda bloqueado hasta que
   -- side=a haga commit; al reanudar, :shared_expected ya está obsoleto.
   select set_config('role','authenticated', true);
@@ -140,7 +175,7 @@ from public.tickets where id = 'd15dc222-0000-0000-0000-000000000001' \gset
 -- ---------------------------------------------------------------------------
 -- FASE: verify (secuencial, después de esperar ambos `race`)
 -- ---------------------------------------------------------------------------
-\if :phase = 'verify'
+\if :phase_verify
 
 do $$
 declare
@@ -174,7 +209,7 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- FASE: teardown (secuencial, limpieza explícita — este archivo SÍ persiste)
 -- ---------------------------------------------------------------------------
-\if :phase = 'teardown'
+\if :phase_teardown
 
 delete from public.ticket_eventos where ticket_id = 'd15dc222-0000-0000-0000-000000000001';
 delete from public.bitacora where entidad_tipo = 'ticket' and entidad_id = 'd15dc222-0000-0000-0000-000000000001';
