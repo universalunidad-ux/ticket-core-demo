@@ -26,37 +26,67 @@
 \if :{?environment}
 \else
   \echo 'STOP=environment_REQUIRED'
-  \quit 3
+  do $missing_environment$
+  begin
+    raise exception 'STOP=environment_REQUIRED'
+      using errcode = '22023';
+  end
+  $missing_environment$;
 \endif
 
 \if :{?confirmation}
 \else
   \echo 'STOP=confirmation_REQUIRED'
-  \quit 3
+  do $missing_confirmation$
+  begin
+    raise exception 'STOP=confirmation_REQUIRED'
+      using errcode = '22023';
+  end
+  $missing_confirmation$;
 \endif
 
 \if :{?admin_uid}
 \else
   \echo 'STOP=admin_uid_REQUIRED'
-  \quit 3
+  do $missing_admin_uid$
+  begin
+    raise exception 'STOP=admin_uid_REQUIRED'
+      using errcode = '22023';
+  end
+  $missing_admin_uid$;
 \endif
 
 \if :{?supervisor_uid}
 \else
   \echo 'STOP=supervisor_uid_REQUIRED'
-  \quit 3
+  do $missing_supervisor_uid$
+  begin
+    raise exception 'STOP=supervisor_uid_REQUIRED'
+      using errcode = '22023';
+  end
+  $missing_supervisor_uid$;
 \endif
 
 \if :{?support_a_uid}
 \else
   \echo 'STOP=support_a_uid_REQUIRED'
-  \quit 3
+  do $missing_support_a_uid$
+  begin
+    raise exception 'STOP=support_a_uid_REQUIRED'
+      using errcode = '22023';
+  end
+  $missing_support_a_uid$;
 \endif
 
 \if :{?support_b_uid}
 \else
   \echo 'STOP=support_b_uid_REQUIRED'
-  \quit 3
+  do $missing_support_b_uid$
+  begin
+    raise exception 'STOP=support_b_uid_REQUIRED'
+      using errcode = '22023';
+  end
+  $missing_support_b_uid$;
 \endif
 
 begin;

@@ -29,6 +29,20 @@ for (const variable of requiredVariables) {
     pattern,
     `teardown missing ${variable} guard`,
   );
+
+  const start = seed.indexOf(`\\if :{?${variable}}`);
+  const end = seed.indexOf("\\endif", start);
+  const guard = seed.slice(start, end);
+  assert.match(
+    guard,
+    new RegExp(String.raw`STOP=${variable}_REQUIRED`),
+    `seed missing ${variable} STOP marker`,
+  );
+  assert.match(
+    guard,
+    new RegExp(String.raw`do \$missing_${variable}\$[\s\S]*raise exception`),
+    `seed ${variable} guard must execute exception SQL`,
+  );
 }
 
 assert.match(seed, /STAGING_ONLY/);
@@ -36,6 +50,23 @@ assert.match(seed, /TC_STAGING_SYNTHETIC_V1/);
 assert.match(seed, /pg_advisory_xact_lock/i);
 assert.match(seed, /begin;/i);
 assert.match(seed, /commit;/i);
+assert.match(seed, /\\set ON_ERROR_STOP on/);
+assert.doesNotMatch(seed, /\\quit(?:\s|$)/, "\\quit is not portable under psql 18.4");
+
+const seedCommit = seed.lastIndexOf("commit;");
+const successMarker = seed.indexOf("\\echo 'STAGING_SYNTHETIC_SEED=PASS'");
+assert.ok(seedCommit >= 0, "seed COMMIT missing");
+assert.ok(successMarker > seedCommit, "PASS marker must appear after successful COMMIT");
+assert.equal(
+  (seed.match(/STAGING_SYNTHETIC_SEED=PASS/g) || []).length,
+  1,
+  "PASS marker must have exactly one authoritative occurrence",
+);
+assert.doesNotMatch(
+  seed.slice(0, seedCommit),
+  /STAGING_SYNTHETIC_SEED=PASS/,
+  "PASS marker cannot be reachable before COMMIT",
+);
 
 assert.match(seed, /insert into public\.perfiles/i);
 assert.match(seed, /insert into public\.clientes/i);
@@ -149,10 +180,12 @@ assert.match(teardown, /AUTH_USERS_MODIFIED=NO/);
 assert.match(teardown, /STORAGE_MODIFIED=NO/);
 
 console.log("PASS\tstaging-only execution guards");
+console.log("PASS\tpsql-18.4 fail-closed exception guards");
+console.log("PASS\tsuccess marker after COMMIT");
 console.log("PASS\tfour external Auth user UUID inputs");
 console.log("PASS\tpersistent seed is idempotent");
 console.log("PASS\treserved UUID collision protection");
 console.log("PASS\tteardown child-before-parent ordering");
 console.log("PASS\tauth.users mutation forbidden");
 console.log("PASS\tStorage deletion forbidden in SQL");
-console.log("STAGING_SYNTHETIC_SEED_CONTRACT: PASS (7/7)");
+console.log("STAGING_SYNTHETIC_SEED_CONTRACT: PASS (9/9)");

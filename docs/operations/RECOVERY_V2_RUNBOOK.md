@@ -1,22 +1,23 @@
 # RECOVERY V2 — Runbook operativo
 
-UNIDAD: `TC-RECOVERY-P5-P9-CLOSE-05`
+UNIDAD: `TC-RECOVERY-SEQUENTIAL-SCORABLE-01`
 WORKTREE: `_WORKTREES/ticket-core-demo/recovery-v2-20260725`
 BRANCH: `test/recovery-v2-20260725`
-HEAD BASE: `146f5c7d704961917936272f5dc17e9cbf2610d6`
+HEAD BASE AUTORIZADO: `39605ffa44e228671fd3576932afea4fb352a6d9`
 
 **Estado de esta unidad: IMPLEMENTADO LOCAL (código) · NO VALIDADO EN VIVO.**
 
 Todo lo de abajo fue escrito y verificado **estáticamente** (`bash -n`, `node --check`,
 `node --test` con mocks, contratos semánticos, `git diff --check`, secret gate) en un entorno
-de autoría **sin Docker, sin Supabase CLI y sin `psql`**. Ningún paso que toque una base viva
+de autoría **sin ejecutar Docker, Supabase CLI, `psql` ni SQL**. Ningún paso que toque una base viva
 (bootstrap, migraciones, dump/restore real, paridad, medición real de RPO/RTO) se ha ejecutado.
 **PLANIFICADO → IMPLEMENTADO LOCAL → COMMIT LOCAL → PUSH REMOTO → DESPLEGADO → VALIDADO EN
 VIVO**: esta unidad llega hasta IMPLEMENTADO LOCAL. Todo lo posterior es `NO`.
 
-**Siguiente paso literal:** ejecutar `tools/local-db/run-recovery-v2.sh --dry-run` en una
+**Siguiente paso literal:** ejecutar `tools/local-db/run-recovery-v2-synthetic.sh` en una
 Terminal macOS con Docker Desktop corriendo y Supabase CLI instalada
-(`RUN_FROM_MACOS_TERMINAL`), y sólo después repetir sin `--dry-run`. Tratar la primera corrida
+(`RUN_FROM_MACOS_TERMINAL`). El orquestador crea primero la fuente sintética, la detiene por
+completo y sólo después inicia Recovery destino. Tratar la primera corrida
 como una prueba: revisar `tools/local-db/.artifacts-recovery/<ts>/00_RESULT.txt` línea por
 línea antes de asumir que algo funciona de punta a punta.
 
@@ -44,6 +45,8 @@ allowlist. Análisis completo en
 | Clasificación LOCAL/REMOTO y guarda de entorno | `tools/local-db/lib/guards.mjs` | ambos |
 | Allowlist y análisis del dump | `tools/local-db/lib/dump-allowlist.mjs` | `run-recovery-v2.sh` |
 | Seed sintético de `auth.users` | `tools/local-db/lib/auth-seed.mjs` | `run-recovery-v2.sh` |
+| Usuarios Auth sintéticos de la fuente, vía Auth Admin API local | `tools/local-db/lib/local-auth-users.mjs` | `run-recovery-v2-synthetic.sh` |
+| Secuencia fuente → archivos persistidos → destino | `tools/local-db/run-recovery-v2-synthetic.sh` | operador local |
 | Orden de carga de datos (allowlist de tablas) | `tools/local-db/recovery-data-order.txt` | `dump-allowlist.mjs`, contratos |
 | Firma de comparación | `tools/local-db/recovery-signature.sql` | `run-recovery-v2.sh` |
 | Validación de integridad post-restore | `tools/local-db/fk-integrity.sql` | `run-recovery-v2.sh` |
@@ -77,8 +80,23 @@ split-brain).
 Sin `--dry-run`, antes de `DOCKER_USED=YES` deben pasar, en este orden y todos fail-closed:
 host `Darwin`/`Linux` · `node >= 22` · worktree git · rama `test/*` · guarda anti-remoto
 (`inspectEnvForRemote` + `classifyTarget` sobre `--source-db-url`) · guarda de alcance del
-runtime · `docker` en PATH · `docker info` responde · `supabase` CLI · `pg_dump`/`pg_restore`
-· `psql` del host. `DOCKER_USED` sólo pasa a `YES` cuando **todo** lo anterior pasó.
+runtime · `docker` en PATH · `docker info` responde · **cero contenedores `supabase_*`
+activos** · `supabase` CLI · `pg_dump`/`pg_restore` · `psql` del host. `DOCKER_USED` sólo
+pasa a `YES` cuando **todo** lo anterior pasó.
+
+### 4.1 Fuente persistida secuencial
+
+`run-recovery-v2.sh` conserva `--source-db-url` para una DB local no gestionada que no implique
+otro stack Supabase activo. La ruta canónica scorable usa tres evidencias inseparables:
+
+- `--dump <archivo local regular, no symlink>`;
+- `--source-signature-file <archivo local regular, no symlink>`;
+- `--source-cutoff-epoch <entero>`.
+
+`--dump` solo sigue siendo `SCORABLE=NO`; firma sola, cutoff solo, o dump+firma sin cutoff
+aborta en precheck. Los tres juntos fijan
+`SOURCE_SIGNATURE_MODE=PERSISTED_SEQUENTIAL`. Una firma incompleta o cualquier diff bloqueante
+fija `SOURCE_SIGNATURE_RESULT=FAIL`/`SOURCE_SIGNATURE_FAILED` y prohíbe PASS.
 
 ## 5. Allowlist / never-restore
 
@@ -148,6 +166,22 @@ Mecanismo canónico — `tools/local-db/lib/auth-seed.mjs`:
 La relación se verifica después con `fk-integrity.sql`: `PERFILES_WITHOUT_AUTH_USER` debe ser
 `0` y `AUTH_USERS_NON_SYNTHETIC` debe ser `0`.
 
+### 7.1 Cuatro identidades de la fuente
+
+Antes de ejecutar `staging_synthetic_seed.sql`, `local-auth-users.mjs` acepta únicamente
+`localhost`, `127.0.0.1` o `::1`, recibe la service role por
+`SUPABASE_SERVICE_ROLE_KEY` (nunca argumento), y crea o reutiliza exactamente:
+`tc-recovery-admin@example.invalid`, `tc-recovery-supervisor@example.invalid`,
+`tc-recovery-support-a@example.invalid` y `tc-recovery-support-b@example.invalid`.
+Sólo devuelve `rol=UUID`. Exige cuatro UUID distintos y metadata
+`TC_RECOVERY_SYNTHETIC_V1`; una identidad preexistente sin ese marcador es una colisión
+no sintética y aborta.
+
+Los guards ausentes del seed ya no usan `\quit 3`: cada uno emite su
+`STOP=<variable>_REQUIRED` y ejecuta un bloque SQL que lanza excepción.
+`\set ON_ERROR_STOP on` fuerza `rc!=0`, ninguna DML posterior es alcanzable, y
+`STAGING_SYNTHETIC_SEED=PASS` sólo aparece después de un `COMMIT` exitoso.
+
 ## 8. FK circular, triggers, ownership y teardown
 
 ### 8.1 FK circular `tickets` ↔ `solicitudes_soporte`
@@ -211,8 +245,9 @@ tenga `tableowner <> current_user`. Si la hay, se aborta sin ejecutar ningún `A
 
 ## 9. Comparación (paso 8) — `recovery-signature.sql`
 
-`REPORT_ONLY` (sólo `SELECT`/`\echo`). Se corre contra el destino y, si hay `--source-db-url`,
-también contra la fuente; la salida se parte por `SECTION=` y se compara sección a sección.
+`REPORT_ONLY` (sólo `SELECT`/`\echo`). Se corre contra el destino y se compara con la firma
+obtenida por `--source-db-url` o con `--source-signature-file`; la salida se parte por
+`SECTION=` y se compara sección a sección.
 
 **BLOQUEANTES (cualquier divergencia ⇒ abort):**
 
@@ -235,8 +270,8 @@ reportan en `LEDGER_PARITY`, `STORAGE_PARITY`, `OWNERSHIP_PARITY` con su semánt
 > El **ledger del PASO 2** (`≠ 31` filas) es cosa distinta y es **bloqueante**: un destino que
 > no es la baseline canónica no tiene nada válido que comparar. No es un WARN.
 
-Sin `--source-db-url` no hay paridad: las cuatro dimensiones quedan en
-`BASELINE_ONLY_NO_SOURCE` y `SCORABLE=NO`.
+Sin `--source-db-url` ni `--source-signature-file` no hay paridad: las cuatro dimensiones
+quedan en `BASELINE_ONLY_NO_SOURCE` y `SCORABLE=NO`.
 
 ## 10. Artefactos (`tools/local-db/.artifacts-recovery/<ts>/`)
 
@@ -273,13 +308,15 @@ Señales: `E_INTERRUPTED_INT` (exit 130), `E_INTERRUPTED_TERM` (exit 143).
 
 **Todas** estas condiciones a la vez; si falta una, `SCORABLE=NO`:
 
-`DOCKER_USED=YES` · `INTERRUPTED=NO` · `BOOTSTRAP_RESULT=PASS` ·
+`DOCKER_USED=YES` · `DOCKER_STOPPED=YES` · `INTERRUPTED=NO` ·
+`SOURCE_SIGNATURE_RESULT=PASS|PASS_PERSISTED` · `RPO_SECONDS>=0` · `RTO_SECONDS>=0` ·
+`BOOTSTRAP_RESULT=PASS` ·
 `DUMP_ALLOWLIST_RESULT=PASS` · `DUMP_CONTENT_SCAN=PASS` · `AUTH_SEED_RESULT=PASS` ·
 `OWNERSHIP_CHECK=PASS` · `INTEGRITY_RESTORE_RESULT=PASS` · `FK_INTEGRITY=PASS` ·
 `RESTORE_RESULT=PASS` · `STRUCTURE_PARITY=PASS` · `DATA_PARITY=PASS` ·
 `RLS_RESTORE_RESULT=PASS` · `ACL_RESTORE_RESULT=PASS`.
 
-En particular: un `--dry-run`, una corrida sin `--source-db-url` (sin comparación), una
+En particular: un `--dry-run`, una corrida sin fuente live ni firma persistida, una
 corrida interrumpida con Ctrl-C y una corrida con teardown fallido **no** son scorables.
 `RESULT=PASS` es además imposible si alguna dimensión bloqueante quedó en `DIFF_FOUND`,
 `SOURCE_SIGNATURE_FAILED` o `FAIL`, si `INTERRUPTED≠NO`, o si la integridad quedó suspendida.
@@ -288,8 +325,8 @@ corrida interrumpida con Ctrl-C y una corrida con teardown fallido **no** son sc
 
 | Métrica | Objetivo | Cómo se mide aquí |
 |---|---|---|
-| RPO | ≤ 24 h | `RPO_SECONDS` = ahora − mtime del dump usado |
-| RTO | ≤ 2 h (clon local) | `RTO_SECONDS` = ahora − inicio de `run-recovery-v2.sh` |
+| RPO | ≤ 24 h | `RPO_SECONDS` = dump completo − `SOURCE_CUTOFF_EPOCH` |
+| RTO | ≤ 2 h (clon local) | `RTO_SECONDS` = validación final − inicio del bootstrap destino |
 
 El RPO real lo domina el plano más lento de respaldar (típicamente los blobs de Storage).
 
@@ -330,6 +367,15 @@ tools/local-db/run-recovery-v2.sh --dump /ruta/a/app-data.dump
 # La URL se toma de: supabase status -o env --workdir <workdir origen>
 tools/local-db/run-recovery-v2.sh --source-db-url "$SOURCE_LOCAL_DB_URL"
 
+# Ruta canónica: fuente Supabase sintética y destino estrictamente secuenciales.
+tools/local-db/run-recovery-v2-synthetic.sh
+
+# Reanudar Recovery desde evidencia source ya persistida:
+tools/local-db/run-recovery-v2.sh \
+  --dump /ruta/a/app-data.dump \
+  --source-signature-file /ruta/a/source-signature.txt \
+  --source-cutoff-epoch 1785024000
+
 # Dejar el clon arriba para inspección manual:
 tools/local-db/run-recovery-v2.sh --dump /ruta/a/app-data.dump --keep-up
 
@@ -343,8 +389,10 @@ node tools/local-db/lib/bootstrap.mjs --stop \
 
 ```bash
 bash -n tools/local-db/run-recovery-v2.sh
-node --check tools/local-db/lib/bootstrap.mjs
-node --test test/local-db/            # pruebas con mocks, sin Docker
+bash -n tools/local-db/run-recovery-v2-synthetic.sh
+node --check tools/local-db/lib/local-auth-users.mjs
+node --test test/local-db/local-auth-users.test.mjs
+node tools/staging-synthetic-seed-contract.test.mjs
 node tools/recovery-v2-contract.test.mjs   # contratos semánticos
 ```
 
@@ -367,5 +415,6 @@ ROLLBACK: `git checkout --` de los archivos de esta unidad (ninguno toca
 `node tools/local-db/lib/bootstrap.mjs --stop --project-id tc_recovery_v2 --runtime-dir tools/local-db/.runtime-recovery --remove-runtime`.
 
 SIGUIENTE PASO LITERAL: `RUN_FROM_MACOS_TERMINAL` — ejecutar
-`tools/local-db/run-recovery-v2.sh --dry-run` en una Terminal macOS con Docker Desktop
-corriendo, y si pasa, repetir sin `--dry-run` con un dump o `--source-db-url` real.
+`tools/local-db/run-recovery-v2-synthetic.sh` en una Terminal macOS con Docker Desktop
+corriendo. El resultado sólo es terminal si `00_RESULT.txt` declara `RESULT=PASS`,
+`SCORABLE=YES`, `DOCKER_STOPPED=YES` y no queda ningún contenedor `supabase_*`.

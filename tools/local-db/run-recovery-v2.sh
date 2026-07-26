@@ -39,6 +39,10 @@
 #                            que generar el dump de datos. Debe clasificar como
 #                            LOCAL (ver guards.mjs); aborta si no.
 #   --dump <archivo>         Usar un dump --data-only ya generado (omite 4b).
+#   --source-signature-file <archivo>
+#                            Firma completa persistida de la fuente LOCAL.
+#   --source-cutoff-epoch <N>
+#                            Corte epoch de la fuente, anterior al dump completo.
 #   --db-port <N>            Puerto de la DB del clon de recuperación (default 54339;
 #                            distinto del harness, que usa 54329, para no compartir
 #                            puerto ni contenedor con él).
@@ -63,7 +67,11 @@ cd "${REPO_ROOT}"
 
 RUNTIME_DIR="tools/local-db/.runtime-recovery"
 ARTIFACTS_ROOT="tools/local-db/.artifacts-recovery"
-TS="$(date -u +%Y%m%dT%H%M%SZ)"
+TS="${RECOVERY_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
+if [[ ! "${TS}" =~ ^[0-9]{8}T[0-9]{6}Z(-[a-z0-9-]+)?$ ]]; then
+  echo "ABORT: RECOVERY_RUN_ID invalido" >&2
+  exit 2
+fi
 ARTIFACTS_DIR="${ARTIFACTS_ROOT}/${TS}"
 
 # (P2/P3) Identidad PROPIA del clon de recuperacion. project_id y puerto no se
@@ -76,6 +84,8 @@ DB_PORT="54339"
 EXPECTED_MIGRATIONS="31"
 SOURCE_DB_URL=""
 DUMP_FILE=""
+SOURCE_SIGNATURE_FILE=""
+SOURCE_CUTOFF_EPOCH=""
 BLOBS_SRC=""
 KEEP_UP="no"
 DRY_RUN="no"
@@ -84,6 +94,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --source-db-url) SOURCE_DB_URL="${2:-}"; shift 2 ;;
     --dump) DUMP_FILE="${2:-}"; shift 2 ;;
+    --source-signature-file) SOURCE_SIGNATURE_FILE="${2:-}"; shift 2 ;;
+    --source-cutoff-epoch) SOURCE_CUTOFF_EPOCH="${2:-}"; shift 2 ;;
     --db-port) DB_PORT="${2:-}"; shift 2 ;;
     --blobs-src) BLOBS_SRC="${2:-}"; shift 2 ;;
     --keep-up) KEEP_UP="yes"; shift ;;
@@ -145,6 +157,10 @@ RUNTIME_PRESERVED="NO"
 INTERRUPTED="NO"
 STOP_CODE="OK"
 SCORABLE="NO"
+SOURCE_SIGNATURE_MODE="NONE"
+SOURCE_SIGNATURE_RESULT="NOT_RUN"
+DUMP_COMPLETE_EPOCH=""
+RECOVERY_START_EPOCH=""
 
 # Argumentos deterministas de psql: ignoran cualquier ~/.psqlrc del operador, de
 # modo que el formato de las firmas y de los informes lo fija el .sql, no el host.
@@ -178,6 +194,9 @@ OWNERSHIP_PARITY=${OWNERSHIP_PARITY}
 RPO_SECONDS=${RPO_SECONDS}
 RTO_SECONDS=${RTO_SECONDS}
 DUMP_BYTES=${DUMP_BYTES}
+SOURCE_SIGNATURE_MODE=${SOURCE_SIGNATURE_MODE}
+SOURCE_SIGNATURE_RESULT=${SOURCE_SIGNATURE_RESULT}
+SOURCE_CUTOFF_EPOCH=${SOURCE_CUTOFF_EPOCH:-NOT_PROVIDED}
 DUMP_ALLOWLIST_RESULT=${DUMP_ALLOWLIST_RESULT}
 DUMP_CONTENT_SCAN=${DUMP_CONTENT_SCAN}
 AUTH_SEED_RESULT=${AUTH_SEED_RESULT}
@@ -340,6 +359,33 @@ trap 'abort "UNEXPECTED" "fallo no controlado en linea $LINENO" "revisar logs y 
 trap 'on_signal INT 2' INT
 trap 'on_signal TERM 15' TERM
 
+assert_regular_local_file() {
+  local label="$1" path="$2"
+  case "${path}" in
+    ""|*://*) abort "PRECHECK_SCOPE_GUARD" "${label} debe ser una ruta local no vacia" ;;
+  esac
+  [[ -e "${path}" ]] || abort "PRECHECK_SCOPE_GUARD" "${label} no existe"
+  [[ ! -L "${path}" ]] || abort "PRECHECK_SCOPE_GUARD" "${label} no puede ser symlink"
+  [[ -f "${path}" ]] || abort "PRECHECK_SCOPE_GUARD" "${label} debe ser archivo regular"
+}
+
+file_mtime_epoch() {
+  local path="$1" value
+  value="$(stat -f %m "${path}" 2>/dev/null || stat -c %Y "${path}" 2>/dev/null || true)"
+  [[ "${value}" =~ ^[0-9]+$ ]] || return 1
+  printf '%s\n' "${value}"
+}
+
+assert_complete_source_signature() {
+  local sig="$1" section
+  grep -q '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${sig}" \
+    || abort "PRECHECK_SCOPE_GUARD" "firma source incompleta: falta RECOVERY_SIGNATURE_COMPLETE=YES"
+  for section in STRUCTURE FUNCTIONS POLICIES ACL DATA; do
+    grep -q "^SECTION=${section}$" "${sig}" \
+      || abort "PRECHECK_SCOPE_GUARD" "firma source incompleta: falta SECTION=${section}"
+  done
+}
+
 # =============================================================================
 # FASE 0 · GUARDAS (fail-closed; nada de Docker toca antes de pasar todo esto)
 # =============================================================================
@@ -373,6 +419,32 @@ fi
 # artefactos. Ambas rutas efimeras (.runtime-recovery/ y .artifacts-recovery/)
 # estan en tools/local-db/.gitignore, asi que crearlas no ensucia el arbol.
 mkdir -p "${ARTIFACTS_DIR}"
+
+# Fuente persistida secuencial: los tres elementos forman una sola evidencia.
+# Ninguna combinación parcial puede presentarse como candidata scorable.
+if [[ -n "${SOURCE_DB_URL}" && ( -n "${SOURCE_SIGNATURE_FILE}" || -n "${SOURCE_CUTOFF_EPOCH}" ) ]]; then
+  abort "PRECHECK_SCOPE_GUARD" "--source-db-url no puede mezclarse con una firma source persistida"
+fi
+if [[ -n "${SOURCE_SIGNATURE_FILE}" ]]; then
+  [[ -n "${DUMP_FILE}" ]] \
+    || abort "PRECHECK_SCOPE_GUARD" "--source-signature-file exige --dump"
+  [[ -n "${SOURCE_CUTOFF_EPOCH}" ]] \
+    || abort "PRECHECK_SCOPE_GUARD" "--dump + --source-signature-file exige --source-cutoff-epoch"
+  [[ "${SOURCE_CUTOFF_EPOCH}" =~ ^[0-9]+$ ]] \
+    || abort "PRECHECK_SCOPE_GUARD" "--source-cutoff-epoch debe ser entero no negativo"
+  assert_regular_local_file "--dump" "${DUMP_FILE}"
+  assert_regular_local_file "--source-signature-file" "${SOURCE_SIGNATURE_FILE}"
+  assert_complete_source_signature "${SOURCE_SIGNATURE_FILE}"
+  SOURCE_SIGNATURE_MODE="PERSISTED_SEQUENTIAL"
+  SOURCE_SIGNATURE_RESULT="VALIDATED"
+elif [[ -n "${SOURCE_CUTOFF_EPOCH}" ]]; then
+  abort "PRECHECK_SCOPE_GUARD" "--source-cutoff-epoch solo es invalido"
+elif [[ -n "${DUMP_FILE}" ]]; then
+  assert_regular_local_file "--dump" "${DUMP_FILE}"
+  SOURCE_SIGNATURE_MODE="NONE_DUMP_ONLY"
+elif [[ -n "${SOURCE_DB_URL}" ]]; then
+  SOURCE_SIGNATURE_MODE="LIVE_LOCAL_DB"
+fi
 
 # --- Guarda anti-remoto reutilizando guards.mjs (NO se duplica la lógica) ---
 REMOTE_FINDINGS="$(SOURCE_DB_URL_CHECK="${SOURCE_DB_URL}" node -e '
@@ -414,6 +486,13 @@ fi
 if ! docker info >/dev/null 2>&1; then
   abort "PRECHECK_HOST" "docker daemon no responde" "abrir Docker Desktop y reintentar"
 fi
+ACTIVE_SUPABASE_STACKS="$(docker ps --filter 'name=^supabase_' --format '{{.Names}}' 2>/dev/null)" \
+  || abort "PRECHECK_HOST" "no se pudo comprobar la ausencia de stacks Supabase activos"
+if [[ -n "${ACTIVE_SUPABASE_STACKS}" ]]; then
+  abort "PRECHECK_HOST" \
+    "hay stacks Supabase activos; Recovery V2 exige inicio exclusivo y secuencial" \
+    "detener completamente el stack fuente antes de iniciar el destino"
+fi
 if ! command -v supabase >/dev/null 2>&1; then
   abort "PRECHECK_HOST" "supabase CLI no encontrada" "brew install supabase/tap/supabase"
 fi
@@ -440,6 +519,7 @@ DOCKER_USED="YES"
 # con project_id y puertos PROPIOS y devuelve DB_URL y CID de la MISMA
 # resolucion, de modo que no puede haber split-brain entre ambos.
 # =============================================================================
+RECOVERY_START_EPOCH="$(date -u +%s)"
 BOOTSTRAP_ENV="$(node tools/local-db/lib/bootstrap.mjs \
   --project-id "${PROJECT_ID}" \
   --db-port "${DB_PORT}" \
@@ -515,14 +595,16 @@ echo "[recovery-v2] migraciones OK (ledger=${LEDGER_COUNT})"
 # PASO 4 · DUMP / RESTORE DE DATOS APPLICATION-OWNED
 # =============================================================================
 if [[ -n "${DUMP_FILE}" ]]; then
-  [[ -f "${DUMP_FILE}" ]] || abort "DUMP" "archivo --dump no existe: ${DUMP_FILE}"
   DUMP_RESULT="REUSED_EXISTING"
+  DUMP_COMPLETE_EPOCH="$(file_mtime_epoch "${DUMP_FILE}")" \
+    || abort "DUMP" "no se pudo obtener el timestamp del dump local"
 else
   if [[ -z "${SOURCE_DB_URL}" ]]; then
     DUMP_RESULT="SKIPPED_NO_SOURCE"
     echo "[recovery-v2] sin --source-db-url ni --dump: se omite el plano de datos (solo bootstrap+migraciones)." >&2
   else
     DUMP_FILE="${ARTIFACTS_DIR}/app-data.dump"
+    SOURCE_CUTOFF_EPOCH="$(date -u +%s)"
     # Filtros EXACTOS de 03_DUMP_FILTERS.txt/B. NOTA: se omite --disable-triggers
     # (embebe ENABLE/DISABLE TRIGGER ALL que requiere superuser al restaurar);
     # los triggers de usuario se manejan manualmente en 4g (03/E).
@@ -541,6 +623,7 @@ else
       DUMP_RESULT="FAIL"
       abort "DUMP" "pg_dump fallo; ver ${ARTIFACTS_DIR}/04_dump.log"
     fi
+    DUMP_COMPLETE_EPOCH="$(date -u +%s)"
     DUMP_RESULT="PASS"
   fi
 fi
@@ -813,23 +896,35 @@ split_signature() {
 BLOCKING_SECTIONS="STRUCTURE FUNCTIONS POLICIES ACL DATA"
 INFORMATIVE_SECTIONS="LEDGER STORAGE OWNERSHIP"
 
+SOURCE_SIGNATURE_ARTIFACT=""
 if [[ -n "${SOURCE_DB_URL}" ]]; then
   if ! psql "${SOURCE_DB_URL}" "${PSQL_DET_ARGS[@]}" -f tools/local-db/recovery-signature.sql \
       >"${ARTIFACTS_DIR}/08_src_signature.txt" 2>"${ARTIFACTS_DIR}/08_src_signature.err"; then
+    SOURCE_SIGNATURE_RESULT="FAIL"
     STRUCTURE_PARITY="SOURCE_SIGNATURE_FAILED"; DATA_PARITY="SOURCE_SIGNATURE_FAILED"
     RLS_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"; ACL_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"
     abort "VALIDATION" \
       "la firma de la FUENTE fallo; sin ella no hay paridad que demostrar (ver ${ARTIFACTS_DIR}/08_src_signature.err)" \
       "corregir el acceso a la fuente LOCAL y repetir; no aprobar un simulacro sin comparacion"
   fi
+  SOURCE_SIGNATURE_ARTIFACT="${ARTIFACTS_DIR}/08_src_signature.txt"
+  SOURCE_SIGNATURE_RESULT="PASS"
+elif [[ -n "${SOURCE_SIGNATURE_FILE}" ]]; then
+  cp "${SOURCE_SIGNATURE_FILE}" "${ARTIFACTS_DIR}/08_src_signature.txt" \
+    || abort "VALIDATION" "no se pudo persistir la firma source en artefactos"
+  SOURCE_SIGNATURE_ARTIFACT="${ARTIFACTS_DIR}/08_src_signature.txt"
+  SOURCE_SIGNATURE_RESULT="PASS_PERSISTED"
+fi
 
-  if ! grep -q '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${ARTIFACTS_DIR}/08_src_signature.txt"; then
+if [[ -n "${SOURCE_SIGNATURE_ARTIFACT}" ]]; then
+  if ! grep -q '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${SOURCE_SIGNATURE_ARTIFACT}"; then
+    SOURCE_SIGNATURE_RESULT="FAIL"
     STRUCTURE_PARITY="SOURCE_SIGNATURE_FAILED"; DATA_PARITY="SOURCE_SIGNATURE_FAILED"
     RLS_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"; ACL_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"
     abort "VALIDATION" "la firma de la FUENTE esta truncada (sin RECOVERY_SIGNATURE_COMPLETE)"
   fi
 
-  split_signature "${ARTIFACTS_DIR}/08_src_signature.txt" "${ARTIFACTS_DIR}/08_sections_src"
+  split_signature "${SOURCE_SIGNATURE_ARTIFACT}" "${ARTIFACTS_DIR}/08_sections_src"
   split_signature "${ARTIFACTS_DIR}/08_dest_signature.txt" "${ARTIFACTS_DIR}/08_sections_dst"
 
   # --- Secciones BLOQUEANTES ------------------------------------------------
@@ -889,7 +984,7 @@ else
   STORAGE_PARITY="BASELINE_ONLY_NO_SOURCE"
   OWNERSHIP_PARITY="BASELINE_ONLY_NO_SOURCE"
   split_signature "${ARTIFACTS_DIR}/08_dest_signature.txt" "${ARTIFACTS_DIR}/08_sections_dst"
-  echo "[recovery-v2] sin --source-db-url: firma del destino registrada, SIN comparacion de paridad." >&2
+  echo "[recovery-v2] sin fuente live ni firma persistida: destino registrado SIN paridad." >&2
 fi
 
 # NOTA (no-duplicado / no-integracion falsa): tools/local-db/harness.mjs NO
@@ -911,10 +1006,16 @@ fi
 # PASO 9 · MEDIR RPO / RTO
 # =============================================================================
 T_END="$(date -u +%s)"
-RTO_SECONDS="$(( T_END - T_START ))"
-if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
-  DUMP_MTIME="$(date -u -r "${DUMP_FILE}" +%s 2>/dev/null || echo "${T_END}")"
-  RPO_SECONDS="$(( T_END - DUMP_MTIME ))"
+if [[ "${RECOVERY_START_EPOCH}" =~ ^[0-9]+$ ]]; then
+  RTO_SECONDS="$(( T_END - RECOVERY_START_EPOCH ))"
+else
+  RTO_SECONDS="-1"
+fi
+if [[ "${SOURCE_CUTOFF_EPOCH}" =~ ^[0-9]+$ && "${DUMP_COMPLETE_EPOCH}" =~ ^[0-9]+$ ]]; then
+  if (( DUMP_COMPLETE_EPOCH < SOURCE_CUTOFF_EPOCH )); then
+    abort "VALIDATION" "dump completo es anterior al corte source; RPO no es adjudicable"
+  fi
+  RPO_SECONDS="$(( DUMP_COMPLETE_EPOCH - SOURCE_CUTOFF_EPOCH ))"
 else
   RPO_SECONDS="-1"
 fi
@@ -930,7 +1031,9 @@ teardown_stack
 if [[ "${KEEP_UP}" == "yes" ]]; then
   NEXT_ACTION="clon local activo (--keep-up); detener con: node tools/local-db/lib/bootstrap.mjs --stop --project-id ${PROJECT_ID} --runtime-dir ${RUNTIME_DIR} --remove-runtime"
 elif [[ "${DOCKER_STOPPED}" != "YES" ]]; then
-  NEXT_ACTION="teardown FALLIDO: runtime y evidencia preservados; ver ${ARTIFACTS_DIR}/10_teardown_preserved.txt"
+  abort "LIFECYCLE" \
+    "teardown destino fallido; RESULT=PASS queda prohibido" \
+    "runtime y evidencia preservados; ver ${ARTIFACTS_DIR}/10_teardown_preserved.txt"
 else
   NEXT_ACTION="revisar ${ARTIFACTS_DIR}/00_RESULT.txt y los diff por seccion (si existen)"
 fi
@@ -948,7 +1051,8 @@ COMMIT_CREATED="NO"   # este script no realiza staging ni publicación remota; e
 # =============================================================================
 for parity_field in "${STRUCTURE_PARITY}" "${DATA_PARITY}" "${RLS_RESTORE_RESULT}" "${ACL_RESTORE_RESULT}" \
                     "${DUMP_ALLOWLIST_RESULT}" "${DUMP_CONTENT_SCAN}" "${AUTH_SEED_RESULT}" \
-                    "${OWNERSHIP_CHECK}" "${INTEGRITY_RESTORE_RESULT}" "${FK_INTEGRITY}"; do
+                    "${OWNERSHIP_CHECK}" "${INTEGRITY_RESTORE_RESULT}" "${FK_INTEGRITY}" \
+                    "${SOURCE_SIGNATURE_RESULT}"; do
   case "${parity_field}" in
     DIFF_FOUND|SOURCE_SIGNATURE_FAILED|FAIL)
       abort "VALIDATION" \
@@ -973,6 +1077,7 @@ RESULT="PASS"
 # restore terminara, asi que una corrida con --dump y sin --source-db-url (sin
 # ninguna comparacion) se declaraba scorable. No comparar no es coincidir.
 if [[ "${DOCKER_USED}" == "YES" \
+   && "${DOCKER_STOPPED}" == "YES" \
    && "${INTERRUPTED}" == "NO" \
    && "${BOOTSTRAP_RESULT}" == "PASS" \
    && "${DUMP_ALLOWLIST_RESULT}" == "PASS" \
@@ -986,7 +1091,12 @@ if [[ "${DOCKER_USED}" == "YES" \
    && "${DATA_PARITY}" == "PASS" \
    && "${RLS_RESTORE_RESULT}" == "PASS" \
    && "${ACL_RESTORE_RESULT}" == "PASS" ]]; then
-  SCORABLE="YES"
+  if [[ "${SOURCE_SIGNATURE_RESULT}" == "PASS" || "${SOURCE_SIGNATURE_RESULT}" == "PASS_PERSISTED" ]] \
+     && (( RPO_SECONDS >= 0 && RTO_SECONDS >= 0 )); then
+    SCORABLE="YES"
+  else
+    SCORABLE="NO"
+  fi
 else
   SCORABLE="NO"
 fi
