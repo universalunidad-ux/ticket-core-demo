@@ -29,6 +29,25 @@
 \set ON_ERROR_STOP on
 \pset pager off
 
+-- ---------------------------------------------------------------------------
+-- DETERMINISMO DE LA FIRMA (obligatorio para que el diff signifique algo).
+--
+-- La firma se compara entre dos psql distintos: el del contenedor del clon y el
+-- del host (contra la fuente). Con el formato alineado por defecto el ancho de
+-- las columnas depende de los DATOS, asi que dos bases equivalentes podian
+-- producir un diff no vacio por puro formato. Estas pragmas fijan la
+-- representacion en el propio script, de modo que no dependa de quien lo invoca
+-- ni de un ~/.psqlrc del operador (el invocador ademas pasa -X --no-psqlrc).
+--
+-- Toda consulta de este archivo lleva ORDER BY TOTAL: el orden de filas no
+-- puede depender del plan de ejecucion.
+-- ---------------------------------------------------------------------------
+\pset format unaligned
+\pset tuples_only on
+\pset fieldsep '|'
+\pset footer off
+\pset null '<NULL>'
+
 \echo 'RECOVERY_SIGNATURE_MODE=REPORT_ONLY'
 \echo 'RECOVERY_SIGNATURE_ALLOWLIST=public,app_private'
 
@@ -117,7 +136,8 @@ select
   n.nspname as extension_schema
 from pg_extension e
 join pg_namespace n on n.oid = e.extnamespace
-where e.extname = 'pgcrypto';
+where e.extname = 'pgcrypto'
+order by e.extname;
 
 select
   'RLS_ENABLED_FLAG' as check_id,
@@ -177,7 +197,7 @@ where n.nspname in ('public', 'app_private')
     or coalesce(p.proconfig @> array['search_path=app_private, public']::text[], false)
     or coalesce(p.proconfig @> array['search_path=public, app_private']::text[], false)
   )
-order by n.nspname, p.proname;
+order by n.nspname, p.proname, identity_arguments;
 
 select
   'EXECUTE_GRANT_PUBLIC_OR_ANON' as check_id,
@@ -196,7 +216,7 @@ select
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname in ('public', 'app_private')
-order by n.nspname, p.proname;
+order by n.nspname, p.proname, identity_arguments;
 
 -- =============================================================================
 -- SECCION POLICIES — RLS de public/app_private + las 2 policies app sobre
@@ -232,8 +252,11 @@ where schemaname = 'storage'
   and policyname in ('soporte_adjuntos_staff_read', 'certificados_staff_read');
 
 -- =============================================================================
--- SECCION ACL — grants efectivos sobre anon/authenticated/service_role;
--- ownership de objetos application (debe ser postgres tras --no-owner).
+-- SECCION ACL — grants efectivos sobre anon/authenticated/service_role.
+-- BLOQUEANTE: una divergencia aqui significa que los privilegios no sobrevivieron
+-- al restore. El ownership NO vive en esta seccion (ver SECCION OWNERSHIP): con
+-- --no-owner el ownership del destino divergira siempre por diseño, y mezclarlo
+-- aqui convertiria un check bloqueante en ruido garantizado.
 -- =============================================================================
 \echo 'SECTION=ACL'
 
@@ -260,6 +283,21 @@ select
 from (values ('anon'), ('authenticated'), ('service_role'), ('public')) as r(rolname)
 order by r.rolname;
 
+-- =============================================================================
+-- SECCION OWNERSHIP — INFORMATIVA, NO BLOQUEANTE.
+--
+-- Semantica explicita: el dump se toma con --no-owner y el restore corre como
+-- `postgres`, asi que en el destino TODO objeto application queda propiedad de
+-- `postgres` con independencia de quien lo poseia en la fuente. Una divergencia
+-- fuente/destino aqui es el resultado ESPERADO del procedimiento, no un fallo.
+-- Se reporta aparte para que el operador la lea, y NO participa del veredicto.
+--
+-- Lo que si es una invariante real (y se comprueba por VALOR, no por paridad):
+-- storage.objects debe seguir perteneciendo a supabase_storage_admin, porque
+-- nada de la frontera platform debe haber sido tocado.
+-- =============================================================================
+\echo 'SECTION=OWNERSHIP'
+
 select
   'OWNERSHIP_APPLICATION_OBJECTS' as check_id,
   n.nspname as schema_name,
@@ -278,7 +316,8 @@ select
 from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'storage'
-  and c.relname = 'objects';
+  and c.relname = 'objects'
+order by c.relname;
 
 -- =============================================================================
 -- SECCION DATA — conteos + hash por fila para las 22 tablas application-owned
@@ -288,6 +327,9 @@ where n.nspname = 'storage'
 -- =============================================================================
 \echo 'SECTION=DATA'
 
+-- El UNION ALL no garantiza el orden de las ramas: se envuelve en un ORDER BY
+-- explicito por table_name para que la firma sea estable entre corridas.
+select s.check_id, s.table_name, s.row_count, s.data_hash from (
 select 'DATA_ROW_SIGNATURE' as check_id, 'public.perfiles' as table_name,
   count(*) as row_count, md5(coalesce(string_agg(md5(t::text), '' order by md5(t::text)), '')) as data_hash
 from public.perfiles t
@@ -376,7 +418,9 @@ from public.avisos_globales t
 union all
 select 'DATA_ROW_SIGNATURE', 'public.site_config',
   count(*), md5(coalesce(string_agg(md5(t::text), '' order by md5(t::text)), ''))
-from public.site_config t;
+from public.site_config t
+) s
+order by s.table_name;
 
 select
   'DATA_TABLE_COUNT_EXPECTED' as check_id,
@@ -385,8 +429,15 @@ select
   26 as expected_total_public_tables;
 
 -- =============================================================================
--- SECCION LEDGER — supabase_migrations debe repoblarse por reaplicacion, NUNCA
--- restaurarse desde dump (05_STORAGE_RECOVERY.md §5).
+-- SECCION LEDGER — INFORMATIVA, NO BLOQUEANTE.
+--
+-- Semantica explicita: supabase_migrations.schema_migrations se repuebla por
+-- REAPLICACION de migraciones, nunca se restaura desde el dump
+-- (05_STORAGE_RECOVERY.md §5). Por tanto el ledger del destino refleja la
+-- baseline canonica (31) y el de la fuente refleja su propia historia: comparar
+-- ambos por paridad produciria una divergencia esperada, no un fallo.
+-- La invariante real del ledger del DESTINO se comprueba por VALOR y de forma
+-- fail-closed en el PASO 2 de run-recovery-v2.sh, no aqui.
 -- =============================================================================
 \echo 'SECTION=LEDGER'
 
@@ -397,7 +448,15 @@ select
 from supabase_migrations.schema_migrations;
 
 -- =============================================================================
--- SECCION STORAGE — consistencia blob<->metadata (invariante de 05).
+-- SECCION STORAGE — INFORMATIVA, NO BLOQUEANTE.
+--
+-- Semantica explicita: los blobs de Storage viajan por un plano SEPARADO de
+-- pg_dump (paso 7) y su sincronizacion es hoy una operacion manual. En el
+-- destino storage.objects estara vacio o incompleto mientras ese plano no se
+-- ejecute, asi que la paridad fuente/destino divergira por diseño. Se reporta
+-- aparte, con su conteo, para que el operador sepa cuanto Storage falta.
+-- La invariante que si es un fallo real (ausencia de signed URLs en
+-- storage_path) se comprueba por VALOR: violations_* debe ser 0 en ambos lados.
 -- =============================================================================
 \echo 'SECTION=STORAGE'
 
@@ -420,4 +479,7 @@ select
   (select count(*) from public.archivos_ticket where storage_path ~* '^https?://') as violations_archivos_ticket,
   (select count(*) from public.solicitud_archivos where storage_path ~* '^https?://') as violations_solicitud_archivos;
 
+-- Marcador de cierre: permite al orquestador delimitar la ultima seccion al
+-- partir la firma en bloques comparables.
+\echo 'SECTION=END'
 \echo 'RECOVERY_SIGNATURE_COMPLETE=YES'
