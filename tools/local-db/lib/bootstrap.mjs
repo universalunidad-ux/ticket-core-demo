@@ -27,8 +27,9 @@
 //   4. El destino debe clasificar como LOCAL (guards.mjs). Nunca remoto.
 //   5. La escritura del runtime está confinada a tools/local-db/.
 //
-// Uso como módulo:
-//   import { bootstrapLocalStack } from "./lib/bootstrap.mjs";
+// Uso como módulo. Provenance/baseline: tools/local-db/harness.mjs consume
+// bootstrapLocalStack desde su ruta relativa "./lib/bootstrap.mjs"; dentro de
+// este directorio, otros módulos locales usan "./bootstrap.mjs".
 //
 // Uso como CLI (lo consume run-recovery-v2.sh; imprime KEY=VALUE en stdout):
 //   node tools/local-db/lib/bootstrap.mjs --project-id <id> --db-port <N> \

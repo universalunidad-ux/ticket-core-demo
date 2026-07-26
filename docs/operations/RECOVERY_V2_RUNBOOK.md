@@ -1,9 +1,9 @@
 # RECOVERY V2 — Runbook operativo
 
-UNIDAD: `TC-RECOVERY-SERVER-ALIGNED-TOOLCHAIN-01`
+UNIDAD: `TC-RECOVERY-SITE-CONFIG-OWNERSHIP-01`
 WORKTREE: `_WORKTREES/ticket-core-demo/recovery-v2-20260725`
 BRANCH: `test/recovery-v2-20260725`
-HEAD BASE AUTORIZADO: `edb5703eb1d4431cda917591ba40e872f307f986`
+HEAD BASE AUTORIZADO: `7feeebcee01fc655d8594cb80186d7887b06a47b`
 
 **Estado de esta unidad: IMPLEMENTADO LOCAL (código) · NO VALIDADO EN VIVO.**
 
@@ -44,6 +44,7 @@ allowlist. Análisis completo en
 | Teardown del stack | `tools/local-db/lib/bootstrap.mjs --stop` | `run-recovery-v2.sh` |
 | Clasificación LOCAL/REMOTO y guarda de entorno | `tools/local-db/lib/guards.mjs` | ambos |
 | Allowlist y análisis del dump | `tools/local-db/lib/dump-allowlist.mjs` | `run-recovery-v2.sh` |
+| Ownership y restore atómico de `site_config` | `tools/local-db/site-config-ownership.json` + `tools/local-db/lib/site-config-ownership.mjs` | `run-recovery-v2.sh` |
 | Seed sintético de `auth.users` | `tools/local-db/lib/auth-seed.mjs` | `run-recovery-v2.sh` |
 | Usuarios Auth sintéticos de la fuente, vía Auth Admin API local | `tools/local-db/lib/local-auth-users.mjs` | `run-recovery-v2-synthetic.sh` |
 | Secuencia fuente → archivos persistidos → destino | `tools/local-db/run-recovery-v2-synthetic.sh` | operador local |
@@ -146,6 +147,47 @@ alineados para operación general, pero no restauran el dump contra el PostgreSQ
 > **vacua**: en esa TOC nunca aparece una entrada `SCHEMA - realtime`, así que no podía fallar.
 > Está eliminada.
 
+### 5.2 Ownership exacto de `public.site_config`
+
+Clasificación: **`SOURCE_DATA_OWNED`**.
+
+La decisión no se basa sólo en que la tabla aparezca en el dump:
+
+- `20260715023825_assignment_and_configuration.sql:30-58` crea
+  `public.site_config`, limita el universo a seis claves e instala un seed
+  completo para que una baseline nueva sea utilizable.
+- `20260715023827_functions_triggers_and_indexes.sql:273-313` define
+  `public.manage_site_config(text,text)`: bloquea la fila, sustituye el valor y
+  registra la mutación en `bitacora`. Por tanto, el seed deja de ser autoritativo
+  después de operar la aplicación.
+- `app/config-loader.js:50-83` consume los valores como contenido, con defaults
+  locales sólo para degradación; `app/dashboard.js:765-827` inventaría las seis
+  claves y mantiene la edición remota bloqueada mientras falta el workflow
+  draft/publish. Ninguna Edge Function llama `site_config`.
+- `tools/local-db/recovery-data-order.txt` ya clasifica la tabla dentro de los
+  datos application-owned y `recovery-signature.sql:419-421` exige paridad de
+  filas completa.
+
+La política positiva vive en `site-config-ownership.json`: seis claves
+source-owned, cero environment-owned, claves desconocidas/faltantes/duplicadas
+rechazadas. Sus nombres no se imprimen en logs; los diagnósticos usan conteos y
+SHA-256.
+
+El restore usa dos transacciones deliberadas:
+
+1. La lista TOC del restore general comenta **exactamente** la entrada `TABLE
+   DATA public.site_config`; las otras 21 tablas permanecen seleccionadas.
+2. El `COPY` de `site_config` se consume por streaming y
+   `site-config-ownership.mjs` emite `BEGIN` → `DELETE` acotado a esa tabla →
+   `COPY` → validación exacta de claves → `COMMIT`. Cualquier error desconecta la
+   sesión antes del commit, preserva `RESULT=FAIL`/`SCORABLE=NO` y activa el
+   teardown obligatorio.
+
+Antes de lo anterior se valida que las migraciones dejaron exactamente las seis
+claves baseline (`SITE_CONFIG_BASELINE_VALIDATED=PASS`). La firma final conserva
+`site_config` en `DATA`: no se clasifica como no comparable ni se reduce la
+paridad.
+
 ## 6. Arquitectura obligatoria (10 pasos) → dónde vive cada uno
 
 | # | Paso | Implementación |
@@ -153,7 +195,7 @@ alineados para operación general, pero no restauran el dump contra el PostgreSQ
 | 1 | Bootstrap limpio | PASO 1: `node tools/local-db/lib/bootstrap.mjs --project-id tc_recovery_v2 --db-port 54339 --runtime-dir tools/local-db/.runtime-recovery --reset-runtime` |
 | 2 | Migraciones canónicas | PASO 2: `supabase db reset --workdir …` (31 migraciones) + **ledger fail-closed** (`≠31` ⇒ abort, nunca WARN) |
 | 3 | Nunca platform-managed | §5.1: allowlist positiva sobre TOC + escaneo de contenido |
-| 4 | Dump/restore application-owned | PASO 4: `docker exec <source> pg_dump … > dump-host` y `docker exec -i <destination> pg_restore … < dump-host`; conserva `--data-only --single-transaction --exit-on-error --schema=public --schema=app_private` |
+| 4 | Dump/restore application-owned | PASO 4: restore general atómico de 21 tablas con lista TOC exacta + sustitución atómica SOURCE_DATA_OWNED de `site_config`; ambos usan clientes major 15 del contenedor |
 | 5 | `auth.users` antes de `perfiles` | PASO 4f: seed sintético (§7) |
 | 6 | Buckets y policies por migración | Aplicados en el PASO 2; verificados en PASO 8 |
 | 7 | Blobs fuera de `pg_dump` | PASO 7: plano separado, sólo `--blobs-src <dir local>`; rechaza `s3://`/`http(s)://` |
@@ -298,13 +340,15 @@ quedan en `BASELINE_ONLY_NO_SOURCE` y `SCORABLE=NO`.
 | `00_RESULT.txt` | Bloque `KEY=VALUE` final. Se escribe en **todos** los caminos de salida |
 | `01_bootstrap.err` | Diagnóstico de `bootstrap.mjs`, ya redactado |
 | `02_migrations.log` | `supabase db reset` |
+| `02b_site_config_baseline.log` | Validación exacta del seed destino; sólo marcador, sin valores |
 | `04_dump.log` | `pg_dump` (sólo si se generó el dump) |
 | `04c_toc.txt` / `04c_allowlist.txt` | TOC del dump y adjudicación de allowlist |
+| `04c_main_restore_toc.txt` / `04c_site_config_policy.log` | Lista que separa únicamente `site_config` y diagnóstico por conteos |
 | `04e_content_scan.txt` | Escaneo de contenido: **regla + línea + conteo**, nunca el texto |
 | `04f_auth_seed.sql` / `.err` / `.log` | Seed sintético (sólo UUID y `@example.invalid`) |
 | `04g_ownership.log`, `04g_disable_triggers.log` | Ownership y triggers |
 | `04j_circular_fk.txt` | Definición literal de las 2 FK circulares (para recuperación manual) |
-| `04h_restore.log` | `pg_restore` |
+| `04h_restore.log`, `04h_site_config_extract.log`, `04h_site_config_policy.log` | Restore general + sustitución atómica; nunca valores |
 | `04k_fk_integrity.txt` | Validación positiva de integridad |
 | `08_dest_signature.txt`, `08_src_signature.txt`, `08_sections_*`, `08_diff_<SECCIÓN>.txt` | Firmas, secciones y diffs |
 | `10_teardown.log`, `10_teardown_preserved.txt` | Teardown; el segundo sólo si el stop falló |
@@ -331,7 +375,8 @@ Señales: `E_INTERRUPTED_INT` (exit 130), `E_INTERRUPTED_TERM` (exit 143).
 `SOURCE_SIGNATURE_RESULT=PASS|PASS_PERSISTED` · `RPO_SECONDS>=0` · `RTO_SECONDS>=0` ·
 `BOOTSTRAP_RESULT=PASS` ·
 `DUMP_ALLOWLIST_RESULT=PASS` · `DUMP_CONTENT_SCAN=PASS` · `AUTH_SEED_RESULT=PASS` ·
-`OWNERSHIP_CHECK=PASS` · `INTEGRITY_RESTORE_RESULT=PASS` · `FK_INTEGRITY=PASS` ·
+`OWNERSHIP_CHECK=PASS` · `SITE_CONFIG_BASELINE_VALIDATED=PASS` ·
+`SITE_CONFIG_TRANSFERRED=YES` · `INTEGRITY_RESTORE_RESULT=PASS` · `FK_INTEGRITY=PASS` ·
 `RESTORE_RESULT=PASS` · `STRUCTURE_PARITY=PASS` · `DATA_PARITY=PASS` ·
 `RLS_RESTORE_RESULT=PASS` · `ACL_RESTORE_RESULT=PASS`.
 

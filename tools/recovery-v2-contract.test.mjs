@@ -616,11 +616,14 @@ for (const field of [
   "SOURCE_SIGNATURE_MODE=", "SOURCE_SIGNATURE_RESULT=", "SOURCE_CUTOFF_EPOCH=",
   "SOURCE_SERVER_MAJOR=", "SOURCE_CLIENT_MAJOR=", "DESTINATION_SERVER_MAJOR=",
   "DESTINATION_CLIENT_MAJOR=", "HOST_PSQL_VERSION=", "HOST_PG_DUMP_VERSION=",
-  "HOST_PG_RESTORE_VERSION=",
+  "HOST_PG_RESTORE_VERSION=", "OWNERSHIP_CLASSIFICATION=", "DUPLICATE_CONSTRAINT=",
+  "MIGRATION_KEY_COUNT=", "DUMP_KEY_COUNT=", "OVERLAP_KEY_COUNT=",
+  "UNKNOWN_KEY_COUNT=", "RESTORE_POLICY=", "SITE_CONFIG_TRANSFERRED=",
+  "SITE_CONFIG_BASELINE_VALIDATED=",
 ]) {
   assert.ok(sh.includes(field), `la salida final debe incluir el campo: ${field}`);
 }
-console.log("PASS\tfinal_output_contract\tfields=44");
+console.log("PASS\tfinal_output_contract\tfields=53");
 
 // ===========================================================================
 // 18) recovery-signature.sql (REPORT_ONLY, 5 dimensiones, sin datos sensibles)
@@ -786,7 +789,7 @@ console.log("PASS\tpersisted_source_scorable_contract");
 // ===========================================================================
 assert.match(synthExec, /set -Eeuo pipefail/, "orquestador debe usar bash estricto");
 assert.match(synthExec, /EXPECTED_BRANCH="test\/recovery-v2-20260725"/);
-assert.match(synthExec, /AUTHORIZED_BASE_HEAD="edb5703eb1d4431cda917591ba40e872f307f986"/);
+assert.match(synthExec, /AUTHORIZED_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"/);
 assert.match(synthExec, /read_source_toolchain/, "orquestador debe verificar el toolchain fuente");
 assert.match(synthExec, /SOURCE_CLIENT_SERVER_MAJOR_MISMATCH/,
   "pg_dump fuente debe compartir major con su servidor");

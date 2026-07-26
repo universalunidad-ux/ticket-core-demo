@@ -53,7 +53,8 @@
 20 public.bitacora                      # FK -> perfiles (actor_id); columna detalle es SENSIBLE
                                         # (no imprimir; ver recovery-signature.sql)
 21 public.avisos_globales               # FK -> perfiles (actualizado_por)
-22 public.site_config                   # FK -> perfiles (created_by)
+22 public.site_config                   # SOURCE_DATA_OWNED; FK -> perfiles (actualizado_por)
+                                        # restore transaccional separado; allowlist exacta de 6 claves
 
 # ---------------------------------------------------------------------------
 # EXCLUIDAS DEL RESTORE DE DATOS (efimeras/regenerables; 03_DUMP_FILTERS.txt).

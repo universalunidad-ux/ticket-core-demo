@@ -7,7 +7,7 @@ IFS=$'\n\t'
 umask 077
 
 EXPECTED_BRANCH="test/recovery-v2-20260725"
-AUTHORIZED_BASE_HEAD="edb5703eb1d4431cda917591ba40e872f307f986"
+AUTHORIZED_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"
 SOURCE_PROJECT_ID="tc_local_db_harness"
 SOURCE_DB_PORT="54329"
 SOURCE_RUNTIME="tools/local-db/.runtime-recovery-source"
@@ -23,6 +23,7 @@ FINAL_RESULT="FAIL"
 FAIL_REASON="UNEXPECTED"
 SOURCE_SERVER_MAJOR="UNKNOWN"
 SOURCE_CLIENT_MAJOR="UNKNOWN"
+LOCK_OWNED="no"
 
 mkdir -p "${ARTIFACTS_DIR}"
 
@@ -55,6 +56,15 @@ stop_source() {
   return 1
 }
 
+release_lock() {
+  [[ "${LOCK_OWNED}" == "yes" ]] || return 0
+  if rmdir "${LOCK_DIR}" 2>/dev/null; then
+    LOCK_OWNED="no"
+    return 0
+  fi
+  return 1
+}
+
 on_exit() {
   local rc=$?
   trap - EXIT
@@ -62,7 +72,10 @@ on_exit() {
     rc=1
     FAIL_REASON="SOURCE_TEARDOWN_FAILED"
   fi
-  rmdir "${LOCK_DIR}" 2>/dev/null || true
+  if ! release_lock; then
+    rc=1
+    FAIL_REASON="ORCHESTRATOR_LOCK_RELEASE_FAILED"
+  fi
   if [[ ${rc} -ne 0 ]]; then
     FINAL_RESULT="FAIL"
     write_orchestrator_report
@@ -161,6 +174,7 @@ COMMON_GIT_DIR="$(git rev-parse --git-common-dir)"
 [[ ! -e "${COMMON_GIT_DIR}/index.lock" ]] || fail "INDEX_LOCK_PRESENT"
 assert_no_active_runners
 mkdir "${LOCK_DIR}" 2>/dev/null || fail "ORCHESTRATOR_LOCK_PRESENT"
+LOCK_OWNED="yes"
 
 # Herramientas y contratos estáticos. No hay stack activo todavía.
 command -v docker >/dev/null 2>&1 || fail "DOCKER_NOT_FOUND"
@@ -171,9 +185,12 @@ assert_no_supabase_stacks
 bash -n tools/local-db/run-recovery-v2.sh
 bash -n tools/local-db/run-recovery-v2-synthetic.sh
 node --check tools/local-db/lib/local-auth-users.mjs
+node --check tools/local-db/lib/site-config-ownership.mjs
 node tools/staging-synthetic-seed-contract.test.mjs
 node tools/recovery-v2-contract.test.mjs
-node --test test/local-db/local-auth-users.test.mjs
+node --test \
+  test/local-db/local-auth-users.test.mjs \
+  test/local-db/site-config-ownership.test.mjs
 
 # FASE FUENTE: único stack activo.
 SOURCE_BOOTSTRAP="$(node tools/local-db/lib/bootstrap.mjs \
@@ -297,6 +314,6 @@ FINAL_RESULT="PASS"
 FAIL_REASON="NONE"
 write_orchestrator_report
 trap - EXIT
-rmdir "${LOCK_DIR}" 2>/dev/null || true
+release_lock || fail "ORCHESTRATOR_LOCK_RELEASE_FAILED"
 echo "RECOVERY_V2_SYNTHETIC=PASS"
 echo "ARTIFACTS_DIR=${ARTIFACTS_DIR}"

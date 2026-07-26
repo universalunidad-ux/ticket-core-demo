@@ -1,0 +1,22 @@
+{
+  "unit": "TC-RECOVERY-SITE-CONFIG-OWNERSHIP-01",
+  "classification": "SOURCE_DATA_OWNED",
+  "duplicate_constraint": "site_config_pkey",
+  "table": "public.site_config",
+  "key_column": "clave",
+  "baseline_owner": "supabase/migrations/20260715023825_assignment_and_configuration.sql",
+  "runtime_owner": "public.manage_site_config(text,text)",
+  "source_owned_keys": [
+    "soporte.hero.kicker",
+    "soporte.hero.titulo",
+    "soporte.ayuda.titulo",
+    "soporte.evidencia.hint",
+    "estado.reply.titulo",
+    "estado.reply.hint"
+  ],
+  "environment_owned_keys": [],
+  "unknown_key_policy": "REJECT",
+  "missing_key_policy": "REJECT",
+  "restore_policy": "ATOMIC_DELETE_COPY_VALIDATE_COMMIT",
+  "signature_policy": "FULL_PARITY"
+}

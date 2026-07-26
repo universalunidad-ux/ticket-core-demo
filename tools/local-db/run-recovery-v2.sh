@@ -173,6 +173,15 @@ SOURCE_SERVER_MAJOR="UNKNOWN"
 SOURCE_CLIENT_MAJOR="UNKNOWN"
 DESTINATION_SERVER_MAJOR="UNKNOWN"
 DESTINATION_CLIENT_MAJOR="UNKNOWN"
+OWNERSHIP_CLASSIFICATION="SOURCE_DATA_OWNED"
+DUPLICATE_CONSTRAINT="site_config_pkey"
+MIGRATION_KEY_COUNT="6"
+DUMP_KEY_COUNT="0"
+OVERLAP_KEY_COUNT="0"
+UNKNOWN_KEY_COUNT="0"
+RESTORE_POLICY="ATOMIC_DELETE_COPY_VALIDATE_COMMIT"
+SITE_CONFIG_TRANSFERRED="NO"
+SITE_CONFIG_BASELINE_VALIDATED="NOT_RUN"
 
 # Argumentos deterministas de psql: ignoran cualquier ~/.psqlrc del operador, de
 # modo que el formato de las firmas y de los informes lo fija el .sql, no el host.
@@ -215,6 +224,15 @@ SOURCE_SERVER_MAJOR=${SOURCE_SERVER_MAJOR}
 SOURCE_CLIENT_MAJOR=${SOURCE_CLIENT_MAJOR}
 DESTINATION_SERVER_MAJOR=${DESTINATION_SERVER_MAJOR}
 DESTINATION_CLIENT_MAJOR=${DESTINATION_CLIENT_MAJOR}
+OWNERSHIP_CLASSIFICATION=${OWNERSHIP_CLASSIFICATION}
+DUPLICATE_CONSTRAINT=${DUPLICATE_CONSTRAINT}
+MIGRATION_KEY_COUNT=${MIGRATION_KEY_COUNT}
+DUMP_KEY_COUNT=${DUMP_KEY_COUNT}
+OVERLAP_KEY_COUNT=${OVERLAP_KEY_COUNT}
+UNKNOWN_KEY_COUNT=${UNKNOWN_KEY_COUNT}
+RESTORE_POLICY=${RESTORE_POLICY}
+SITE_CONFIG_TRANSFERRED=${SITE_CONFIG_TRANSFERRED}
+SITE_CONFIG_BASELINE_VALIDATED=${SITE_CONFIG_BASELINE_VALIDATED}
 SOURCE_CUTOFF_EPOCH=${SOURCE_CUTOFF_EPOCH:-NOT_PROVIDED}
 DUMP_ALLOWLIST_RESULT=${DUMP_ALLOWLIST_RESULT}
 DUMP_CONTENT_SCAN=${DUMP_CONTENT_SCAN}
@@ -350,8 +368,10 @@ abort() {
   [[ "${STOP_CODE}" != "OK" ]] || STOP_CODE="E_${phase}"
   NEXT_ACTION="${3:-corregir '${phase}' (${detail}) y reintentar; ver docs/operations/RECOVERY_V2_RUNBOOK.md}"
   echo "ABORT[${phase}]: ${detail}" >&2
-  restore_integrity || true
-  teardown_stack || true
+  if ! restore_integrity; then
+    INTEGRITY_RESTORE_RESULT="FAIL"
+  fi
+  teardown_stack
   write_report
   exit 1
 }
@@ -367,8 +387,10 @@ on_signal() {
   INTERRUPTED="YES"
   STOP_CODE="E_INTERRUPTED_${signame}"
   echo "ABORT[SIGNAL]: recibida ${signame}; deteniendo el stack propio" >&2
-  restore_integrity || true
-  teardown_stack || true
+  if ! restore_integrity; then
+    INTEGRITY_RESTORE_RESULT="FAIL"
+  fi
+  teardown_stack
   NEXT_ACTION="corrida interrumpida por ${signame}: NO es un PASS; revisar ${ARTIFACTS_DIR}/00_RESULT.txt y repetir"
   write_report
   exit $((128 + signum))
@@ -392,7 +414,9 @@ resolve_postgres_tool() {
   local tool="$1" candidate="" libpq_prefix=""
 
   if command -v brew >/dev/null 2>&1; then
-    libpq_prefix="$(brew --prefix libpq 2>/dev/null || true)"
+    if ! libpq_prefix="$(brew --prefix libpq 2>/dev/null)"; then
+      libpq_prefix=""
+    fi
     candidate="${libpq_prefix}/bin/${tool}"
     if [[ -n "${libpq_prefix}" && -x "${candidate}" ]]; then
       printf '%s\n' "${candidate}"
@@ -540,7 +564,13 @@ sanitize_log_stream() {
 
 file_mtime_epoch() {
   local path="$1" value
-  value="$(stat -f %m "${path}" 2>/dev/null || stat -c %Y "${path}" 2>/dev/null || true)"
+  if value="$(stat -f %m "${path}" 2>/dev/null)"; then
+    :
+  elif value="$(stat -c %Y "${path}" 2>/dev/null)"; then
+    :
+  else
+    value=""
+  fi
   [[ "${value}" =~ ^[0-9]+$ ]] || return 1
   printf '%s\n' "${value}"
 }
@@ -745,6 +775,26 @@ if [[ "${LEDGER_COUNT}" != "${EXPECTED_MIGRATIONS}" ]]; then
 fi
 echo "[recovery-v2] migraciones OK (ledger=${LEDGER_COUNT})"
 
+# public.site_config tiene un baseline de seis claves, pero sus valores son
+# SOURCE_DATA_OWNED: public.manage_site_config(text,text) los modifica y registra
+# la mutación en bitácora. Antes de trasladar el estado de la fuente se exige que
+# el seed del destino sea exactamente el canónico; no se acepta una baseline
+# incompleta o con claves no clasificadas.
+if ! node tools/local-db/lib/site-config-ownership.mjs --emit-baseline-sql \
+    | docker exec -i "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
+        >"${ARTIFACTS_DIR}/02b_site_config_baseline.log" 2>&1; then
+  SITE_CONFIG_BASELINE_VALIDATED="FAIL"
+  abort "MIGRATIONS" \
+    "el baseline de public.site_config no coincide con la allowlist owner; ver ${ARTIFACTS_DIR}/02b_site_config_baseline.log"
+fi
+if ! grep -Fxq 'SITE_CONFIG_BASELINE_VALIDATED=PASS' \
+    "${ARTIFACTS_DIR}/02b_site_config_baseline.log"; then
+  SITE_CONFIG_BASELINE_VALIDATED="FAIL"
+  abort "MIGRATIONS" \
+    "la validacion de baseline termino sin marcador semantico PASS; ver ${ARTIFACTS_DIR}/02b_site_config_baseline.log"
+fi
+SITE_CONFIG_BASELINE_VALIDATED="PASS"
+
 # =============================================================================
 # PASO 3 · NUNCA RESTAURAR OBJETOS PLATFORM-MANAGED (guarda estructural)
 #
@@ -832,6 +882,23 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   fi
   DUMP_ALLOWLIST_RESULT="PASS"
 
+  # SOURCE_DATA_OWNED: la carga general omite exactamente una entrada de TOC,
+  # TABLE DATA public.site_config. No se omite ninguna otra tabla; site_config se
+  # aplica después mediante sustitución transaccional y validación positiva.
+  if ! node tools/local-db/lib/site-config-ownership.mjs \
+      --build-restore-list --toc "${ARTIFACTS_DIR}/04c_toc.txt" \
+      >"${ARTIFACTS_DIR}/04c_main_restore_toc.txt" \
+      2>"${ARTIFACTS_DIR}/04c_site_config_policy.log"; then
+    abort "DUMP_GUARD" \
+      "la TOC no contiene exactamente un owner TABLE DATA para public.site_config; ver ${ARTIFACTS_DIR}/04c_site_config_policy.log"
+  fi
+  if ! docker exec -i "${CID}" sh -c \
+      'umask 077; cat > /tmp/tc-recovery-main-restore.list' \
+      <"${ARTIFACTS_DIR}/04c_main_restore_toc.txt"; then
+    abort "DUMP_GUARD" \
+      "no se pudo entregar la lista exacta de restore al contenedor destino"
+  fi
+
   # --- 4d/4e ESCANEO DEL CONTENIDO REAL + SECRET SCAN (P6.4-P6.5) -------------
   # Los nombres de la TOC no revelan un `SET log_min_messages`, un GRANT o un
   # ALTER ... OWNER TO embebido: hay que mirar las sentencias. El SQL se consume
@@ -909,7 +976,8 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
      order by c.conname;" >"${ARTIFACTS_DIR}/04j_circular_fk.txt" 2>"${ARTIFACTS_DIR}/04j_circular_fk.log" \
     || abort "RESTORE" "no se pudo inventariar la FK circular; ver ${ARTIFACTS_DIR}/04j_circular_fk.log"
 
-  CIRCULAR_FK_COUNT="$(grep -c '|' "${ARTIFACTS_DIR}/04j_circular_fk.txt" || true)"
+  CIRCULAR_FK_COUNT="$(awk -F'|' 'NF > 1 { count += 1 } END { print count + 0 }' \
+    "${ARTIFACTS_DIR}/04j_circular_fk.txt")"
   if [[ "${CIRCULAR_FK_COUNT}" != "2" ]]; then
     abort "RESTORE" \
       "se esperaban 2 FK circulares tickets<->solicitudes_soporte y se encontraron ${CIRCULAR_FK_COUNT}: el esquema no es el documentado" \
@@ -946,10 +1014,49 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
       --single-transaction \
       --exit-on-error \
       --schema=public \
-      --schema=app_private 2>&1 \
+      --schema=app_private \
+      --use-list=/tmp/tc-recovery-main-restore.list 2>&1 \
       <"${DUMP_FILE}" \
       | sanitize_log_stream >"${ARTIFACTS_DIR}/04h_restore.log"; then
     RESTORE_OK="no"
+  fi
+
+  # Sustitución SOURCE_DATA_OWNED. El SQL de COPY viaja sólo por streaming:
+  # nunca se escribe ni se imprime. El owner valida allowlist, faltantes,
+  # duplicados y desconocidas antes de emitir BEGIN/DELETE/COPY/validate/COMMIT.
+  if [[ "${RESTORE_OK}" == "yes" ]]; then
+    if ! docker exec -i "${CID}" pg_restore \
+        --data-only --table=site_config -f - \
+        <"${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04h_site_config_extract.log" \
+        | node tools/local-db/lib/site-config-ownership.mjs --emit-atomic-sql \
+            2>"${ARTIFACTS_DIR}/04h_site_config_policy.log" \
+        | docker exec -i "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
+            2>&1 \
+        | sanitize_log_stream >>"${ARTIFACTS_DIR}/04h_restore.log"; then
+      RESTORE_OK="no"
+    else
+      if ! grep -Fxq 'SITE_CONFIG_ATOMIC_RESTORE=PASS' \
+          "${ARTIFACTS_DIR}/04h_restore.log"; then
+        RESTORE_OK="no"
+      else
+        MIGRATION_KEY_COUNT="$(sed -n 's/^MIGRATION_KEY_COUNT=//p' \
+          "${ARTIFACTS_DIR}/04h_site_config_policy.log" | head -n 1)"
+        DUMP_KEY_COUNT="$(sed -n 's/^DUMP_KEY_COUNT=//p' \
+          "${ARTIFACTS_DIR}/04h_site_config_policy.log" | head -n 1)"
+        OVERLAP_KEY_COUNT="$(sed -n 's/^OVERLAP_KEY_COUNT=//p' \
+          "${ARTIFACTS_DIR}/04h_site_config_policy.log" | head -n 1)"
+        UNKNOWN_KEY_COUNT="$(sed -n 's/^UNKNOWN_KEY_COUNT=//p' \
+          "${ARTIFACTS_DIR}/04h_site_config_policy.log" | head -n 1)"
+        if [[ "${MIGRATION_KEY_COUNT}" == "6" \
+           && "${DUMP_KEY_COUNT}" == "6" \
+           && "${OVERLAP_KEY_COUNT}" == "6" \
+           && "${UNKNOWN_KEY_COUNT}" == "0" ]]; then
+          SITE_CONFIG_TRANSFERRED="YES"
+        else
+          RESTORE_OK="no"
+        fi
+      fi
+    fi
   fi
 
   # --- 4i RESTITUCION GARANTIZADA de triggers y FK circulares (P7.7) ---------
@@ -1266,6 +1373,8 @@ if [[ "${DOCKER_USED}" == "YES" \
    && "${DUMP_CONTENT_SCAN}" == "PASS" \
    && "${AUTH_SEED_RESULT}" == "PASS" \
    && "${OWNERSHIP_CHECK}" == "PASS" \
+   && "${SITE_CONFIG_BASELINE_VALIDATED}" == "PASS" \
+   && "${SITE_CONFIG_TRANSFERRED}" == "YES" \
    && "${INTEGRITY_RESTORE_RESULT}" == "PASS" \
    && "${FK_INTEGRITY}" == "PASS" \
    && "${RESTORE_RESULT}" == "PASS" \
