@@ -79,7 +79,15 @@ export function feedPerfilesLine(state, rawLine) {
 // ---------------------------------------------------------------------------
 // PURO · SQL de seed. Idempotente (ON CONFLICT DO NOTHING) y acotado a auth.users.
 // ---------------------------------------------------------------------------
-export function renderAuthSeedSql(ids) {
+export function renderAuthSeedSql(ids, options = {}) {
+  const { transactionEnd = "commit", verifyTypes = false } = options;
+  if (!["commit", "rollback"].includes(transactionEnd)) {
+    throw new Error(`transactionEnd invalido: ${String(transactionEnd)}`);
+  }
+  if (verifyTypes && transactionEnd !== "rollback") {
+    throw new Error("verifyTypes exige transactionEnd=rollback");
+  }
+
   const unique = [...new Set(ids.map((i) => String(i).toLowerCase()))].sort();
   if (unique.length === 0) throw new Error("no hay perfiles.id: nada que sembrar (fail-closed)");
   for (const id of unique) if (!isUuid(id)) throw new Error(`uuid invalido en el seed: ${id}`);
@@ -88,7 +96,7 @@ export function renderAuthSeedSql(ids) {
     .map((id) => `  ('00000000-0000-0000-0000-000000000000','${id}','authenticated','authenticated','${syntheticEmail(id)}')`)
     .join(",\n");
 
-  return [
+  const sql = [
     "-- GENERADO por tools/local-db/lib/auth-seed.mjs (TC-RECOVERY-P5-P9-CLOSE-05).",
     "-- Usuarios SINTÉTICOS para satisfacer public.perfiles.id -> auth.users(id).",
     `-- ${unique.length} usuario(s). Correos en ${SYNTHETIC_EMAIL_DOMAIN} (dominio reservado).`,
@@ -105,10 +113,44 @@ export function renderAuthSeedSql(ids) {
     values,
     ") as v(instance_id, id, aud, role, email)",
     "on conflict (id) do nothing;",
-    "commit;",
+  ];
+
+  if (verifyTypes) {
+    const probeId = unique[0];
+    sql.push(
+      "do $auth_seed_type_probe$",
+      "declare",
+      "  seeded auth.users%rowtype;",
+      "begin",
+      `  select * into strict seeded from auth.users where id = '${probeId}'::uuid;`,
+      "  if pg_typeof(seeded.instance_id) <> 'uuid'::regtype",
+      "     or pg_typeof(seeded.id) <> 'uuid'::regtype then",
+      "    raise exception 'AUTH_SEED_UUID_TYPE_MISMATCH';",
+      "  end if;",
+      "  if pg_typeof(seeded.email_confirmed_at) <> 'timestamp with time zone'::regtype",
+      "     or pg_typeof(seeded.created_at) <> 'timestamp with time zone'::regtype",
+      "     or pg_typeof(seeded.updated_at) <> 'timestamp with time zone'::regtype then",
+      "    raise exception 'AUTH_SEED_TIMESTAMPTZ_TYPE_MISMATCH';",
+      "  end if;",
+      "  if pg_typeof(seeded.raw_app_meta_data) <> 'jsonb'::regtype",
+      "     or pg_typeof(seeded.raw_user_meta_data) <> 'jsonb'::regtype then",
+      "    raise exception 'AUTH_SEED_JSONB_TYPE_MISMATCH';",
+      "  end if;",
+      "end",
+      "$auth_seed_type_probe$;",
+      "\\echo AUTH_SEED_TYPE_UUID=PASS",
+      "\\echo AUTH_SEED_TYPE_TIMESTAMPTZ=PASS",
+      "\\echo AUTH_SEED_TYPE_JSONB=PASS",
+    );
+  }
+
+  sql.push(
+    `${transactionEnd};`,
+    `\\echo AUTH_SEED_TRANSACTION=${transactionEnd === "rollback" ? "ROLLBACK" : "COMMIT"}`,
     `\\echo AUTH_SEED_ROWS=${unique.length}`,
     "",
-  ].join("\n");
+  );
+  return sql.join("\n");
 }
 
 // PURO · Guarda anti-PII sobre el SQL ya generado. Se ejecuta SIEMPRE antes de
@@ -136,8 +178,16 @@ if (isMain() && process.argv.includes("--emit-sql")) {
   const state = newPerfilesState();
   const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
   try {
+    const smoke = process.argv.includes("--smoke");
+    const unknown = process.argv.filter(
+      (arg, index) => index > 1 && !["--emit-sql", "--smoke"].includes(arg),
+    );
+    if (unknown.length > 0) throw new Error(`argumento desconocido: ${unknown[0]}`);
     for await (const line of rl) feedPerfilesLine(state, line);
-    const sql = renderAuthSeedSql(state.ids);
+    const sql = renderAuthSeedSql(
+      state.ids,
+      smoke ? { transactionEnd: "rollback", verifyTypes: true } : {},
+    );
     assertSyntheticOnly(sql);
     process.stdout.write(sql);
     process.stderr.write(`AUTH_SEED=PASS\nAUTH_SEED_USERS=${new Set(state.ids).size}\n`);

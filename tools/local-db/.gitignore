@@ -7,3 +7,7 @@
 # ANON_KEY/SERVICE_ROLE_KEY que emite `supabase start`: NUNCA debe ser committable.
 .runtime-recovery/
 .artifacts-recovery/
+
+# Efímeros del smoke semántico de auth-seed.
+.runtime-auth-seed-smoke/
+.auth-seed-smoke.lock/
