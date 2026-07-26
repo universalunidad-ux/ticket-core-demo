@@ -14,7 +14,7 @@
 
 import { spawnSync } from "node:child_process";
 import {
-  mkdirSync, writeFileSync, readdirSync, existsSync, rmSync, symlinkSync, realpathSync,
+  mkdirSync, writeFileSync, readdirSync, existsSync, realpathSync,
 } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,13 +24,18 @@ import {
   classifyTarget, inspectEnvForRemote, checkScope,
 } from "./lib/guards.mjs";
 import {
-  parseSupabaseStatusDbUrl, orderMigrations, parseRlsMatrixOutput, evaluateSecurityDefiner,
+  orderMigrations, parseRlsMatrixOutput, evaluateSecurityDefiner,
 } from "./lib/parse.mjs";
+// Owner ÚNICO del bootstrap Supabase local. Este archivo ya NO lo reimplementa:
+// rmSync/symlinkSync/parseSupabaseStatusDbUrl y la generación de config.toml se
+// fueron con la copia inline eliminada.
+import {
+  scaffoldRuntime, startLocalStack, expectedDbContainerName, BootstrapError,
+} from "./lib/bootstrap.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
 const RUNTIME_DIR = join(REPO_ROOT, "tools", "local-db", ".runtime");
-const RUNTIME_SUPABASE = join(RUNTIME_DIR, "supabase");
 const MIGRATIONS_SRC = join(REPO_ROOT, "supabase", "migrations");
 const TESTS_SRC = join(REPO_ROOT, "supabase", "tests");
 
@@ -168,176 +173,63 @@ function precheckScopeGuard(ctx) {
   ctx.log.push(`scope_guard=OK (${changed.length} rutas modificadas dentro de alcance)`);
 }
 
+// ---------------------------------------------------------------------------
+// BOOTSTRAP · delegado en tools/local-db/lib/bootstrap.mjs (owner ÚNICO).
+//
+// Antes estos dos pasos vivían inline aquí (scaffold + supabaseStart, ~170
+// líneas). run-recovery-v2.sh tenía su propia versión incompleta del mismo
+// bootstrap. Ahora hay una sola fuente responsable y estas funciones son
+// adaptadores: traducen BootstrapError -> stop() para NO alterar la taxonomía
+// STOP/PHASE ni los exit codes que el harness ya publicaba.
+// ---------------------------------------------------------------------------
+const HARNESS_PROJECT_ID = "tc_local_db_harness";
+
+function fromBootstrapError(e) {
+  if (e instanceof BootstrapError) {
+    stop(e.stopCode, e.phase, e.detail, e.fields);
+  }
+  throw e;
+}
+
 function scaffold(ctx) {
-  // Workdir supabase efímero: NO se toca supabase/**; se enlazan migraciones.
   try {
-    if (existsSync(RUNTIME_SUPABASE)) rmSync(RUNTIME_SUPABASE, { recursive: true, force: true });
-    mkdirSync(RUNTIME_SUPABASE, { recursive: true });
-    const dbPort = ctx.dbPort;
-    const config = [
-      `# GENERADO por harness (efímero). No editar a mano.`,
-      `project_id = "tc_local_db_harness"`,
-      ``,
-      `[db]`,
-      `port = ${dbPort}`,
-      `shadow_port = ${dbPort + 1}`,
-      `major_version = 15`,
-      ``,
-      `[api]`,
-      `enabled = true`,
-      `port = ${dbPort + 100}`,
-      `schemas = ["public"]`,
-      ``,
-      `[studio]`,
-      `enabled = false`,
-      ``,
-      `[auth]`,
-      `enabled = true`,
-      ``,
-      `[analytics]`,
-      `enabled = false`,
-      ``,
-    ].join("\n");
-    writeFileSync(join(RUNTIME_SUPABASE, "config.toml"), config);
-    // Enlace simbólico a las migraciones reales (sin duplicar).
-    symlinkSync(MIGRATIONS_SRC, join(RUNTIME_SUPABASE, "migrations"));
-    ctx.log.push(`scaffold=OK (workdir efímero, db_port=${dbPort}, migraciones enlazadas)`);
+    const s = scaffoldRuntime({
+      runtimeDir: RUNTIME_DIR,
+      projectId: HARNESS_PROJECT_ID,
+      dbPort: ctx.dbPort,
+      migrationsSrc: MIGRATIONS_SRC,
+      resetRuntime: false,
+    });
+    ctx.projectId = s.projectId;
+    ctx.shadowPort = s.shadowPort;
+    ctx.apiPort = s.apiPort;
+    ctx.log.push(
+      `scaffold=OK (workdir efímero, project_id=${s.projectId}, db_port=${s.dbPort}, `
+      + `shadow_port=${s.shadowPort}, api_port=${s.apiPort}, migraciones enlazadas)`,
+    );
   } catch (e) {
-    stop(STOP.E_SCAFFOLD_FAILED, PHASE.SCAFFOLD, `no se pudo preparar workdir: ${e.message}`);
+    fromBootstrapError(e);
   }
 }
 
 function supabaseStart(ctx) {
-  const res = run("supabase", ["start", "--workdir", RUNTIME_DIR], { timeout: 600000 });
-  if (res.code !== 0) {
-    stop(STOP.E_SUPABASE_START_FAILED, PHASE.SUPABASE_START, "supabase start falló", {
-      FAILED_COMMAND: "supabase start --workdir <runtime>",
-      ACTUAL: redact(res.stderr || res.stdout).slice(-800),
+  try {
+    const r = startLocalStack({
+      runtimeDir: RUNTIME_DIR,
+      projectId: ctx.projectId || HARNESS_PROJECT_ID,
+      dbPort: ctx.dbPort,
     });
-  }
-  const status = run(
-    "supabase",
-    ["status", "-o", "env", "--workdir", RUNTIME_DIR],
-  );
-  if (status.code !== 0) {
-    stop(
-      STOP.E_SUPABASE_START_FAILED,
-      PHASE.SUPABASE_START,
-      "supabase status estructurado falló",
-      {
-        FAILED_COMMAND:
-          "supabase status -o env --workdir <runtime>",
-        ACTUAL:
-          `exit=${status.code}; salida omitida porque contiene credenciales locales`,
-      },
+    // DB_URL y contenedor provienen de la MISMA resolución: sin split-brain.
+    ctx.dbUrl = r.dbUrl;
+    ctx.dbContainer = r.container;
+    ctx.dbPort = r.dbPort;
+    ctx.localStatus = "up";
+    ctx.log.push(
+      `supabase_start=OK (host=${r.host}, db_container=${r.container}, db_port=${r.dbPort})`,
     );
+  } catch (e) {
+    fromBootstrapError(e);
   }
-  const parsed = parseSupabaseStatusDbUrl(
-    `${status.stdout}\n${status.stderr}`,
-  );
-  if (!parsed) {
-    stop(
-      STOP.E_SUPABASE_START_FAILED,
-      PHASE.SUPABASE_START,
-      "no se pudo leer DB URL local desde salida estructurada",
-      {
-        FAILED_COMMAND:
-          "supabase status -o env --workdir <runtime>",
-        ACTUAL:
-          "DB_URL ausente o no reconocida; salida omitida por seguridad",
-      },
-    );
-  }
-  // GUARDA CRÍTICA: el target DEBE ser local. Nunca remoto.
-  if (parsed.classification !== "LOCAL") {
-    stop(STOP.E_REMOTE_TARGET_DETECTED, PHASE.SUPABASE_START, `DB URL no local (${parsed.reason})`, {
-      EXPECTED: "host local (127.0.0.1/localhost)",
-      ACTUAL: `host=${parsed.host ?? "?"}`,
-      DO_NOT_RUN: "psql remoto | supabase remoto",
-    });
-  }
-  ctx.dbUrl = parsed.url;
-
-  // Resolver el contenedor PostgreSQL por el puerto local publicado.
-  // No depende del nombre del proyecto ni requiere psql en el host.
-  const dbPort = new URL(parsed.url).port;
-
-  if (!dbPort) {
-    stop(
-      STOP.E_SUPABASE_START_FAILED,
-      PHASE.SUPABASE_START,
-      "DB URL local sin puerto publicado",
-      {
-        ACTUAL: "puerto ausente",
-      },
-    );
-  }
-
-  const dockerPs = run(
-    "docker",
-    [
-      "ps",
-      "--format",
-      "{{.Names}}|||{{.Ports}}",
-    ],
-  );
-
-  if (dockerPs.code !== 0) {
-    stop(
-      STOP.E_SUPABASE_START_FAILED,
-      PHASE.SUPABASE_START,
-      "no se pudo inventariar contenedores Docker",
-      {
-        FAILED_COMMAND:
-          "docker ps --format <names-and-ports>",
-        ACTUAL:
-          redact(
-            `${dockerPs.stdout}\n${dockerPs.stderr}`,
-          ).slice(-500),
-      },
-    );
-  }
-
-  const dbContainers = dockerPs.stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name, ports = ""] = line.split("|||");
-
-      return {
-        name: name.trim(),
-        ports: ports.trim(),
-      };
-    })
-    .filter(
-      ({ name, ports }) =>
-        name.startsWith("supabase_db_")
-        && ports.includes(`:${dbPort}->5432/tcp`),
-    );
-
-  if (dbContainers.length !== 1) {
-    stop(
-      STOP.E_SUPABASE_START_FAILED,
-      PHASE.SUPABASE_START,
-      "no se pudo resolver un único contenedor DB local",
-      {
-        EXPECTED:
-          `1 contenedor supabase_db_* publicado en ${dbPort}`,
-        ACTUAL:
-          dbContainers.map(({ name }) => name).join(",")
-          || "ninguno",
-      },
-    );
-  }
-
-  ctx.dbContainer = dbContainers[0].name;
-  ctx.localStatus = "up";
-
-  ctx.log.push(
-    `supabase_start=OK `
-    + `(host=${parsed.host}, db_container=${ctx.dbContainer})`,
-  );
 }
 
 // psql local con guarda de destino en cada invocación.
@@ -355,15 +247,17 @@ function psql(ctx, { file = null, sql = null, args = [] } = {}) {
     );
   }
 
-  if (
-    typeof ctx.dbContainer !== "string"
-    || !ctx.dbContainer.startsWith("supabase_db_")
-  ) {
+  // Guarda anti-split-brain: el contenedor debe ser EXACTAMENTE el del proyecto
+  // resuelto por bootstrap.mjs, no cualquiera que empiece por supabase_db_.
+  const expectedContainer = expectedDbContainerName(ctx.projectId || HARNESS_PROJECT_ID);
+
+  if (typeof ctx.dbContainer !== "string" || ctx.dbContainer !== expectedContainer) {
     return {
       code: 125,
       stdout: "",
       stderr:
-        "contenedor PostgreSQL local no resuelto",
+        `contenedor PostgreSQL local no resuelto o ajeno al proyecto `
+        + `(esperado=${expectedContainer}, actual=${ctx.dbContainer ?? "-"})`,
     };
   }
 
