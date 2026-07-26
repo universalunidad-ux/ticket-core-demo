@@ -32,6 +32,110 @@ const stripShellComments = (src) =>
     .map((line) => (/^\s*#/.test(line) ? "" : line))
     .join("\n");
 
+const VERIFY_NOTICE = "PASS: dos actores admin concurrentes";
+
+function sideBBranch(src) {
+  const start = src.indexOf("\\elif :side_b");
+  const end = src.indexOf("\\else", start);
+  assert.ok(start >= 0 && end > start, "no se pudo aislar la rama side=b");
+  return src.slice(start, end);
+}
+
+function mutateSideB(src, mutate) {
+  const start = src.indexOf("\\elif :side_b");
+  const end = src.indexOf("\\else", start);
+  assert.ok(start >= 0 && end > start, "no se pudo aislar la rama side=b");
+  return src.slice(0, start) + mutate(src.slice(start, end)) + src.slice(end);
+}
+
+function validateSideBTransactionContract(src) {
+  const branch = stripSqlComments(sideBBranch(src));
+  const beginIndex = branch.search(/\bbegin\s*;/i);
+  const roleConfigIndex = branch.indexOf(
+    "set_config('role','authenticated', true)",
+  );
+  const claimsConfigIndex = branch.indexOf(
+    "set_config('request.jwt.claims'",
+  );
+  const rpcIndex = branch.indexOf("public.manage_ticket_assignment(");
+
+  assert.ok(beginIndex >= 0, "side=b requiere BEGIN explícito");
+  assert.ok(
+    beginIndex < roleConfigIndex &&
+      roleConfigIndex < claimsConfigIndex &&
+      claimsConfigIndex < rpcIndex,
+    "BEGIN, auth local y RPC deben conservar ese orden en side=b",
+  );
+  assert.match(
+    branch.slice(claimsConfigIndex, rpcIndex),
+    /::text,\s*true\);/,
+    "request.jwt.claims debe usar set_config local",
+  );
+  assert.doesNotMatch(
+    branch.slice(beginIndex, rpcIndex),
+    /\b(?:commit|rollback)\s*;/i,
+    "los GUC locales no pueden salir de la transacción antes de la RPC",
+  );
+  assert.doesNotMatch(
+    branch,
+    /set_config\([^;]*,\s*false\)/is,
+    "side=b no puede usar configuración session-level",
+  );
+  assert.doesNotMatch(
+    branch,
+    /\bcommit\s*;/i,
+    "side=b debe quedar abortada por el error esperado, sin COMMIT",
+  );
+}
+
+function validateRaceHarnessContract(sqlSrc, runnerSrc) {
+  const cleanRunner = stripShellComments(runnerSrc);
+  const waitA = cleanRunner.indexOf('wait "${PID_A}"');
+  const waitB = cleanRunner.indexOf('wait "${PID_B}"');
+  const verifyInvocation = cleanRunner.indexOf("-v phase=verify");
+
+  assert.match(
+    cleanRunner,
+    /if \[\[ "\$\{RC_A\}" -eq 0 \]\][\s\S]*?RACE_A_RESULT="PASS"/,
+    "race_a sólo puede pasar con rc=0",
+  );
+  assert.match(
+    cleanRunner,
+    /if \[\[ "\$\{RC_B\}" -ne 0 \]\][\s\S]*?grep -Eq '40001\|TC_ASSIGNMENT_VERSION_CONFLICT' "\$\{RACE_B_OUT\}"[\s\S]*?! grep -q 'admin_or_edge_required' "\$\{RACE_B_OUT\}"[\s\S]*?RACE_B_RESULT="PASS"/,
+    "race_b exige rc!=0, conflicto de versión y rechazo del error auth",
+  );
+  assert.match(
+    cleanRunner,
+    /RACE_SUCCESS_COUNT\}" -ne 1/,
+    "la carrera debe exigir exactamente un exit 0",
+  );
+  assert.ok(
+    waitA >= 0 &&
+      waitB > waitA &&
+      verifyInvocation > waitB,
+    "verify debe ejecutarse después de esperar ambos procesos",
+  );
+  assert.ok(
+    sqlSrc.includes(VERIFY_NOTICE),
+    "el SQL verify debe emitir el NOTICE PASS real",
+  );
+  assert.match(
+    cleanRunner,
+    new RegExp(
+      `VERIFY_RC\\}" -eq 0[\\s\\S]*?grep -q '${VERIFY_NOTICE.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      )}' "\\$\\{VERIFY_OUT\\}"[\\s\\S]*?VERIFY_RESULT="PASS"`,
+    ),
+    "el NOTICE real de verify debe clasificar VERIFY_RESULT=PASS",
+  );
+  assert.match(
+    cleanRunner,
+    /VERIFY_RESULT\}" == "PASS"[\s\S]*?TEARDOWN_RESULT\}" == "PASS"[\s\S]*?AUDIT_EXACTLY_ONCE="PASS"/,
+    "AUDIT_EXACTLY_ONCE debe derivarse del verify exactly-once",
+  );
+}
+
 const runtimeSql = read("supabase/tests/u15d_assignment_runtime.sql");
 const concurrencySql = read("supabase/tests/u15d_assignment_concurrency.sql");
 const runnerSh = read("tools/local-db/run-u15d-runtime.sh");
@@ -266,6 +370,37 @@ test("concurrency.sql verifica auditoría exactamente una vez y ganador único",
   assert.match(concurrencySql, /esperaba exactamente 1 bitacora/);
 });
 
+test("side=b conserva auth local y RPC dentro de una sola transacción", () => {
+  validateSideBTransactionContract(concurrencySql);
+});
+
+test("regresión: side=b sin BEGIN queda rechazada", () => {
+  const mutant = mutateSideB(concurrencySql, (branch) =>
+    branch.replace(/\n\s*begin;\n/i, "\n"),
+  );
+  assert.throws(() => validateSideBTransactionContract(mutant));
+});
+
+test("regresión: set_config local fuera de la transacción RPC queda rechazado", () => {
+  const mutant = mutateSideB(concurrencySql, (branch) =>
+    branch.replace(
+      /(\n\s*select public\.manage_ticket_assignment\()/,
+      "\n  commit;$1",
+    ),
+  );
+  assert.throws(() => validateSideBTransactionContract(mutant));
+});
+
+test("regresión: set_config session-level en side=b queda rechazado", () => {
+  const mutant = mutateSideB(concurrencySql, (branch) =>
+    branch.replace(
+      "set_config('role','authenticated', true)",
+      "set_config('role','authenticated', false)",
+    ),
+  );
+  assert.throws(() => validateSideBTransactionContract(mutant));
+});
+
 // ---------------------------------------------------------------------------
 // 3) tools/local-db/run-u15d-runtime.sh — harness fail-closed
 // ---------------------------------------------------------------------------
@@ -471,6 +606,58 @@ test("éxito exactly-once exige verify real y su marcador de auditoría", () => 
     runnerSh,
     /VERIFY_RESULT\}" == "PASS"[\s\S]*?TEARDOWN_RESULT\}" == "PASS"[\s\S]*?AUDIT_EXACTLY_ONCE="PASS"/,
   );
+});
+
+test("runner conserva el contrato completo de carrera y verify", () => {
+  validateRaceHarnessContract(concurrencySql, runnerSh);
+});
+
+test("regresión: admin_or_edge_required nunca se acepta para side=b", () => {
+  const mutant = runnerSh.replace(
+    /[ \t]*! grep -q 'admin_or_edge_required' "\$\{RACE_B_OUT\}" &&\n/,
+    "",
+  );
+  assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
+});
+
+test("regresión: side=b sin 40001/version conflict queda rechazado", () => {
+  const mutant = runnerSh.replace(
+    /[ \t]*grep -Eq '40001\|TC_ASSIGNMENT_VERSION_CONFLICT' "\$\{RACE_B_OUT\}" &&\n/,
+    "",
+  );
+  assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
+});
+
+test("regresión: dos exits 0 quedan rechazados", () => {
+  const mutant = runnerSh.replace(
+    'RACE_SUCCESS_COUNT}" -ne 1',
+    'RACE_SUCCESS_COUNT}" -lt 1',
+  );
+  assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
+});
+
+test("regresión: cero exits 0 quedan rechazados", () => {
+  const mutant = runnerSh.replace(
+    'RACE_SUCCESS_COUNT}" -ne 1',
+    'RACE_SUCCESS_COUNT}" -gt 1',
+  );
+  assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
+});
+
+test("regresión: NOTICE verify PASS no puede clasificarse como FAIL", () => {
+  const mutant = runnerSh.replace(
+    VERIFY_NOTICE,
+    "FAIL: dos actores admin concurrentes",
+  );
+  assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
+});
+
+test("regresión: AUDIT_EXACTLY_ONCE no puede independizarse de verify", () => {
+  const mutant = runnerSh.replace(
+    '  "${VERIFY_RESULT}" == "PASS" &&\n  "${TEARDOWN_RESULT}" == "PASS"',
+    '  "${TEARDOWN_RESULT}" == "PASS"',
+  );
+  assert.throws(() => validateRaceHarnessContract(concurrencySql, mutant));
 });
 
 // ---------------------------------------------------------------------------

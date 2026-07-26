@@ -534,6 +534,7 @@ if [[ "${SETUP_RESULT}" == "PASS" ]]; then
     fi
     if [[ "${RC_B}" -ne 0 ]] &&
       grep -Eq '40001|TC_ASSIGNMENT_VERSION_CONFLICT' "${RACE_B_OUT}" &&
+      ! grep -q 'admin_or_edge_required' "${RACE_B_OUT}" &&
       ! grep -q 'RACE_SIDE_B_UNEXPECTED_SUCCESS' "${RACE_B_OUT}"; then
       RACE_B_RESULT="PASS"
     else

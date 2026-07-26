@@ -151,6 +151,11 @@ select
 \elif :side_b
   -- Pierde la carrera: su `for update` interno queda bloqueado hasta que
   -- side=a haga commit; al reanudar, :shared_expected ya está obsoleto.
+  -- Los GUC locales de autorización deben vivir en la MISMA transacción que
+  -- la RPC. Sin este begin, cada SELECT autocommit descarta set_config(...,
+  -- true) antes de la llamada y produce admin_or_edge_required en vez del
+  -- conflicto de versión esperado.
+  begin;
   select set_config('role','authenticated', true);
   select set_config('request.jwt.claims',
     json_build_object('sub','d15dc000-0000-0000-0000-00000000000b','role','authenticated')::text, true);
@@ -162,7 +167,8 @@ select
     :'shared_expected'::timestamptz
   );
   -- Se espera que esta llamada TERMINE EN ERROR (40001) y que psql retorne
-  -- código de salida distinto de cero: eso es lo que valida esta fase.
+  -- código de salida distinto de cero: ON_ERROR_STOP termina psql y deja
+  -- esta transacción abortada naturalmente. No hay COMMIT en esta rama.
   \echo 'RACE_SIDE_B_UNEXPECTED_SUCCESS (debía fallar con 40001)'
   select set_config('role','postgres', true);
 \else
