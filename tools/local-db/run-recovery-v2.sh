@@ -59,11 +59,14 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 UNIT="TC-RECOVERY-V2-IMPLEMENT-RUNTIME-01"
-EXPECTED_POSTGRES_VERSION="18.4"
-EXPECTED_POSTGRES_VERSION_ERE='18\.4'
+EXPECTED_HOST_POSTGRES_VERSION="18.4"
+EXPECTED_HOST_POSTGRES_VERSION_ERE='18\.4'
 PSQL_BIN=""
 PG_DUMP_BIN=""
 PG_RESTORE_BIN=""
+HOST_PSQL_VERSION=""
+HOST_PG_DUMP_VERSION=""
+HOST_PG_RESTORE_VERSION=""
 
 # --- Resolver raíz del repo/worktree (dir de este script -> ../..) ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -166,6 +169,10 @@ SOURCE_SIGNATURE_MODE="NONE"
 SOURCE_SIGNATURE_RESULT="NOT_RUN"
 DUMP_COMPLETE_EPOCH=""
 RECOVERY_START_EPOCH=""
+SOURCE_SERVER_MAJOR="UNKNOWN"
+SOURCE_CLIENT_MAJOR="UNKNOWN"
+DESTINATION_SERVER_MAJOR="UNKNOWN"
+DESTINATION_CLIENT_MAJOR="UNKNOWN"
 
 # Argumentos deterministas de psql: ignoran cualquier ~/.psqlrc del operador, de
 # modo que el formato de las firmas y de los informes lo fija el .sql, no el host.
@@ -201,6 +208,13 @@ RTO_SECONDS=${RTO_SECONDS}
 DUMP_BYTES=${DUMP_BYTES}
 SOURCE_SIGNATURE_MODE=${SOURCE_SIGNATURE_MODE}
 SOURCE_SIGNATURE_RESULT=${SOURCE_SIGNATURE_RESULT}
+HOST_PSQL_VERSION=${HOST_PSQL_VERSION:-UNKNOWN}
+HOST_PG_DUMP_VERSION=${HOST_PG_DUMP_VERSION:-UNKNOWN}
+HOST_PG_RESTORE_VERSION=${HOST_PG_RESTORE_VERSION:-UNKNOWN}
+SOURCE_SERVER_MAJOR=${SOURCE_SERVER_MAJOR}
+SOURCE_CLIENT_MAJOR=${SOURCE_CLIENT_MAJOR}
+DESTINATION_SERVER_MAJOR=${DESTINATION_SERVER_MAJOR}
+DESTINATION_CLIENT_MAJOR=${DESTINATION_CLIENT_MAJOR}
 SOURCE_CUTOFF_EPOCH=${SOURCE_CUTOFF_EPOCH:-NOT_PROVIDED}
 DUMP_ALLOWLIST_RESULT=${DUMP_ALLOWLIST_RESULT}
 DUMP_CONTENT_SCAN=${DUMP_CONTENT_SCAN}
@@ -233,7 +247,7 @@ EOF
 #
 # Reactiva los triggers de usuario y recrea las FK circulares que se retiraron
 # para poder cargar los datos. Se invoca en el camino feliz Y desde abort() y
-# desde el manejador de senales, de modo que un fallo de `docker cp`, de
+# desde el manejador de senales, de modo que un fallo de streaming, de
 # `pg_restore` o de la validacion no puede dejar el clon con integridad
 # suspendida. INTEGRITY_SUSPENDED es el unico interruptor: si vale "no" esta
 # funcion no toca nada.
@@ -377,12 +391,6 @@ assert_regular_local_file() {
 resolve_postgres_tool() {
   local tool="$1" candidate="" libpq_prefix=""
 
-  candidate="$(command -v "${tool}" 2>/dev/null || true)"
-  if [[ -n "${candidate}" && -x "${candidate}" ]]; then
-    printf '%s\n' "${candidate}"
-    return 0
-  fi
-
   if command -v brew >/dev/null 2>&1; then
     libpq_prefix="$(brew --prefix libpq 2>/dev/null || true)"
     candidate="${libpq_prefix}/bin/${tool}"
@@ -423,7 +431,13 @@ read_postgres_tool_version() {
   printf '%s\n' "${version}"
 }
 
-assert_postgres_toolchain() {
+version_major() {
+  local version="$1"
+  [[ "${version}" =~ ^([0-9]+)(\.|$) ]] || return 1
+  printf '%s\n' "${BASH_REMATCH[1]}"
+}
+
+assert_host_postgres_tools() {
   local psql_version="" pg_dump_version="" pg_restore_version=""
 
   PSQL_BIN="$(resolve_postgres_tool psql)" \
@@ -431,7 +445,7 @@ assert_postgres_toolchain() {
   PG_DUMP_BIN="$(resolve_postgres_tool pg_dump)" \
     || abort "PRECHECK_HOST" "pg_dump no encontrado en PATH ni Homebrew libpq"
   PG_RESTORE_BIN="$(resolve_postgres_tool pg_restore)" \
-    || abort "PRECHECK_HOST" "pg_restore no encontrado en PATH ni Homebrew libpq"
+    || abort "PRECHECK_HOST" "pg_restore no encontrado en Homebrew libpq"
 
   psql_version="$(read_postgres_tool_version psql "${PSQL_BIN}")" \
     || abort "PRECHECK_HOST" "version de psql ilegible o no reconocida"
@@ -440,16 +454,62 @@ assert_postgres_toolchain() {
   pg_restore_version="$(read_postgres_tool_version pg_restore "${PG_RESTORE_BIN}")" \
     || abort "PRECHECK_HOST" "version de pg_restore ilegible o no reconocida"
 
-  [[ "${psql_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
-    || abort "PRECHECK_HOST" "psql no cumple la version host requerida ${EXPECTED_POSTGRES_VERSION}"
-  [[ "${pg_dump_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
-    || abort "PRECHECK_HOST" "pg_dump no cumple la version host requerida ${EXPECTED_POSTGRES_VERSION}"
-  [[ "${pg_restore_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
-    || abort "PRECHECK_HOST" "pg_restore no cumple la version host requerida ${EXPECTED_POSTGRES_VERSION}"
-  [[ -n "${psql_version}" \
-    && "${psql_version}" == "${pg_dump_version}" \
+  [[ "${psql_version}" =~ ^${EXPECTED_HOST_POSTGRES_VERSION_ERE}$ ]] \
+    || abort "PRECHECK_HOST" "psql host no cumple ${EXPECTED_HOST_POSTGRES_VERSION}"
+  [[ "${pg_dump_version}" =~ ^${EXPECTED_HOST_POSTGRES_VERSION_ERE}$ ]] \
+    || abort "PRECHECK_HOST" "pg_dump host no cumple ${EXPECTED_HOST_POSTGRES_VERSION}"
+  [[ "${pg_restore_version}" =~ ^${EXPECTED_HOST_POSTGRES_VERSION_ERE}$ ]] \
+    || abort "PRECHECK_HOST" "pg_restore host no cumple ${EXPECTED_HOST_POSTGRES_VERSION}"
+  [[ "${psql_version}" == "${pg_dump_version}" \
     && "${psql_version}" == "${pg_restore_version}" ]] \
     || abort "PRECHECK_HOST" "versiones host psql/pg_dump/pg_restore desalineadas"
+
+  HOST_PSQL_VERSION="${psql_version}"
+  HOST_PG_DUMP_VERSION="${pg_dump_version}"
+  HOST_PG_RESTORE_VERSION="${pg_restore_version}"
+}
+
+read_container_server_major() {
+  local cid="$1" version_num=""
+  version_num="$(docker exec "${cid}" psql -U postgres -d postgres -X -qAt \
+    -v ON_ERROR_STOP=1 -c 'show server_version_num' 2>/dev/null)" || return 1
+  [[ "${version_num}" =~ ^[0-9]{5,6}$ ]] || return 1
+  printf '%s\n' "$((10#${version_num} / 10000))"
+}
+
+read_container_tool_major() {
+  local cid="$1" tool="$2" raw="" version=""
+  raw="$(docker exec "${cid}" "${tool}" --version 2>/dev/null)" || return 1
+  version="$(parse_postgres_tool_version "${tool}" "${raw}")" || return 1
+  version_major "${version}"
+}
+
+assert_destination_toolchain() {
+  DESTINATION_SERVER_MAJOR="$(read_container_server_major "${CID}")" \
+    || abort "TOOLCHAIN_INCOMPATIBILITY" "no se pudo leer el major del servidor destino"
+  DESTINATION_CLIENT_MAJOR="$(read_container_tool_major "${CID}" pg_restore)" \
+    || abort "TOOLCHAIN_INCOMPATIBILITY" "no se pudo leer el major de pg_restore del destino"
+  [[ "${DESTINATION_CLIENT_MAJOR}" == "${DESTINATION_SERVER_MAJOR}" ]] \
+    || abort "TOOLCHAIN_INCOMPATIBILITY" \
+      "DESTINATION_CLIENT_SERVER_MAJOR_MISMATCH client=${DESTINATION_CLIENT_MAJOR} server=${DESTINATION_SERVER_MAJOR}"
+}
+
+read_dump_toolchain_metadata() {
+  local source_server_version="" source_client_version=""
+  source_server_version="$(sed -n 's/^;[[:space:]]*Dumped from database version:[[:space:]]*//p' \
+    "${ARTIFACTS_DIR}/04c_toc.txt" | head -n 1)"
+  source_client_version="$(sed -n 's/^;[[:space:]]*Dumped by pg_dump version:[[:space:]]*//p' \
+    "${ARTIFACTS_DIR}/04c_toc.txt" | head -n 1)"
+  SOURCE_SERVER_MAJOR="$(version_major "${source_server_version}")" \
+    || abort "TOOLCHAIN_INCOMPATIBILITY" "SOURCE_SERVER_MAJOR_UNREADABLE"
+  SOURCE_CLIENT_MAJOR="$(version_major "${source_client_version}")" \
+    || abort "TOOLCHAIN_INCOMPATIBILITY" "SOURCE_CLIENT_MAJOR_UNREADABLE"
+  [[ "${SOURCE_CLIENT_MAJOR}" == "${SOURCE_SERVER_MAJOR}" ]] \
+    || abort "TOOLCHAIN_INCOMPATIBILITY" \
+      "SOURCE_CLIENT_SERVER_MAJOR_MISMATCH client=${SOURCE_CLIENT_MAJOR} server=${SOURCE_SERVER_MAJOR}"
+  [[ "${SOURCE_SERVER_MAJOR}" == "${DESTINATION_SERVER_MAJOR}" ]] \
+    || abort "TOOLCHAIN_INCOMPATIBILITY" \
+      "SOURCE_DESTINATION_MAJOR_MISMATCH source=${SOURCE_SERVER_MAJOR} destination=${DESTINATION_SERVER_MAJOR}"
 }
 
 assert_local_db_url() {
@@ -605,10 +665,9 @@ fi
 if ! command -v supabase >/dev/null 2>&1; then
   abort "PRECHECK_HOST" "supabase CLI no encontrada" "brew install supabase/tap/supabase"
 fi
-# psql, pg_dump y pg_restore se resuelven una sola vez en el host y deben ser
-# exactamente 18.4 y estar alineados. Todo uso host posterior reutiliza estas
-# tres rutas; el restore final nunca cae al cliente interno del contenedor.
-assert_postgres_toolchain
+# El host sólo se usa para la ruta opcional --source-db-url. El dump sintético
+# y todo pg_restore usan clientes de los contenedores, alineados con sus servers.
+assert_host_postgres_tools
 
 DOCKER_USED="YES"
 
@@ -662,6 +721,7 @@ BOOTSTRAP_RESULT="PASS"
 # (P5) SOLO ahora se registra ownership del stack. Cualquier abort anterior sale
 # sin tocar Docker, porque no hay nada que este script pueda reclamar como suyo.
 STACK_OWNED="yes"
+assert_destination_toolchain
 # Se reporta el host y el puerto, NUNCA la DB_URL (lleva credenciales locales).
 echo "[recovery-v2] bootstrap OK (project_id=${PROJECT_ID}, host=${BOOTSTRAP_HOST}, db_port=${EFFECTIVE_DB_PORT}, cid=${CID})"
 
@@ -710,6 +770,19 @@ else
   else
     DUMP_FILE="${ARTIFACTS_DIR}/app-data.dump"
     SOURCE_CUTOFF_EPOCH="$(date -u +%s)"
+    SOURCE_SERVER_VERSION="$("${PSQL_BIN}" "${SOURCE_DB_URL}" -X -qAt --no-psqlrc \
+      -v ON_ERROR_STOP=1 -c 'show server_version' 2>/dev/null)" \
+      || abort "TOOLCHAIN_INCOMPATIBILITY" "SOURCE_SERVER_VERSION_UNREADABLE"
+    SOURCE_SERVER_MAJOR="$(version_major "${SOURCE_SERVER_VERSION}")" \
+      || abort "TOOLCHAIN_INCOMPATIBILITY" "SOURCE_SERVER_MAJOR_UNREADABLE"
+    SOURCE_CLIENT_MAJOR="$(version_major "${HOST_PG_DUMP_VERSION}")" \
+      || abort "TOOLCHAIN_INCOMPATIBILITY" "HOST_PG_DUMP_MAJOR_UNREADABLE"
+    [[ "${SOURCE_CLIENT_MAJOR}" == "${SOURCE_SERVER_MAJOR}" ]] \
+      || abort "TOOLCHAIN_INCOMPATIBILITY" \
+        "SOURCE_CLIENT_SERVER_MAJOR_MISMATCH client=${SOURCE_CLIENT_MAJOR} server=${SOURCE_SERVER_MAJOR}"
+    [[ "${SOURCE_SERVER_MAJOR}" == "${DESTINATION_SERVER_MAJOR}" ]] \
+      || abort "TOOLCHAIN_INCOMPATIBILITY" \
+        "SOURCE_DESTINATION_MAJOR_MISMATCH source=${SOURCE_SERVER_MAJOR} destination=${DESTINATION_SERVER_MAJOR}"
     # Filtros EXACTOS de 03_DUMP_FILTERS.txt/B. NOTA: se omite --disable-triggers
     # (embebe ENABLE/DISABLE TRIGGER ALL que requiere superuser al restaurar);
     # los triggers de usuario se manejan manualmente en 4g (03/E).
@@ -742,10 +815,12 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   # una tabla efimera excluida, o una tabla que no figure en recovery-data-order.txt,
   # aborta. Un dump sin entradas de datos tambien aborta: nada que restaurar no es
   # lo mismo que "todo en regla".
-  if ! "${PG_RESTORE_BIN}" -l "${DUMP_FILE}" >"${ARTIFACTS_DIR}/04c_toc.txt" 2>"${ARTIFACTS_DIR}/04c_toc.log"; then
+  if ! docker exec -i "${CID}" pg_restore -l \
+      <"${DUMP_FILE}" >"${ARTIFACTS_DIR}/04c_toc.txt" 2>"${ARTIFACTS_DIR}/04c_toc.log"; then
     DUMP_ALLOWLIST_RESULT="FAIL"
     abort "DUMP_GUARD" "pg_restore -l fallo sobre el dump; ver ${ARTIFACTS_DIR}/04c_toc.log"
   fi
+  read_dump_toolchain_metadata
   if ! node tools/local-db/lib/dump-allowlist.mjs \
       --toc "${ARTIFACTS_DIR}/04c_toc.txt" \
       --order tools/local-db/recovery-data-order.txt \
@@ -762,7 +837,8 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   # ALTER ... OWNER TO embebido: hay que mirar las sentencias. El SQL se consume
   # en STREAMING por una tuberia y NUNCA se escribe a disco ni se imprime; el
   # informe solo lleva regla + numero de linea + conteo.
-  if ! "${PG_RESTORE_BIN}" --data-only -f - "${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04d_content.log" \
+  if ! docker exec -i "${CID}" pg_restore --data-only -f - \
+      <"${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04d_content.log" \
       | node tools/local-db/lib/dump-allowlist.mjs --scan-content \
           --secret-patterns tools/secret-gate-patterns.txt \
           >"${ARTIFACTS_DIR}/04e_content_scan.txt" 2>&1; then
@@ -780,7 +856,8 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   # Los UUID salen del propio dump (son los unicos que satisfacen la FK); todo
   # lo demas es sintetico y vive en example.invalid. El COPY de perfiles (que SI
   # trae PII) se consume por tuberia y no se materializa en ningun artefacto.
-  if ! "${PG_RESTORE_BIN}" --data-only --table=perfiles -f - "${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04f_auth_extract.log" \
+  if ! docker exec -i "${CID}" pg_restore --data-only --table=perfiles -f - \
+      <"${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04f_auth_extract.log" \
       | node tools/local-db/lib/auth-seed.mjs --emit-sql \
           >"${ARTIFACTS_DIR}/04f_auth_seed.sql" 2>"${ARTIFACTS_DIR}/04f_auth_seed.err"; then
     AUTH_SEED_RESULT="FAIL"
@@ -790,14 +867,12 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   fi
   AUTH_SEED_USERS="$(sed -n 's/^AUTH_SEED_USERS=//p' "${ARTIFACTS_DIR}/04f_auth_seed.err" | head -n 1)"
   AUTH_SEED_USERS="${AUTH_SEED_USERS:-0}"
-  docker cp "${ARTIFACTS_DIR}/04f_auth_seed.sql" "${CID}:/tmp/auth-seed.sql"
-  if ! docker exec "${CID}" psql -U postgres -d postgres -X -q --no-psqlrc -v ON_ERROR_STOP=1 \
-      -f /tmp/auth-seed.sql >"${ARTIFACTS_DIR}/04f_auth_seed.log" 2>&1; then
+  if ! docker exec -i "${CID}" psql -U postgres -d postgres -X -q --no-psqlrc \
+      -v ON_ERROR_STOP=1 <"${ARTIFACTS_DIR}/04f_auth_seed.sql" \
+      >"${ARTIFACTS_DIR}/04f_auth_seed.log" 2>&1; then
     AUTH_SEED_RESULT="FAIL"
-    docker exec "${CID}" rm -f /tmp/auth-seed.sql || true
     abort "AUTH_SEED" "el seed sintetico de auth.users fallo; ver ${ARTIFACTS_DIR}/04f_auth_seed.log"
   fi
-  docker exec "${CID}" rm -f /tmp/auth-seed.sql || true
   AUTH_SEED_RESULT="PASS"
   echo "[recovery-v2] auth.users sembrado sinteticamente (usuarios=${AUTH_SEED_USERS}, dominio example.invalid)"
 
@@ -863,17 +938,16 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
     abort "RESTORE" "no se pudieron deshabilitar triggers de usuario"
 
   assert_regular_local_file "--dump" "${DUMP_FILE}"
-  assert_local_db_url "${DB_URL}" \
-    || abort "RESTORE" "DB_URL del destino dejo de clasificar como LOCAL/loopback"
   RESTORE_OK="yes"
-  if ! "${PG_RESTORE_BIN}" \
-      --dbname="${DB_URL}" \
+  if ! docker exec -i "${CID}" pg_restore \
+      -U postgres \
+      --dbname=postgres \
       --data-only \
       --single-transaction \
       --exit-on-error \
       --schema=public \
-      --schema=app_private \
-      "${DUMP_FILE}" 2>&1 \
+      --schema=app_private 2>&1 \
+      <"${DUMP_FILE}" \
       | sanitize_log_stream >"${ARTIFACTS_DIR}/04h_restore.log"; then
     RESTORE_OK="no"
   fi
@@ -896,13 +970,12 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   # pg_restore terminando en 0 NO demuestra integridad. Se comprueba
   # explicitamente: FK validadas, cero huerfanas, cero triggers deshabilitados,
   # ownership intacto, y cada perfil con su auth.users sintetico.
-  docker cp "tools/local-db/fk-integrity.sql" "${CID}:/tmp/fk-integrity.sql"
-  if ! docker exec "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
-      -f /tmp/fk-integrity.sql >"${ARTIFACTS_DIR}/04k_fk_integrity.txt" 2>"${ARTIFACTS_DIR}/04k_fk_integrity.err"; then
+  if ! docker exec -i "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
+      <tools/local-db/fk-integrity.sql \
+      >"${ARTIFACTS_DIR}/04k_fk_integrity.txt" 2>"${ARTIFACTS_DIR}/04k_fk_integrity.err"; then
     FK_INTEGRITY="FAIL"
     abort "VALIDATION" "fk-integrity.sql fallo; ver ${ARTIFACTS_DIR}/04k_fk_integrity.err"
   fi
-  docker exec "${CID}" rm -f /tmp/fk-integrity.sql || true
 
   INTEGRITY_FINDINGS=""
   grep -q '^FK_INTEGRITY_COMPLETE=YES$' "${ARTIFACTS_DIR}/04k_fk_integrity.txt" \
@@ -978,12 +1051,11 @@ fi
 # Ambas firmas se generan con -X --no-psqlrc para ignorar cualquier ~/.psqlrc, y
 # el formato lo fija recovery-signature.sql, no el invocador.
 # =============================================================================
-docker cp "tools/local-db/recovery-signature.sql" "${CID}:/tmp/recovery-signature.sql"
-docker exec "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
-  -f /tmp/recovery-signature.sql >"${ARTIFACTS_DIR}/08_dest_signature.txt" 2>"${ARTIFACTS_DIR}/08_dest_signature.err" \
+docker exec -i "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
+  <tools/local-db/recovery-signature.sql \
+  >"${ARTIFACTS_DIR}/08_dest_signature.txt" 2>"${ARTIFACTS_DIR}/08_dest_signature.err" \
   || { STRUCTURE_PARITY="FAIL"; DATA_PARITY="FAIL"; RLS_RESTORE_RESULT="FAIL"; ACL_RESTORE_RESULT="FAIL"; \
        abort "VALIDATION" "recovery-signature.sql fallo contra el destino; ver ${ARTIFACTS_DIR}/08_dest_signature.err"; }
-docker exec "${CID}" rm -f /tmp/recovery-signature.sql || true
 
 if ! grep -q '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${ARTIFACTS_DIR}/08_dest_signature.txt"; then
   STRUCTURE_PARITY="FAIL"; DATA_PARITY="FAIL"; RLS_RESTORE_RESULT="FAIL"; ACL_RESTORE_RESULT="FAIL"

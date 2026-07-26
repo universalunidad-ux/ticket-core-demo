@@ -1,9 +1,9 @@
 # RECOVERY V2 — Runbook operativo
 
-UNIDAD: `TC-RECOVERY-SEQUENTIAL-SCORABLE-01`
+UNIDAD: `TC-RECOVERY-SERVER-ALIGNED-TOOLCHAIN-01`
 WORKTREE: `_WORKTREES/ticket-core-demo/recovery-v2-20260725`
 BRANCH: `test/recovery-v2-20260725`
-HEAD BASE AUTORIZADO: `39605ffa44e228671fd3576932afea4fb352a6d9`
+HEAD BASE AUTORIZADO: `edb5703eb1d4431cda917591ba40e872f307f986`
 
 **Estado de esta unidad: IMPLEMENTADO LOCAL (código) · NO VALIDADO EN VIVO.**
 
@@ -81,7 +81,8 @@ Sin `--dry-run`, antes de `DOCKER_USED=YES` deben pasar, en este orden y todos f
 host `Darwin`/`Linux` · `node >= 22` · worktree git · rama `test/*` · guarda anti-remoto
 (`inspectEnvForRemote` + `classifyTarget` sobre `--source-db-url`) · guarda de alcance del
 runtime · `docker` en PATH · `docker info` responde · **cero contenedores `supabase_*`
-activos** · `supabase` CLI · `pg_dump`/`pg_restore` · `psql` del host. `DOCKER_USED` sólo
+activos** · `supabase` CLI · `pg_dump`/`psql` host disponibles para la ruta opcional
+`--source-db-url`. `DOCKER_USED` sólo
 pasa a `YES` cuando **todo** lo anterior pasó.
 
 ### 4.1 Fuente persistida secuencial
@@ -124,11 +125,22 @@ fija `SOURCE_SIGNATURE_RESULT=FAIL`/`SOURCE_SIGNATURE_FAILED` y prohíbe PASS.
    **nombre de regla + número de línea + conteo** — jamás la línea ni las filas.
    Los patrones de `tools/secret-gate-patterns.txt` se aplican en el mismo paso.
 
-La lectura del dump y el restore final usan el mismo `PG_RESTORE_BIN` resuelto en el host.
-`psql`, `pg_dump` y `pg_restore` deben ser clientes host `18.4` y tener versiones alineadas.
-El restore se conecta mediante la `DB_URL` del stack Supabase destino, reclasificada como
-`LOCAL`/loopback inmediatamente antes de cargar datos. Usar el cliente host compatible no
-habilita acceso remoto: el destino continúa siendo exclusivamente el stack local.
+La ruta sintética scorable usa el toolchain de cada servidor. El `pg_dump` del contenedor
+fuente escribe el custom dump por `stdout` directamente en
+`05_source_app_data.dump` del host. Después de detener por completo la fuente, el
+`pg_restore` del contenedor destino lee ese mismo archivo por `stdin`; TOC, escaneo de
+contenido, extracción de `perfiles` y restore final siguen el mismo mecanismo. No existe
+`docker cp` ni una copia del dump dentro del contenedor.
+
+Antes del restore se exige:
+
+- `SOURCE_CLIENT_MAJOR == SOURCE_SERVER_MAJOR`;
+- `DESTINATION_CLIENT_MAJOR == DESTINATION_SERVER_MAJOR`;
+- `SOURCE_SERVER_MAJOR == DESTINATION_SERVER_MAJOR`.
+
+Una violación aborta con `STOP_CODE=E_TOOLCHAIN_INCOMPATIBILITY`, conserva artefactos,
+ejecuta teardown y mantiene `SCORABLE=NO`. Los clientes host 18.4 siguen disponibles y
+alineados para operación general, pero no restauran el dump contra el PostgreSQL 15 local.
 
 > La guarda anterior (grep de `FORBIDDEN_PATTERN` sobre la TOC de un dump `--data-only`) era
 > **vacua**: en esa TOC nunca aparece una entrada `SCHEMA - realtime`, así que no podía fallar.
@@ -141,7 +153,7 @@ habilita acceso remoto: el destino continúa siendo exclusivamente el stack loca
 | 1 | Bootstrap limpio | PASO 1: `node tools/local-db/lib/bootstrap.mjs --project-id tc_recovery_v2 --db-port 54339 --runtime-dir tools/local-db/.runtime-recovery --reset-runtime` |
 | 2 | Migraciones canónicas | PASO 2: `supabase db reset --workdir …` (31 migraciones) + **ledger fail-closed** (`≠31` ⇒ abort, nunca WARN) |
 | 3 | Nunca platform-managed | §5.1: allowlist positiva sobre TOC + escaneo de contenido |
-| 4 | Dump/restore application-owned | PASO 4: `pg_dump --format=custom --data-only --no-owner --no-privileges --schema=public --schema=app_private` + 4 exclusiones; restore con `pg_restore --data-only --single-transaction --exit-on-error` |
+| 4 | Dump/restore application-owned | PASO 4: `docker exec <source> pg_dump … > dump-host` y `docker exec -i <destination> pg_restore … < dump-host`; conserva `--data-only --single-transaction --exit-on-error --schema=public --schema=app_private` |
 | 5 | `auth.users` antes de `perfiles` | PASO 4f: seed sintético (§7) |
 | 6 | Buckets y policies por migración | Aplicados en el PASO 2; verificados en PASO 8 |
 | 7 | Blobs fuera de `pg_dump` | PASO 7: plano separado, sólo `--blobs-src <dir local>`; rechaza `s3://`/`http(s)://` |
@@ -215,7 +227,7 @@ nunca como argumento de integridad.
 
 Entre el paso 2 y el 4, `INTEGRITY_SUSPENDED=yes`. `restore_integrity()` reactiva triggers y
 recrea las constraints, es **idempotente**, y se invoca desde el camino feliz, desde `abort()`
-y desde el manejador de señales. Un fallo de `docker cp`, de `pg_restore` o de la validación
+y desde el manejador de señales. Un fallo de streaming, de `pg_restore` o de la validación
 **no** puede dejar el clon con integridad suspendida. Si aun así falla,
 `INTEGRITY_RESTORE_RESULT=FAIL` y `RESULT` nunca puede ser `PASS`.
 
@@ -303,7 +315,8 @@ Ninguno se borra nunca. El directorio está en `tools/local-db/.gitignore`.
 
 `abort "<FASE>"` fija `RESULT=FAIL` y `STOP_CODE=E_<FASE>`. Fases:
 `PRECHECK_HOST`, `PRECHECK_REPO`, `PRECHECK_REMOTE_GUARD`, `PRECHECK_SCOPE_GUARD`,
-`BOOTSTRAP`, `MIGRATIONS`, `DUMP`, `DUMP_GUARD`, `SECRET_SCAN`, `AUTH_SEED`, `OWNERSHIP`,
+`BOOTSTRAP`, `TOOLCHAIN_INCOMPATIBILITY`, `MIGRATIONS`, `DUMP`, `DUMP_GUARD`,
+`SECRET_SCAN`, `AUTH_SEED`, `OWNERSHIP`,
 `RESTORE`, `STORAGE_BLOBS`, `VALIDATION`, `LIFECYCLE`, `UNEXPECTED`.
 Señales: `E_INTERRUPTED_INT` (exit 130), `E_INTERRUPTED_TERM` (exit 143).
 `bootstrap.mjs` usa la taxonomía `STOP` de `guards.mjs` (`E_SCAFFOLD_FAILED`,
@@ -396,6 +409,7 @@ node tools/local-db/lib/bootstrap.mjs --stop \
 ```bash
 bash -n tools/local-db/run-recovery-v2.sh
 bash -n tools/local-db/run-recovery-v2-synthetic.sh
+node --test test/local-db/recovery-host-pg-restore.test.mjs
 node --check tools/local-db/lib/local-auth-users.mjs
 node --test test/local-db/local-auth-users.test.mjs
 node tools/staging-synthetic-seed-contract.test.mjs
