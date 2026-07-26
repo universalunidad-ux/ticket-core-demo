@@ -538,7 +538,7 @@ console.log("PASS\tfinal_output_contract\tfields=34");
 // 18) recovery-signature.sql (REPORT_ONLY, 5 dimensiones, sin datos sensibles)
 // ===========================================================================
 assert.doesNotMatch(
-  sql, /^\s*(?:create|alter|drop|grant|revoke|update|insert|delete)\b/im,
+  sql, /^\s*(?:create|alter|drop|truncate|comment|grant|revoke|update|insert|delete)\b/im,
   "recovery-signature.sql debe ser REPORT_ONLY",
 );
 for (const section of ["STRUCTURE", "FUNCTIONS", "POLICIES", "ACL", "DATA"]) {
@@ -551,6 +551,55 @@ assert.doesNotMatch(sql, /,\s*detalle\s*,/i, "no debe proyectar detalle como col
 assert.match(sql, /to_jsonb\(t\)\s*-\s*'detalle'/, "debe excluir detalle via to_jsonb(t) - 'detalle'");
 assert.doesNotMatch(sql, /from\s+public\.edge_idempotency/i, "edge_idempotency queda fuera de DATA");
 console.log("PASS\tsignature_report_only_and_sections");
+
+// 18a) REGRESIÓN: pg_constraint.contype es el tipo interno PostgreSQL "char".
+// Su concatenación directa con text es ambigua; el cast debe permanecer
+// explícito sin cambiar el contenido ni el orden determinista de la firma.
+{
+  const constraintStart = sql.indexOf("'CONSTRAINT_INVENTORY'");
+  const constraintEnd = sql.indexOf("'INDEX_INVENTORY'", constraintStart);
+  assert.notEqual(constraintStart, -1, "falta CONSTRAINT_INVENTORY");
+  assert.notEqual(constraintEnd, -1, "no se pudo delimitar CONSTRAINT_INVENTORY");
+  const constraintInventory = sql.slice(constraintStart, constraintEnd);
+
+  assert.match(
+    constraintInventory,
+    /con\.conname\s*\|\|\s*':'\s*\|\|\s*con\.contype::text\s*\|\|\s*':'\s*\|\|\s*pg_get_constraintdef\(con\.oid\)/,
+    "constraint_type debe usar con.contype::text antes de concatenar",
+  );
+  assert.doesNotMatch(
+    sql,
+    /\|\|\s*con\.contype\s*\|\|/,
+    "con.contype no puede concatenarse directamente: el operador text || \"char\" es ambiguo",
+  );
+  assert.match(
+    constraintInventory,
+    /string_agg\([\s\S]*'\|'\s+order by con\.conname[\s\S]*group by nsp\.nspname, rel\.relname, con\.contype\s+order by nsp\.nspname, rel\.relname, con\.contype;/,
+    "la firma de constraints debe preservar el orden total interno y externo",
+  );
+  assert.match(
+    constraintInventory,
+    /where nsp\.nspname in \('public', 'app_private'\)/,
+    "CONSTRAINT_INVENTORY debe conservar la allowlist public,app_private",
+  );
+}
+assert.match(
+  sql,
+  /\\echo 'RECOVERY_SIGNATURE_ALLOWLIST=public,app_private'/,
+  "la firma debe declarar exactamente la allowlist public,app_private",
+);
+assert.equal(
+  (sql.match(/RECOVERY_SIGNATURE_ALLOWLIST=/g) || []).length,
+  1,
+  "debe existir un solo marcador autoritativo de allowlist",
+);
+assert.match(sql, /\\echo 'SECTION=STRUCTURE'/, "SECTION=STRUCTURE debe preservarse");
+assert.match(
+  sql,
+  /\\echo 'RECOVERY_SIGNATURE_COMPLETE=YES'/,
+  "RECOVERY_SIGNATURE_COMPLETE=YES debe preservarse",
+);
+console.log("PASS\tconstraint_type_cast_and_signature_invariants");
 
 // ===========================================================================
 // 19) recovery-data-order.txt y cruce con migraciones reales
