@@ -108,7 +108,7 @@ select
   count(*) as constraint_count,
   md5(
     string_agg(
-      con.conname || ':' || con.contype || ':' || pg_get_constraintdef(con.oid),
+      con.conname || ':' || con.contype::text || ':' || pg_get_constraintdef(con.oid),
       '|' order by con.conname
     )
   ) as constraints_hash
