@@ -59,6 +59,11 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 UNIT="TC-RECOVERY-V2-IMPLEMENT-RUNTIME-01"
+EXPECTED_POSTGRES_VERSION="18.4"
+EXPECTED_POSTGRES_VERSION_ERE='18\.4'
+PSQL_BIN=""
+PG_DUMP_BIN=""
+PG_RESTORE_BIN=""
 
 # --- Resolver raíz del repo/worktree (dir de este script -> ../..) ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -369,6 +374,110 @@ assert_regular_local_file() {
   [[ -f "${path}" ]] || abort "PRECHECK_SCOPE_GUARD" "${label} debe ser archivo regular"
 }
 
+resolve_postgres_tool() {
+  local tool="$1" candidate="" libpq_prefix=""
+
+  candidate="$(command -v "${tool}" 2>/dev/null || true)"
+  if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    libpq_prefix="$(brew --prefix libpq 2>/dev/null || true)"
+    candidate="${libpq_prefix}/bin/${tool}"
+    if [[ -n "${libpq_prefix}" && -x "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
+
+  for libpq_prefix in "/opt/homebrew/opt/libpq" "/usr/local/opt/libpq"; do
+    candidate="${libpq_prefix}/bin/${tool}"
+    if [[ -x "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+parse_postgres_tool_version() {
+  local tool="$1" raw="$2" normalized=""
+
+  normalized="${raw//$'\r'/}"
+  if [[ "${normalized}" =~ ^[[:space:]]*${tool}[[:space:]]+\(PostgreSQL\)[[:space:]]+([0-9]+\.[0-9]+(\.[0-9]+)?)[[:space:]]*(\(Homebrew\))?[[:space:]]*$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  return 1
+}
+
+read_postgres_tool_version() {
+  local tool="$1" path="$2" raw="" version=""
+
+  raw="$("${path}" --version 2>/dev/null)" || return 1
+  version="$(parse_postgres_tool_version "${tool}" "${raw}")" || return 1
+  printf '%s\n' "${version}"
+}
+
+assert_postgres_toolchain() {
+  local psql_version="" pg_dump_version="" pg_restore_version=""
+
+  PSQL_BIN="$(resolve_postgres_tool psql)" \
+    || abort "PRECHECK_HOST" "psql no encontrado en PATH ni Homebrew libpq"
+  PG_DUMP_BIN="$(resolve_postgres_tool pg_dump)" \
+    || abort "PRECHECK_HOST" "pg_dump no encontrado en PATH ni Homebrew libpq"
+  PG_RESTORE_BIN="$(resolve_postgres_tool pg_restore)" \
+    || abort "PRECHECK_HOST" "pg_restore no encontrado en PATH ni Homebrew libpq"
+
+  psql_version="$(read_postgres_tool_version psql "${PSQL_BIN}")" \
+    || abort "PRECHECK_HOST" "version de psql ilegible o no reconocida"
+  pg_dump_version="$(read_postgres_tool_version pg_dump "${PG_DUMP_BIN}")" \
+    || abort "PRECHECK_HOST" "version de pg_dump ilegible o no reconocida"
+  pg_restore_version="$(read_postgres_tool_version pg_restore "${PG_RESTORE_BIN}")" \
+    || abort "PRECHECK_HOST" "version de pg_restore ilegible o no reconocida"
+
+  [[ "${psql_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
+    || abort "PRECHECK_HOST" "psql no cumple la version host requerida ${EXPECTED_POSTGRES_VERSION}"
+  [[ "${pg_dump_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
+    || abort "PRECHECK_HOST" "pg_dump no cumple la version host requerida ${EXPECTED_POSTGRES_VERSION}"
+  [[ "${pg_restore_version}" =~ ^${EXPECTED_POSTGRES_VERSION_ERE}$ ]] \
+    || abort "PRECHECK_HOST" "pg_restore no cumple la version host requerida ${EXPECTED_POSTGRES_VERSION}"
+  [[ -n "${psql_version}" \
+    && "${psql_version}" == "${pg_dump_version}" \
+    && "${psql_version}" == "${pg_restore_version}" ]] \
+    || abort "PRECHECK_HOST" "versiones host psql/pg_dump/pg_restore desalineadas"
+}
+
+assert_local_db_url() {
+  local candidate="$1"
+  DB_URL_CHECK="${candidate}" node -e '
+    import("./tools/local-db/lib/guards.mjs").then((g) => {
+      const c = g.classifyTarget(process.env.DB_URL_CHECK || "");
+      process.exit(c.classification === "LOCAL" ? 0 : 1);
+    }).catch(() => process.exit(2));
+  ' >/dev/null 2>&1
+}
+
+sanitize_log_stream() {
+  node -e '
+    import("./tools/local-db/lib/bootstrap.mjs").then(({ redactSecrets }) => {
+      let input = "";
+      process.stdin.setEncoding("utf8");
+      process.stdin.on("data", (chunk) => { input += chunk; });
+      process.stdin.on("end", () => {
+        const sanitized = redactSecrets(input)
+          .replace(/(postgres(?:ql)?:\/\/)[^:@\s]+(?::\*{3})?@/gi, "$1***:***@")
+          .replace(/(\buser(?:name)?\s*=\s*)[^\s;]+/gi, "$1***");
+        process.stdout.write(sanitized);
+      });
+    }).catch(() => process.exit(1));
+  '
+}
+
 file_mtime_epoch() {
   local path="$1" value
   value="$(stat -f %m "${path}" 2>/dev/null || stat -c %Y "${path}" 2>/dev/null || true)"
@@ -496,16 +605,10 @@ fi
 if ! command -v supabase >/dev/null 2>&1; then
   abort "PRECHECK_HOST" "supabase CLI no encontrada" "brew install supabase/tap/supabase"
 fi
-if ! command -v pg_dump >/dev/null 2>&1 || ! command -v pg_restore >/dev/null 2>&1; then
-  abort "PRECHECK_HOST" "pg_dump/pg_restore no encontrados en PATH (cliente psql/postgresql)"
-fi
-# (P4) psql del HOST es obligatorio: la firma de la fuente se ejecuta con el
-# psql del host, no dentro del contenedor. Sin este precheck el fallo aparecia
-# tarde, ya en PASO 8, y degradaba a SOURCE_SIGNATURE_FAILED en vez de a un
-# precheck honesto.
-if ! command -v psql >/dev/null 2>&1; then
-  abort "PRECHECK_HOST" "psql no encontrado en PATH (requerido para la firma de la fuente en PASO 8)"
-fi
+# psql, pg_dump y pg_restore se resuelven una sola vez en el host y deben ser
+# exactamente 18.4 y estar alineados. Todo uso host posterior reutiliza estas
+# tres rutas; el restore final nunca cae al cliente interno del contenedor.
+assert_postgres_toolchain
 
 DOCKER_USED="YES"
 
@@ -544,6 +647,8 @@ if [[ -z "${DB_URL}" || -z "${CID}" || -z "${EFFECTIVE_DB_PORT}" ]]; then
   BOOTSTRAP_RESULT="FAIL"
   abort "BOOTSTRAP" "bootstrap.mjs no devolvio DB_URL/CID/puerto completos"
 fi
+assert_local_db_url "${DB_URL}" \
+  || abort "BOOTSTRAP" "DB_URL del destino no clasifica como LOCAL/loopback"
 if [[ "${CID_DB_URL_SINGLE_SOURCE}" != "YES" ]]; then
   BOOTSTRAP_RESULT="FAIL"
   abort "BOOTSTRAP" "DB_URL y CID no provienen de la misma resolucion (split-brain)"
@@ -608,7 +713,7 @@ else
     # Filtros EXACTOS de 03_DUMP_FILTERS.txt/B. NOTA: se omite --disable-triggers
     # (embebe ENABLE/DISABLE TRIGGER ALL que requiere superuser al restaurar);
     # los triggers de usuario se manejan manualmente en 4g (03/E).
-    if ! pg_dump "${SOURCE_DB_URL}" \
+    if ! "${PG_DUMP_BIN}" "${SOURCE_DB_URL}" \
         --format=custom \
         --data-only \
         --no-owner \
@@ -637,7 +742,7 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   # una tabla efimera excluida, o una tabla que no figure en recovery-data-order.txt,
   # aborta. Un dump sin entradas de datos tambien aborta: nada que restaurar no es
   # lo mismo que "todo en regla".
-  if ! pg_restore -l "${DUMP_FILE}" >"${ARTIFACTS_DIR}/04c_toc.txt" 2>"${ARTIFACTS_DIR}/04c_toc.log"; then
+  if ! "${PG_RESTORE_BIN}" -l "${DUMP_FILE}" >"${ARTIFACTS_DIR}/04c_toc.txt" 2>"${ARTIFACTS_DIR}/04c_toc.log"; then
     DUMP_ALLOWLIST_RESULT="FAIL"
     abort "DUMP_GUARD" "pg_restore -l fallo sobre el dump; ver ${ARTIFACTS_DIR}/04c_toc.log"
   fi
@@ -657,7 +762,7 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   # ALTER ... OWNER TO embebido: hay que mirar las sentencias. El SQL se consume
   # en STREAMING por una tuberia y NUNCA se escribe a disco ni se imprime; el
   # informe solo lleva regla + numero de linea + conteo.
-  if ! pg_restore --data-only -f - "${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04d_content.log" \
+  if ! "${PG_RESTORE_BIN}" --data-only -f - "${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04d_content.log" \
       | node tools/local-db/lib/dump-allowlist.mjs --scan-content \
           --secret-patterns tools/secret-gate-patterns.txt \
           >"${ARTIFACTS_DIR}/04e_content_scan.txt" 2>&1; then
@@ -675,7 +780,7 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
   # Los UUID salen del propio dump (son los unicos que satisfacen la FK); todo
   # lo demas es sintetico y vive en example.invalid. El COPY de perfiles (que SI
   # trae PII) se consume por tuberia y no se materializa en ningun artefacto.
-  if ! pg_restore --data-only --table=perfiles -f - "${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04f_auth_extract.log" \
+  if ! "${PG_RESTORE_BIN}" --data-only --table=perfiles -f - "${DUMP_FILE}" 2>"${ARTIFACTS_DIR}/04f_auth_extract.log" \
       | node tools/local-db/lib/auth-seed.mjs --emit-sql \
           >"${ARTIFACTS_DIR}/04f_auth_seed.sql" 2>"${ARTIFACTS_DIR}/04f_auth_seed.err"; then
     AUTH_SEED_RESULT="FAIL"
@@ -757,16 +862,21 @@ if [[ -n "${DUMP_FILE}" && -f "${DUMP_FILE}" ]]; then
     end \$\$;" >"${ARTIFACTS_DIR}/04g_disable_triggers.log" 2>&1 || \
     abort "RESTORE" "no se pudieron deshabilitar triggers de usuario"
 
-  docker cp "${DUMP_FILE}" "${CID}:/tmp/app.dump" \
-    || abort "RESTORE" "docker cp del dump fallo (la integridad se restituye antes de salir)"
+  assert_regular_local_file "--dump" "${DUMP_FILE}"
+  assert_local_db_url "${DB_URL}" \
+    || abort "RESTORE" "DB_URL del destino dejo de clasificar como LOCAL/loopback"
   RESTORE_OK="yes"
-  if ! docker exec "${CID}" pg_restore -U postgres -d postgres \
-      --data-only --single-transaction --exit-on-error \
-      --schema=public --schema=app_private \
-      /tmp/app.dump >"${ARTIFACTS_DIR}/04h_restore.log" 2>&1; then
+  if ! "${PG_RESTORE_BIN}" \
+      --dbname="${DB_URL}" \
+      --data-only \
+      --single-transaction \
+      --exit-on-error \
+      --schema=public \
+      --schema=app_private \
+      "${DUMP_FILE}" 2>&1 \
+      | sanitize_log_stream >"${ARTIFACTS_DIR}/04h_restore.log"; then
     RESTORE_OK="no"
   fi
-  docker exec "${CID}" rm -f /tmp/app.dump || true
 
   # --- 4i RESTITUCION GARANTIZADA de triggers y FK circulares (P7.7) ---------
   if ! restore_integrity; then
@@ -898,7 +1008,7 @@ INFORMATIVE_SECTIONS="LEDGER STORAGE OWNERSHIP"
 
 SOURCE_SIGNATURE_ARTIFACT=""
 if [[ -n "${SOURCE_DB_URL}" ]]; then
-  if ! psql "${SOURCE_DB_URL}" "${PSQL_DET_ARGS[@]}" -f tools/local-db/recovery-signature.sql \
+  if ! "${PSQL_BIN}" "${SOURCE_DB_URL}" "${PSQL_DET_ARGS[@]}" -f tools/local-db/recovery-signature.sql \
       >"${ARTIFACTS_DIR}/08_src_signature.txt" 2>"${ARTIFACTS_DIR}/08_src_signature.err"; then
     SOURCE_SIGNATURE_RESULT="FAIL"
     STRUCTURE_PARITY="SOURCE_SIGNATURE_FAILED"; DATA_PARITY="SOURCE_SIGNATURE_FAILED"

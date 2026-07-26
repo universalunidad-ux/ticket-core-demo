@@ -124,6 +124,12 @@ fija `SOURCE_SIGNATURE_RESULT=FAIL`/`SOURCE_SIGNATURE_FAILED` y prohíbe PASS.
    **nombre de regla + número de línea + conteo** — jamás la línea ni las filas.
    Los patrones de `tools/secret-gate-patterns.txt` se aplican en el mismo paso.
 
+La lectura del dump y el restore final usan el mismo `PG_RESTORE_BIN` resuelto en el host.
+`psql`, `pg_dump` y `pg_restore` deben ser clientes host `18.4` y tener versiones alineadas.
+El restore se conecta mediante la `DB_URL` del stack Supabase destino, reclasificada como
+`LOCAL`/loopback inmediatamente antes de cargar datos. Usar el cliente host compatible no
+habilita acceso remoto: el destino continúa siendo exclusivamente el stack local.
+
 > La guarda anterior (grep de `FORBIDDEN_PATTERN` sobre la TOC de un dump `--data-only`) era
 > **vacua**: en esa TOC nunca aparece una entrada `SCHEMA - realtime`, así que no podía fallar.
 > Está eliminada.

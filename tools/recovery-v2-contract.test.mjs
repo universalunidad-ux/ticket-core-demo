@@ -510,9 +510,9 @@ assert.doesNotMatch(shExec, /cat\s+"?\$\{?DUMP_FILE\}?"?/, "el script no debe vo
 assert.doesNotMatch(shExec, /\bt\.detalle\b/, "no debe tocar bitacora.detalle en claro");
 assert.doesNotMatch(shExec, /edge_idempotency\.response/i, "no debe referenciar edge_idempotency.response");
 // El SQL del contenido y el COPY de perfiles se consumen por TUBERÍA, jamás a disco.
-assert.match(shExec, /pg_restore --data-only -f -[\s\S]{0,200}\|\s*\n?\s*node tools\/local-db\/lib\/dump-allowlist\.mjs/,
+assert.match(shExec, /"\$\{PG_RESTORE_BIN\}" --data-only -f -[\s\S]{0,200}\|\s*\n?\s*node tools\/local-db\/lib\/dump-allowlist\.mjs/,
   "el contenido del dump debe escanearse en streaming, sin materializarlo");
-assert.match(shExec, /pg_restore --data-only --table=perfiles -f -[\s\S]{0,200}\|\s*\n?\s*node tools\/local-db\/lib\/auth-seed\.mjs/,
+assert.match(shExec, /"\$\{PG_RESTORE_BIN\}" --data-only --table=perfiles -f -[\s\S]{0,200}\|\s*\n?\s*node tools\/local-db\/lib\/auth-seed\.mjs/,
   "el COPY de perfiles (con PII) debe consumirse por tuberia, sin materializarlo");
 assert.match(read(ALLOWLIST_PATH), /NUNCA (?:emite|devuelve) la línea/i,
   "el escaneo debe documentar y respetar que no imprime la linea que dispara el hallazgo");
@@ -523,6 +523,89 @@ assert.match(shExec, /inspectEnvForRemote/, "debe reutilizar guards.mjs (no dupl
 assert.match(shExec, /classifyTarget/, "debe reutilizar classifyTarget para --source-db-url");
 assert.doesNotMatch(shExec, /git\s+(add|commit|push)\b/, "el script NUNCA hace git add/commit/push");
 console.log("PASS\tsecret_and_pii_hygiene");
+
+// ===========================================================================
+// 16b) Restore final con pg_restore host compatible y destino sólo local
+// ===========================================================================
+{
+  const restoreAt = shExec.indexOf('if ! "${PG_RESTORE_BIN}" \\\n      --dbname="${DB_URL}"');
+  const restoreEnd = shExec.indexOf('\n  RESTORE_RESULT="PASS"', restoreAt);
+  assert.notEqual(restoreAt, -1, "el restore final debe usar PG_RESTORE_BIN del host");
+  assert.notEqual(restoreEnd, -1, "el restore final debe conservar RESTORE_RESULT");
+  const restoreFlow = shExec.slice(
+    shExec.lastIndexOf('assert_regular_local_file "--dump"', restoreAt),
+    restoreEnd,
+  );
+
+  assert.doesNotMatch(shExec, /docker exec\s+"\$\{CID\}"\s+pg_restore/,
+    "el restore final no puede usar el pg_restore del contenedor");
+  assert.doesNotMatch(shExec, /docker cp\s+"\$\{DUMP_FILE\}"/,
+    "el dump no se copia al contenedor");
+  assert.doesNotMatch(shExec, /\/tmp\/app\.dump/,
+    "no debe quedar lifecycle de /tmp/app.dump");
+
+  for (const flag of [
+    '--dbname="${DB_URL}"',
+    "--data-only",
+    "--single-transaction",
+    "--exit-on-error",
+    "--schema=public",
+    "--schema=app_private",
+  ]) {
+    assert.ok(restoreFlow.includes(flag), `restore host sin flag obligatorio: ${flag}`);
+  }
+  assert.match(
+    restoreFlow,
+    /assert_regular_local_file "--dump" "\$\{DUMP_FILE\}"/,
+    "el dump debe seguir siendo un archivo local regular",
+  );
+  assert.match(
+    restoreFlow,
+    /assert_local_db_url "\$\{DB_URL\}"[\s\S]*\|\| abort "RESTORE"/,
+    "DB_URL debe reclasificarse LOCAL inmediatamente antes del restore",
+  );
+  assert.match(
+    bashFunction(shExec, "assert_local_db_url"),
+    /classifyTarget[\s\S]*classification === "LOCAL" \? 0 : 1/,
+    "la guarda DB_URL debe reutilizar classifyTarget y fallar cerrado",
+  );
+  assert.match(
+    restoreFlow,
+    /2>&1[\s\\]*\|\s*sanitize_log_stream >"\$\{ARTIFACTS_DIR\}\/04h_restore\.log"/,
+    "stdout/stderr del restore deben persistirse redactados",
+  );
+  assert.match(bashFunction(shExec, "sanitize_log_stream"), /redactSecrets/,
+    "el log debe reutilizar el redactor canónico");
+  assert.match(bashFunction(shExec, "sanitize_log_stream"), /user\(\?:name\)\?/,
+    "el log también debe ocultar el usuario de conexión");
+  assert.doesNotMatch(shExec, /(?:echo|printf)[^\n]*\$\{DB_URL\}/,
+    "DB_URL nunca puede imprimirse");
+
+  const toolchain = bashFunction(shExec, "assert_postgres_toolchain");
+  assert.match(toolchain, /PG_RESTORE_BIN="\$\(resolve_postgres_tool pg_restore\)"/,
+    "PG_RESTORE_BIN debe salir de la resolución común del toolchain");
+  assert.match(toolchain, /EXPECTED_POSTGRES_VERSION_ERE/,
+    "pg_restore debe permanecer sujeto al gate de versión");
+  assert.match(
+    toolchain,
+    /psql_version}" == "\$\{pg_dump_version}"[\s\S]*psql_version}" == "\$\{pg_restore_version}"/,
+    "psql, pg_dump y pg_restore deben permanecer alineados",
+  );
+
+  assert.match(restoreFlow, /RESTORE_OK="no"/,
+    "un pg_restore no-cero debe registrarse");
+  assert.match(
+    restoreFlow,
+    /RESTORE_OK\}" != "yes"[\s\S]*RESTORE_RESULT="FAIL"[\s\S]*abort "RESTORE"/,
+    "un fallo de restore debe abortar",
+  );
+  const abortFn = bashFunction(shExec, "abort");
+  assert.match(abortFn, /SCORABLE="NO"/,
+    "un abort de restore no puede producir SCORABLE=YES");
+  assert.match(abortFn, /restore_integrity[\s\S]*teardown_stack/,
+    "integridad y teardown siguen garantizados tras un fallo");
+}
+console.log("PASS\thost_pg_restore_local_fail_closed");
 
 // ===========================================================================
 // 17) Contrato de salida final (incluye los campos nuevos de P5-P7)
