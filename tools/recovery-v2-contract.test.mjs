@@ -835,7 +835,30 @@ assert.match(
   /\[\[ "\$\{CURRENT_BRANCH\}" =~ \$\{AUTHORIZED_BRANCH_REGEX\} \]\]/,
   "el guard debe validar la allowlist exacta y conservar WRONG_BRANCH",
 );
-assert.match(synthExec, /AUTHORIZED_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"/);
+assert.ok(
+  synthExec.includes(
+    'AUTHORIZED_SOURCE_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"'
+  ),
+  "la rama histórica debe conservar su base autorizada",
+);
+assert.ok(
+  synthExec.includes(
+    'AUTHORIZED_RC_BASE_HEAD="f7f2cac62df7d86d66396e377080e23a5b5cd210"'
+  ),
+  "la RC exacta debe usar una base propia de ancestry",
+);
+assert.ok(
+  synthExec.includes(
+    'AUTHORIZED_BASE_HEAD="${AUTHORIZED_SOURCE_BASE_HEAD}"'
+  ),
+  "la rama histórica debe seleccionar su base",
+);
+assert.ok(
+  synthExec.includes(
+    'AUTHORIZED_BASE_HEAD="${AUTHORIZED_RC_BASE_HEAD}"'
+  ),
+  "la rama RC debe seleccionar su base",
+);
 assert.match(synthExec, /read_source_toolchain/, "orquestador debe verificar el toolchain fuente");
 assert.match(synthExec, /SOURCE_CLIENT_SERVER_MAJOR_MISMATCH/,
   "pg_dump fuente debe compartir major con su servidor");

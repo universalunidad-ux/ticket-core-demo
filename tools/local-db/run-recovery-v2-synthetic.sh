@@ -7,7 +7,8 @@ IFS=$'\n\t'
 umask 077
 
 AUTHORIZED_BRANCH_REGEX='^(test/recovery-v2-20260725|test/rc-u15d-recovery-v2-20260727)$'
-AUTHORIZED_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"
+AUTHORIZED_SOURCE_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"
+AUTHORIZED_RC_BASE_HEAD="f7f2cac62df7d86d66396e377080e23a5b5cd210"
 SOURCE_PROJECT_ID="tc_local_db_harness"
 SOURCE_DB_PORT="54329"
 SOURCE_RUNTIME="tools/local-db/.runtime-recovery-source"
@@ -167,6 +168,19 @@ read_source_toolchain() {
 CURRENT_BRANCH="$(git branch --show-current)"
 [[ "${CURRENT_BRANCH}" =~ ${AUTHORIZED_BRANCH_REGEX} ]] \
   || fail "WRONG_BRANCH"
+
+case "${CURRENT_BRANCH}" in
+  test/recovery-v2-20260725)
+    AUTHORIZED_BASE_HEAD="${AUTHORIZED_SOURCE_BASE_HEAD}"
+    ;;
+  test/rc-u15d-recovery-v2-20260727)
+    AUTHORIZED_BASE_HEAD="${AUTHORIZED_RC_BASE_HEAD}"
+    ;;
+  *)
+    fail "WRONG_BRANCH"
+    ;;
+esac
+
 START_HEAD="$(git rev-parse HEAD)"
 git merge-base --is-ancestor "${AUTHORIZED_BASE_HEAD}" "${START_HEAD}" \
   || fail "UNAUTHORIZED_HEAD"
