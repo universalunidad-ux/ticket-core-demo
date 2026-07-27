@@ -124,14 +124,33 @@ SECRET_SCAN_RESULT="NOT_RUN"
 RESTORE_RESULT="NOT_RUN"
 STRUCTURE_PARITY="NOT_RUN"
 DATA_PARITY="NOT_RUN"
+STRUCTURE_RESTORE_RESULT="NOT_RUN"
+FUNCTIONS_RESTORE_RESULT="NOT_RUN"
+POLICIES_RESTORE_RESULT="NOT_RUN"
 RLS_RESTORE_RESULT="NOT_RUN"
 ACL_RESTORE_RESULT="NOT_RUN"
-# (P4) Secciones INFORMATIVAS, reportadas aparte de las bloqueantes. Divergen por
-# diseño y NO participan del veredicto; se inicializan aqui para que cualquier
-# abort temprano pueda escribir el reporte con `set -u` activo.
+DATA_RESTORE_RESULT="NOT_RUN"
+LEDGER_RESTORE_RESULT="NOT_RUN"
+STORAGE_RESTORE_RESULT="NOT_RUN"
+OWNERSHIP_RESTORE_RESULT="NOT_RUN"
+# Alias historicos preservados para consumidores existentes del artefacto.
 LEDGER_PARITY="NOT_RUN"
 STORAGE_PARITY="NOT_RUN"
 OWNERSHIP_PARITY="NOT_RUN"
+SECTIONS_EXPECTED="STRUCTURE,FUNCTIONS,POLICIES,ACL,DATA,LEDGER,STORAGE,OWNERSHIP"
+SECTIONS_EXECUTED=""
+DUPLICATE_SECTIONS="NONE"
+MISSING_SECTIONS="NONE"
+RECOVERY_SIGNATURE_SECTIONS=(
+  STRUCTURE
+  FUNCTIONS
+  POLICIES
+  ACL
+  DATA
+  LEDGER
+  STORAGE
+  OWNERSHIP
+)
 RPO_SECONDS="-1"
 RTO_SECONDS="-1"
 DUMP_BYTES="0"
@@ -207,11 +226,22 @@ SECRET_SCAN_RESULT=${SECRET_SCAN_RESULT}
 RESTORE_RESULT=${RESTORE_RESULT}
 STRUCTURE_PARITY=${STRUCTURE_PARITY}
 DATA_PARITY=${DATA_PARITY}
+STRUCTURE_RESTORE_RESULT=${STRUCTURE_RESTORE_RESULT}
+FUNCTIONS_RESTORE_RESULT=${FUNCTIONS_RESTORE_RESULT}
+POLICIES_RESTORE_RESULT=${POLICIES_RESTORE_RESULT}
 RLS_RESTORE_RESULT=${RLS_RESTORE_RESULT}
 ACL_RESTORE_RESULT=${ACL_RESTORE_RESULT}
+DATA_RESTORE_RESULT=${DATA_RESTORE_RESULT}
+LEDGER_RESTORE_RESULT=${LEDGER_RESTORE_RESULT}
+STORAGE_RESTORE_RESULT=${STORAGE_RESTORE_RESULT}
+OWNERSHIP_RESTORE_RESULT=${OWNERSHIP_RESTORE_RESULT}
 LEDGER_PARITY=${LEDGER_PARITY}
 STORAGE_PARITY=${STORAGE_PARITY}
 OWNERSHIP_PARITY=${OWNERSHIP_PARITY}
+SECTIONS_EXPECTED=${SECTIONS_EXPECTED}
+SECTIONS_EXECUTED=${SECTIONS_EXECUTED:-NONE}
+DUPLICATE_SECTIONS=${DUPLICATE_SECTIONS}
+MISSING_SECTIONS=${MISSING_SECTIONS}
 RPO_SECONDS=${RPO_SECONDS}
 RTO_SECONDS=${RTO_SECONDS}
 DUMP_BYTES=${DUMP_BYTES}
@@ -575,14 +605,19 @@ file_mtime_epoch() {
   printf '%s\n' "${value}"
 }
 
+signature_section_markers_valid() {
+  local sig="$1" expected actual complete_count
+  expected="$(printf '%s\n' "${RECOVERY_SIGNATURE_SECTIONS[@]}")"
+  actual="$(sed -n 's/^SECTION=//p' "${sig}")"
+  complete_count="$(grep -c '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${sig}")"
+  [[ "${actual}" == "${expected}" && "${complete_count}" == "1" ]]
+}
+
 assert_complete_source_signature() {
-  local sig="$1" section
-  grep -q '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${sig}" \
-    || abort "PRECHECK_SCOPE_GUARD" "firma source incompleta: falta RECOVERY_SIGNATURE_COMPLETE=YES"
-  for section in STRUCTURE FUNCTIONS POLICIES ACL DATA; do
-    grep -q "^SECTION=${section}$" "${sig}" \
-      || abort "PRECHECK_SCOPE_GUARD" "firma source incompleta: falta SECTION=${section}"
-  done
+  local sig="$1"
+  signature_section_markers_valid "${sig}" \
+    || abort "PRECHECK_SCOPE_GUARD" \
+      "firma source corrupta: exige ocho SECTION exactas, ordenadas, unicas y un solo RECOVERY_SIGNATURE_COMPLETE=YES"
 }
 
 # =============================================================================
@@ -1144,34 +1179,16 @@ fi
 # =============================================================================
 # PASO 8 · COMPARAR datos, RLS, ACL, funciones y search_path
 #
-# (P4) La paridad es BLOQUEANTE. Antes una divergencia fijaba DIFF_FOUND, emitia
-# un WARN y la corrida terminaba igualmente en RESULT=PASS / SCORABLE=YES: el
-# simulacro podia "aprobar" con datos que no cuadraban. Ahora:
-#
-#   - BLOQUEANTES: STRUCTURE FUNCTIONS POLICIES ACL DATA. Cualquier divergencia
-#     aborta VALIDATION. Un fallo de la firma de la fuente tambien aborta: no
-#     comparar NO es lo mismo que comparar y coincidir.
-#   - INFORMATIVAS: LEDGER STORAGE OWNERSHIP. Divergen por diseño (ledger
-#     reaplicado, blobs en plano separado, --no-owner). Se reportan en campos
-#     propios con su semantica, y NUNCA participan del veredicto.
+# (P4) Las ocho secciones son autoritativas para esta unidad. Cada una se
+# compara exactamente una vez y sólo igualdad real produce PASS. Diferencia
+# produce DIFF_FOUND; evidencia ausente o corrupta produce FAIL.
 #
 # Ambas firmas se generan con -X --no-psqlrc para ignorar cualquier ~/.psqlrc, y
 # el formato lo fija recovery-signature.sql, no el invocador.
 # =============================================================================
-docker exec -i "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
-  <tools/local-db/recovery-signature.sql \
-  >"${ARTIFACTS_DIR}/08_dest_signature.txt" 2>"${ARTIFACTS_DIR}/08_dest_signature.err" \
-  || { STRUCTURE_PARITY="FAIL"; DATA_PARITY="FAIL"; RLS_RESTORE_RESULT="FAIL"; ACL_RESTORE_RESULT="FAIL"; \
-       abort "VALIDATION" "recovery-signature.sql fallo contra el destino; ver ${ARTIFACTS_DIR}/08_dest_signature.err"; }
-
-if ! grep -q '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${ARTIFACTS_DIR}/08_dest_signature.txt"; then
-  STRUCTURE_PARITY="FAIL"; DATA_PARITY="FAIL"; RLS_RESTORE_RESULT="FAIL"; ACL_RESTORE_RESULT="FAIL"
-  abort "VALIDATION" "la firma del destino esta truncada (sin RECOVERY_SIGNATURE_COMPLETE); no se compara una firma incompleta"
-fi
-
 # --- Particion de una firma en bloques por seccion --------------------------
 # Sin esto habria que hacer diff del archivo completo, y las secciones que
-# divergen por diseño contaminarian el veredicto.
+# divergen contaminarian el veredicto.
 split_signature() {
   # $1 = archivo .sig  ·  $2 = directorio destino
   local sig="$1" out="$2"
@@ -1182,16 +1199,120 @@ split_signature() {
   ' "${sig}"
 }
 
-BLOCKING_SECTIONS="STRUCTURE FUNCTIONS POLICIES ACL DATA"
-INFORMATIVE_SECTIONS="LEDGER STORAGE OWNERSHIP"
+set_signature_section_result() {
+  local section="$1" verdict="$2"
+  case "${section}" in
+    STRUCTURE)
+      STRUCTURE_RESTORE_RESULT="${verdict}"
+      STRUCTURE_PARITY="${verdict}"
+      ;;
+    FUNCTIONS)
+      FUNCTIONS_RESTORE_RESULT="${verdict}"
+      ;;
+    POLICIES)
+      POLICIES_RESTORE_RESULT="${verdict}"
+      RLS_RESTORE_RESULT="${verdict}"
+      ;;
+    ACL)
+      ACL_RESTORE_RESULT="${verdict}"
+      ;;
+    DATA)
+      DATA_RESTORE_RESULT="${verdict}"
+      DATA_PARITY="${verdict}"
+      ;;
+    LEDGER)
+      LEDGER_RESTORE_RESULT="${verdict}"
+      LEDGER_PARITY="${verdict}"
+      ;;
+    STORAGE)
+      STORAGE_RESTORE_RESULT="${verdict}"
+      STORAGE_PARITY="${verdict}"
+      ;;
+    OWNERSHIP)
+      OWNERSHIP_RESTORE_RESULT="${verdict}"
+      OWNERSHIP_PARITY="${verdict}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+set_all_signature_section_results() {
+  local verdict="$1" section
+  for section in "${RECOVERY_SIGNATURE_SECTIONS[@]}"; do
+    set_signature_section_result "${section}" "${verdict}"
+  done
+}
+
+compare_signature_sections() {
+  local src_dir="$1" dst_dir="$2" diff_dir="$3"
+  local section src_section dst_section verdict
+  local failures=""
+
+  SECTIONS_EXECUTED=""
+  DUPLICATE_SECTIONS="NONE"
+  MISSING_SECTIONS="NONE"
+
+  for section in "${RECOVERY_SIGNATURE_SECTIONS[@]}"; do
+    SECTIONS_EXECUTED="${SECTIONS_EXECUTED:+${SECTIONS_EXECUTED},}${section}"
+    src_section="${src_dir}/${section}.txt"
+    dst_section="${dst_dir}/${section}.txt"
+    verdict="PASS"
+
+    if [[ ! -s "${src_section}" || ! -s "${dst_section}" ]]; then
+      verdict="FAIL"
+      MISSING_SECTIONS="${MISSING_SECTIONS/NONE/}"
+      MISSING_SECTIONS="${MISSING_SECTIONS:+${MISSING_SECTIONS},}${section}"
+    elif ! diff -u "${src_section}" "${dst_section}" \
+        > "${diff_dir}/08_diff_${section}.txt" 2>&1; then
+      verdict="DIFF_FOUND"
+    else
+      rm -f "${diff_dir}/08_diff_${section}.txt"
+    fi
+
+    set_signature_section_result "${section}" "${verdict}"
+    if [[ "${verdict}" != "PASS" ]]; then
+      failures="${failures:+${failures},}${section}:${verdict}"
+    fi
+  done
+
+  SIGNATURE_SECTION_FAILURES="${failures}"
+  [[ -z "${SIGNATURE_SECTION_FAILURES}" ]]
+}
+
+signature_sections_all_pass() {
+  [[ "${STRUCTURE_RESTORE_RESULT}" == "PASS" \
+    && "${FUNCTIONS_RESTORE_RESULT}" == "PASS" \
+    && "${POLICIES_RESTORE_RESULT}" == "PASS" \
+    && "${RLS_RESTORE_RESULT}" == "PASS" \
+    && "${ACL_RESTORE_RESULT}" == "PASS" \
+    && "${DATA_RESTORE_RESULT}" == "PASS" \
+    && "${LEDGER_RESTORE_RESULT}" == "PASS" \
+    && "${STORAGE_RESTORE_RESULT}" == "PASS" \
+    && "${OWNERSHIP_RESTORE_RESULT}" == "PASS" ]]
+}
+
+SIGNATURE_SECTION_FAILURES=""
+
+if ! docker exec -i "${CID}" psql -U postgres -d postgres "${PSQL_DET_ARGS[@]}" \
+    <tools/local-db/recovery-signature.sql \
+    >"${ARTIFACTS_DIR}/08_dest_signature.txt" 2>"${ARTIFACTS_DIR}/08_dest_signature.err"; then
+  set_all_signature_section_results "FAIL"
+  abort "VALIDATION" "recovery-signature.sql fallo contra el destino; ver ${ARTIFACTS_DIR}/08_dest_signature.err"
+fi
+
+if ! signature_section_markers_valid "${ARTIFACTS_DIR}/08_dest_signature.txt"; then
+  set_all_signature_section_results "FAIL"
+  abort "VALIDATION" "firma destino corrupta: marcadores ausentes, duplicados o fuera de orden"
+fi
 
 SOURCE_SIGNATURE_ARTIFACT=""
 if [[ -n "${SOURCE_DB_URL}" ]]; then
   if ! "${PSQL_BIN}" "${SOURCE_DB_URL}" "${PSQL_DET_ARGS[@]}" -f tools/local-db/recovery-signature.sql \
       >"${ARTIFACTS_DIR}/08_src_signature.txt" 2>"${ARTIFACTS_DIR}/08_src_signature.err"; then
     SOURCE_SIGNATURE_RESULT="FAIL"
-    STRUCTURE_PARITY="SOURCE_SIGNATURE_FAILED"; DATA_PARITY="SOURCE_SIGNATURE_FAILED"
-    RLS_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"; ACL_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"
+    set_all_signature_section_results "FAIL"
     abort "VALIDATION" \
       "la firma de la FUENTE fallo; sin ella no hay paridad que demostrar (ver ${ARTIFACTS_DIR}/08_src_signature.err)" \
       "corregir el acceso a la fuente LOCAL y repetir; no aprobar un simulacro sin comparacion"
@@ -1206,74 +1327,30 @@ elif [[ -n "${SOURCE_SIGNATURE_FILE}" ]]; then
 fi
 
 if [[ -n "${SOURCE_SIGNATURE_ARTIFACT}" ]]; then
-  if ! grep -q '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${SOURCE_SIGNATURE_ARTIFACT}"; then
+  if ! signature_section_markers_valid "${SOURCE_SIGNATURE_ARTIFACT}"; then
     SOURCE_SIGNATURE_RESULT="FAIL"
-    STRUCTURE_PARITY="SOURCE_SIGNATURE_FAILED"; DATA_PARITY="SOURCE_SIGNATURE_FAILED"
-    RLS_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"; ACL_RESTORE_RESULT="SOURCE_SIGNATURE_FAILED"
-    abort "VALIDATION" "la firma de la FUENTE esta truncada (sin RECOVERY_SIGNATURE_COMPLETE)"
+    set_all_signature_section_results "FAIL"
+    abort "VALIDATION" "firma source corrupta: marcadores ausentes, duplicados o fuera de orden"
   fi
 
   split_signature "${SOURCE_SIGNATURE_ARTIFACT}" "${ARTIFACTS_DIR}/08_sections_src"
   split_signature "${ARTIFACTS_DIR}/08_dest_signature.txt" "${ARTIFACTS_DIR}/08_sections_dst"
 
-  # --- Secciones BLOQUEANTES ------------------------------------------------
-  BLOCKING_DIVERGED=""
-  for sec in ${BLOCKING_SECTIONS}; do
-    src_sec="${ARTIFACTS_DIR}/08_sections_src/${sec}.txt"
-    dst_sec="${ARTIFACTS_DIR}/08_sections_dst/${sec}.txt"
-    if [[ ! -s "${src_sec}" || ! -s "${dst_sec}" ]]; then
-      BLOCKING_DIVERGED="${BLOCKING_DIVERGED}${sec}(ausente) "
-      continue
-    fi
-    if ! diff -u "${src_sec}" "${dst_sec}" > "${ARTIFACTS_DIR}/08_diff_${sec}.txt" 2>&1; then
-      BLOCKING_DIVERGED="${BLOCKING_DIVERGED}${sec} "
-    else
-      rm -f "${ARTIFACTS_DIR}/08_diff_${sec}.txt"
-    fi
-  done
-
-  # --- Secciones INFORMATIVAS (nunca abortan) -------------------------------
-  for sec in ${INFORMATIVE_SECTIONS}; do
-    src_sec="${ARTIFACTS_DIR}/08_sections_src/${sec}.txt"
-    dst_sec="${ARTIFACTS_DIR}/08_sections_dst/${sec}.txt"
-    verdict="MISSING"
-    if [[ -s "${src_sec}" && -s "${dst_sec}" ]]; then
-      if diff -u "${src_sec}" "${dst_sec}" > "${ARTIFACTS_DIR}/08_diff_${sec}.txt" 2>&1; then
-        verdict="IDENTICAL"
-        rm -f "${ARTIFACTS_DIR}/08_diff_${sec}.txt"
-      else
-        verdict="EXPECTED_DIVERGENCE"
-      fi
-    fi
-    case "${sec}" in
-      LEDGER)    LEDGER_PARITY="${verdict}_LEDGER_REAPPLIED_NOT_RESTORED" ;;
-      STORAGE)   STORAGE_PARITY="${verdict}_BLOBS_OUT_OF_BAND" ;;
-      OWNERSHIP) OWNERSHIP_PARITY="${verdict}_NO_OWNER_RESTORE" ;;
-    esac
-  done
-
-  if [[ -n "${BLOCKING_DIVERGED}" ]]; then
-    STRUCTURE_PARITY="DIFF_FOUND"; DATA_PARITY="DIFF_FOUND"
-    RLS_RESTORE_RESULT="DIFF_FOUND"; ACL_RESTORE_RESULT="DIFF_FOUND"
+  if ! compare_signature_sections \
+      "${ARTIFACTS_DIR}/08_sections_src" \
+      "${ARTIFACTS_DIR}/08_sections_dst" \
+      "${ARTIFACTS_DIR}"; then
     abort "VALIDATION" \
-      "divergencia en secciones BLOQUEANTES: ${BLOCKING_DIVERGED}(ver ${ARTIFACTS_DIR}/08_diff_<SECCION>.txt)" \
-      "revisar los diff por seccion; una divergencia bloqueante significa que la recuperacion NO reprodujo la fuente"
+      "firma source/dest no coincide en: ${SIGNATURE_SECTION_FAILURES} (ver ${ARTIFACTS_DIR}/08_diff_<SECCION>.txt)" \
+      "una seccion en DIFF_FOUND o FAIL impide aprobar y puntuar la recuperacion"
   fi
 
-  STRUCTURE_PARITY="PASS"; DATA_PARITY="PASS"; RLS_RESTORE_RESULT="PASS"; ACL_RESTORE_RESULT="PASS"
-  echo "[recovery-v2] paridad OK en secciones bloqueantes: ${BLOCKING_SECTIONS}"
-  echo "[recovery-v2] informativas: LEDGER=${LEDGER_PARITY} STORAGE=${STORAGE_PARITY} OWNERSHIP=${OWNERSHIP_PARITY}"
+  echo "[recovery-v2] paridad OK en ocho secciones: ${SECTIONS_EXPECTED}"
 else
-  # Sin fuente NO hay paridad. Se declara explicitamente y NO es scorable.
-  STRUCTURE_PARITY="BASELINE_ONLY_NO_SOURCE"
-  DATA_PARITY="BASELINE_ONLY_NO_SOURCE"
-  RLS_RESTORE_RESULT="BASELINE_ONLY_NO_SOURCE"
-  ACL_RESTORE_RESULT="BASELINE_ONLY_NO_SOURCE"
-  LEDGER_PARITY="BASELINE_ONLY_NO_SOURCE"
-  STORAGE_PARITY="BASELINE_ONLY_NO_SOURCE"
-  OWNERSHIP_PARITY="BASELINE_ONLY_NO_SOURCE"
+  # Sin fuente NO hay paridad: evidencia ausente es FAIL, nunca fallback.
+  set_all_signature_section_results "FAIL"
   split_signature "${ARTIFACTS_DIR}/08_dest_signature.txt" "${ARTIFACTS_DIR}/08_sections_dst"
-  echo "[recovery-v2] sin fuente live ni firma persistida: destino registrado SIN paridad." >&2
+  abort "VALIDATION" "sin firma source: las ocho comparaciones quedan en FAIL"
 fi
 
 # NOTA (no-duplicado / no-integracion falsa): tools/local-db/harness.mjs NO
@@ -1338,7 +1415,11 @@ COMMIT_CREATED="NO"   # este script no realiza staging ni publicación remota; e
 # producen esos valores ya abortan arriba; esta guarda es la red de seguridad que
 # impide que un camino futuro reintroduzca el fail-open que tenia este script.
 # =============================================================================
-for parity_field in "${STRUCTURE_PARITY}" "${DATA_PARITY}" "${RLS_RESTORE_RESULT}" "${ACL_RESTORE_RESULT}" \
+for parity_field in "${STRUCTURE_RESTORE_RESULT}" "${FUNCTIONS_RESTORE_RESULT}" \
+                    "${POLICIES_RESTORE_RESULT}" "${RLS_RESTORE_RESULT}" \
+                    "${ACL_RESTORE_RESULT}" "${DATA_RESTORE_RESULT}" \
+                    "${LEDGER_RESTORE_RESULT}" "${STORAGE_RESTORE_RESULT}" \
+                    "${OWNERSHIP_RESTORE_RESULT}" \
                     "${DUMP_ALLOWLIST_RESULT}" "${DUMP_CONTENT_SCAN}" "${AUTH_SEED_RESULT}" \
                     "${OWNERSHIP_CHECK}" "${INTEGRITY_RESTORE_RESULT}" "${FK_INTEGRITY}" \
                     "${SOURCE_SIGNATURE_RESULT}"; do
@@ -1377,11 +1458,8 @@ if [[ "${DOCKER_USED}" == "YES" \
    && "${SITE_CONFIG_TRANSFERRED}" == "YES" \
    && "${INTEGRITY_RESTORE_RESULT}" == "PASS" \
    && "${FK_INTEGRITY}" == "PASS" \
-   && "${RESTORE_RESULT}" == "PASS" \
-   && "${STRUCTURE_PARITY}" == "PASS" \
-   && "${DATA_PARITY}" == "PASS" \
-   && "${RLS_RESTORE_RESULT}" == "PASS" \
-   && "${ACL_RESTORE_RESULT}" == "PASS" ]]; then
+   && "${RESTORE_RESULT}" == "PASS" ]] \
+   && signature_sections_all_pass; then
   if [[ "${SOURCE_SIGNATURE_RESULT}" == "PASS" || "${SOURCE_SIGNATURE_RESULT}" == "PASS_PERSISTED" ]] \
      && (( RPO_SECONDS >= 0 && RTO_SECONDS >= 0 )); then
     SCORABLE="YES"

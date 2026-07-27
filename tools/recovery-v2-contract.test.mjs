@@ -212,19 +212,34 @@ assert.match(shExec, /EXPECTED_MIGRATIONS="31"/, "la baseline canonica es de 31 
 console.log("PASS\tledger_mismatch_is_fail_closed");
 
 // ===========================================================================
-// 7) MUTACIÓN: paridad bloqueante convertida en WARN
+// 7) MUTACIÓN: iteración de firmas dependiente del IFS global
 // ===========================================================================
-assert.match(shExec, /BLOCKING_SECTIONS="STRUCTURE FUNCTIONS POLICIES ACL DATA"/,
-  "las 5 secciones bloqueantes deben estar declaradas");
 {
-  const block = bashIfBlock(shExec, '-n "${BLOCKING_DIVERGED}"');
-  assert.match(block, /\babort\s+"VALIDATION"/, "una divergencia bloqueante debe ABORTAR");
-  assert.doesNotMatch(block, /WARN/, "la paridad bloqueante no puede degradarse a WARN");
+  assert.match(
+    shExec,
+    /RECOVERY_SIGNATURE_SECTIONS=\(\s*STRUCTURE\s+FUNCTIONS\s+POLICIES\s+ACL\s+DATA\s+LEDGER\s+STORAGE\s+OWNERSHIP\s*\)/,
+    "las ocho secciones deben vivir en un array explicito y ordenado",
+  );
+  const compare = bashFunction(shExec, "compare_signature_sections");
+  const markerValidation = bashFunction(shExec, "signature_section_markers_valid");
+  assert.match(
+    compare,
+    /for section in "\$\{RECOVERY_SIGNATURE_SECTIONS\[@\]\}"/,
+    "el bucle debe expandir el array entre comillas, sin depender de word splitting",
+  );
+  assert.match(compare, /verdict="FAIL"/, "evidencia ausente debe fallar cerrado");
+  assert.match(compare, /verdict="DIFF_FOUND"/, "una diferencia real debe quedar DIFF_FOUND");
+  assert.match(compare, /set_signature_section_result/, "cada veredicto debe asignarse por seccion");
+  assert.doesNotMatch(compare, /for section in \$\{/, "prohibido iterar un escalar sin comillas");
+  assert.match(markerValidation, /RECOVERY_SIGNATURE_SECTIONS\[@\]/,
+    "la validacion de firma debe usar el mismo array autoritativo");
+  assert.match(markerValidation, /complete_count/,
+    "RECOVERY_SIGNATURE_COMPLETE debe aparecer exactamente una vez");
+  const failureBlock = bashIfBlock(shExec, "if ! compare_signature_sections");
+  assert.match(failureBlock, /\babort\s+"VALIDATION"/, "cualquier seccion no PASS debe ABORTAR");
+  assert.doesNotMatch(failureBlock, /WARN/, "una divergencia no puede degradarse a WARN");
 }
-// Las informativas SÍ pueden divergir y NUNCA deben abortar.
-assert.match(shExec, /INFORMATIVE_SECTIONS="LEDGER STORAGE OWNERSHIP"/,
-  "las secciones informativas deben estar declaradas aparte");
-console.log("PASS\tblocking_parity_aborts_informative_does_not");
+console.log("PASS\tsignature_sections_use_explicit_ordered_array");
 
 // ===========================================================================
 // 8) MUTACIÓN: RESULT=PASS con DIFF_FOUND
@@ -237,8 +252,10 @@ console.log("PASS\tblocking_parity_aborts_informative_does_not");
   const passAt = shExec.lastIndexOf('RESULT="PASS"');
   assert.notEqual(guardAt, -1, "falta el invariante de veredicto");
   assert.ok(guardAt < passAt, "el invariante debe evaluarse ANTES de RESULT=PASS");
-  for (const field of ["STRUCTURE_PARITY", "DATA_PARITY", "RLS_RESTORE_RESULT",
-    "ACL_RESTORE_RESULT", "DUMP_ALLOWLIST_RESULT", "DUMP_CONTENT_SCAN",
+  for (const field of ["STRUCTURE_RESTORE_RESULT", "FUNCTIONS_RESTORE_RESULT",
+    "POLICIES_RESTORE_RESULT", "RLS_RESTORE_RESULT", "ACL_RESTORE_RESULT",
+    "DATA_RESTORE_RESULT", "LEDGER_RESTORE_RESULT", "STORAGE_RESTORE_RESULT",
+    "OWNERSHIP_RESTORE_RESULT", "DUMP_ALLOWLIST_RESULT", "DUMP_CONTENT_SCAN",
     "AUTH_SEED_RESULT", "OWNERSHIP_CHECK", "INTEGRITY_RESTORE_RESULT", "FK_INTEGRITY",
     "SOURCE_SIGNATURE_RESULT"]) {
     assert.match(
@@ -248,7 +265,7 @@ console.log("PASS\tblocking_parity_aborts_informative_does_not");
     );
   }
 }
-console.log("PASS\tno_pass_with_diff_found\tfields=11");
+console.log("PASS\tno_pass_with_diff_found\tfields=16");
 
 // ===========================================================================
 // 9) MUTACIÓN: abort sin teardown · Ctrl-C con resultado PASS
@@ -606,7 +623,11 @@ console.log("PASS\tserver_aligned_pg_restore_fail_closed");
 for (const field of [
   "RESULT=", "BASE_HEAD=", "FINAL_HEAD=", "BOOTSTRAP_RESULT=", "DUMP_RESULT=",
   "SECRET_SCAN_RESULT=", "RESTORE_RESULT=", "STRUCTURE_PARITY=", "DATA_PARITY=",
-  "RLS_RESTORE_RESULT=", "ACL_RESTORE_RESULT=", "RPO_SECONDS=", "RTO_SECONDS=",
+  "STRUCTURE_RESTORE_RESULT=", "FUNCTIONS_RESTORE_RESULT=", "POLICIES_RESTORE_RESULT=",
+  "RLS_RESTORE_RESULT=", "ACL_RESTORE_RESULT=", "DATA_RESTORE_RESULT=",
+  "LEDGER_RESTORE_RESULT=", "STORAGE_RESTORE_RESULT=", "OWNERSHIP_RESTORE_RESULT=",
+  "SECTIONS_EXPECTED=", "SECTIONS_EXECUTED=", "DUPLICATE_SECTIONS=", "MISSING_SECTIONS=",
+  "RPO_SECONDS=", "RTO_SECONDS=",
   "DUMP_BYTES=", "DOCKER_USED=", "DOCKER_STOPPED=", "WORKTREE_STATUS=",
   "COMMIT_CREATED=", "PUSH=NO", "DEPLOY=NO", "SUPABASE_REMOTE=NO", "SCORABLE",
   "NEXT_ACTION=", "DUMP_ALLOWLIST_RESULT=", "DUMP_CONTENT_SCAN=",
@@ -623,7 +644,7 @@ for (const field of [
 ]) {
   assert.ok(sh.includes(field), `la salida final debe incluir el campo: ${field}`);
 }
-console.log("PASS\tfinal_output_contract\tfields=53");
+console.log("PASS\tfinal_output_contract\tfields=64");
 
 // ===========================================================================
 // 18) recovery-signature.sql (REPORT_ONLY, 5 dimensiones, sin datos sensibles)
@@ -632,7 +653,10 @@ assert.doesNotMatch(
   sql, /^\s*(?:create|alter|drop|truncate|comment|grant|revoke|update|insert|delete)\b/im,
   "recovery-signature.sql debe ser REPORT_ONLY",
 );
-for (const section of ["STRUCTURE", "FUNCTIONS", "POLICIES", "ACL", "DATA"]) {
+for (const section of [
+  "STRUCTURE", "FUNCTIONS", "POLICIES", "ACL",
+  "DATA", "LEDGER", "STORAGE", "OWNERSHIP",
+]) {
   assert.match(sql, new RegExp(`SECTION=${section}`), `falta la seccion ${section}`);
 }
 assert.match(sql, /security_definer/i, "debe verificar SECURITY DEFINER");
@@ -759,8 +783,8 @@ assert.match(
 );
 assert.match(
   bashFunction(shExec, "assert_complete_source_signature"),
-  /RECOVERY_SIGNATURE_COMPLETE=YES[\s\S]*STRUCTURE FUNCTIONS POLICIES ACL DATA/,
-  "la firma source debe estar completa antes de iniciar recovery",
+  /signature_section_markers_valid[\s\S]*abort\s+"PRECHECK_SCOPE_GUARD"/,
+  "la firma source debe validar las ocho secciones exactas antes de iniciar recovery",
 );
 assert.match(
   shExec,
