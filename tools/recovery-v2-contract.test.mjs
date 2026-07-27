@@ -233,8 +233,14 @@ console.log("PASS\tledger_mismatch_is_fail_closed");
   assert.doesNotMatch(compare, /for section in \$\{/, "prohibido iterar un escalar sin comillas");
   assert.match(markerValidation, /RECOVERY_SIGNATURE_SECTIONS\[@\]/,
     "la validacion de firma debe usar el mismo array autoritativo");
-  assert.match(markerValidation, /complete_count/,
+  assert.match(markerValidation, /name == "END"/,
+    "SECTION=END debe validarse como terminador y no como seccion comparable");
+  assert.match(markerValidation, /terminator_count != 1/,
+    "SECTION=END debe aparecer exactamente una vez");
+  assert.match(markerValidation, /complete_count != 1/,
     "RECOVERY_SIGNATURE_COMPLETE debe aparecer exactamente una vez");
+  assert.doesNotMatch(markerValidation, /actual.*==.*expected/,
+    "la validacion no debe exigir orden fisico igual al orden del comparador");
   const failureBlock = bashIfBlock(shExec, "if ! compare_signature_sections");
   assert.match(failureBlock, /\babort\s+"VALIDATION"/, "cualquier seccion no PASS debe ABORTAR");
   assert.doesNotMatch(failureBlock, /WARN/, "una divergencia no puede degradarse a WARN");
@@ -709,6 +715,7 @@ assert.equal(
   "debe existir un solo marcador autoritativo de allowlist",
 );
 assert.match(sql, /\\echo 'SECTION=STRUCTURE'/, "SECTION=STRUCTURE debe preservarse");
+assert.match(sql, /\\echo 'SECTION=END'/, "SECTION=END debe preservarse como terminador");
 assert.match(
   sql,
   /\\echo 'RECOVERY_SIGNATURE_COMPLETE=YES'/,

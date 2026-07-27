@@ -37,6 +37,7 @@ function bashFunction(name) {
 const helperSource = [
   runner.slice(arrayStart, arrayEnd + 2),
   bashFunction("signature_section_markers_valid"),
+  bashFunction("split_signature"),
   runner.slice(helperStart, helperEnd + 'SIGNATURE_SECTION_FAILURES=""'.length),
 ].join("\n");
 const sections = [
@@ -50,6 +51,48 @@ const sections = [
   "OWNERSHIP",
 ];
 const expectedOrder = sections.join(",");
+const physicalProducerOrder = [
+  "STRUCTURE",
+  "FUNCTIONS",
+  "POLICIES",
+  "ACL",
+  "OWNERSHIP",
+  "DATA",
+  "LEDGER",
+  "STORAGE",
+];
+
+function signature(sectionOrder = physicalProducerOrder) {
+  return [
+    "RECOVERY_SIGNATURE_MODE=REPORT_ONLY",
+    "RECOVERY_SIGNATURE_ALLOWLIST=public,app_private",
+    ...sectionOrder.flatMap((section) => [`SECTION=${section}`, `${section}|hash-only`]),
+    "SECTION=END",
+    "RECOVERY_SIGNATURE_COMPLETE=YES",
+    "",
+  ].join("\n");
+}
+
+function validateSignature(content, after = ":") {
+  const root = mkdtempSync(join(tmpdir(), "tc-recovery-signature-format-"));
+  const signaturePath = join(root, "signature.txt");
+  writeFileSync(signaturePath, content);
+  const result = spawnSync("/bin/bash", ["-c", `
+set -Eeuo pipefail
+IFS=$'\\n\\t'
+${helperSource}
+set +e
+signature_section_markers_valid "$SIGNATURE"
+RC=$?
+set -e
+${after}
+printf 'RC=%s\\n' "$RC"
+`], {
+    encoding: "utf8",
+    env: { ...process.env, SIGNATURE: signaturePath, ROOT: root },
+  });
+  return { result, root, signaturePath };
+}
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "tc-recovery-signatures-"));
@@ -164,36 +207,67 @@ test("una firma ausente produce FAIL cerrado y SCORABLE queda prohibido", () => 
   }
 });
 
-test("marcadores duplicados, omitidos o fuera de orden son firma corrupta", () => {
-  const paths = fixture();
-  const signature = join(paths.root, "signature.txt");
-  const valid = `${sections.map((section) => `SECTION=${section}\nrow\n`).join("")}RECOVERY_SIGNATURE_COMPLETE=YES\n`;
-  try {
-    for (const [label, content, expectedRc] of [
-      ["valid", valid, "0"],
-      ["duplicate", valid.replace("SECTION=ACL\n", "SECTION=ACL\nSECTION=ACL\n"), "1"],
-      ["missing", valid.replace("SECTION=DATA\nrow\n", ""), "1"],
-      ["order", valid.replace("SECTION=STRUCTURE\nrow\nSECTION=FUNCTIONS", "SECTION=FUNCTIONS\nrow\nSECTION=STRUCTURE"), "1"],
-    ]) {
-      writeFileSync(signature, content);
-      const result = spawnSync("/bin/bash", ["-c", `
-set -Eeuo pipefail
-IFS=$'\\n\\t'
-${helperSource}
-set +e
-signature_section_markers_valid "$SIGNATURE"
-RC=$?
-set -e
-printf 'RC=%s\\n' "$RC"
-`], {
-        encoding: "utf8",
-        env: { ...process.env, SIGNATURE: signature },
-      });
+test("orden fisico real del productor y otra permutacion valida pasan", () => {
+  for (const [label, content] of [
+    ["producer", signature()],
+    ["permutation", signature([...physicalProducerOrder].reverse())],
+  ]) {
+    const { result, root } = validateSignature(content);
+    try {
       assert.equal(result.status, 0, `${label}: ${result.stderr}`);
-      assert.equal(fields(result.stdout).RC, expectedRc, label);
+      assert.equal(fields(result.stdout).RC, "0", label);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
+  }
+});
+
+test("SECTION=END es terminador y no crea una novena seccion comparable", () => {
+  const { result, root } = validateSignature(
+    signature(),
+    'mkdir "$ROOT/split"; split_signature "$SIGNATURE" "$ROOT/split"; printf "SPLIT_COUNT=%s\\n" "$(find "$ROOT/split" -type f | wc -l | tr -d "[:space:]")"; if [[ -e "$ROOT/split/END.txt" ]]; then echo END_FILE=YES; else echo END_FILE=NO; fi',
+  );
+  try {
+    assert.equal(result.status, 0, result.stderr);
+    const got = fields(result.stdout);
+    assert.equal(got.RC, "0");
+    assert.equal(got.SPLIT_COUNT, "8");
+    assert.equal(got.END_FILE, "NO");
   } finally {
-    rmSync(paths.root, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("firmas corruptas fallan cerrado sin depender del orden fisico", () => {
+  const valid = signature();
+  for (const [label, content] of [
+    ["end-missing", valid.replace("SECTION=END\n", "")],
+    ["end-duplicate", valid.replace("SECTION=END\n", "SECTION=END\nSECTION=END\n")],
+    ["section-duplicate", valid.replace("SECTION=ACL\n", "SECTION=ACL\nSECTION=ACL\n")],
+    ["section-missing", valid.replace("SECTION=DATA\nDATA|hash-only\n", "")],
+    ["section-unknown", valid.replace("SECTION=DATA\n", "SECTION=UNKNOWN\n")],
+    ["complete-missing", valid.replace("RECOVERY_SIGNATURE_COMPLETE=YES\n", "")],
+    ["complete-duplicate", valid.replace(
+      "RECOVERY_SIGNATURE_COMPLETE=YES\n",
+      "RECOVERY_SIGNATURE_COMPLETE=YES\nRECOVERY_SIGNATURE_COMPLETE=YES\n",
+    )],
+    ["ifs-concatenated-name", valid.replace(
+      "SECTION=STRUCTURE\nSTRUCTURE|hash-only\nSECTION=FUNCTIONS",
+      "SECTION=STRUCTUREFUNCTIONS",
+    )],
+    ["section-after-end", valid.replace(
+      "SECTION=END\n",
+      "SECTION=END\nSECTION=STRUCTURE\n",
+    )],
+    ["content-after-complete", `${valid}unexpected\n`],
+  ]) {
+    const { result, root } = validateSignature(content);
+    try {
+      assert.equal(result.status, 0, `${label}: ${result.stderr}`);
+      assert.equal(fields(result.stdout).RC, "1", label);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   }
 });
 

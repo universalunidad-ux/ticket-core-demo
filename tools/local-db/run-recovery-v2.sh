@@ -606,18 +606,67 @@ file_mtime_epoch() {
 }
 
 signature_section_markers_valid() {
-  local sig="$1" expected actual complete_count
-  expected="$(printf '%s\n' "${RECOVERY_SIGNATURE_SECTIONS[@]}")"
-  actual="$(sed -n 's/^SECTION=//p' "${sig}")"
-  complete_count="$(grep -c '^RECOVERY_SIGNATURE_COMPLETE=YES$' "${sig}")"
-  [[ "${actual}" == "${expected}" && "${complete_count}" == "1" ]]
+  local sig="$1" section expected_csv=""
+  for section in "${RECOVERY_SIGNATURE_SECTIONS[@]}"; do
+    expected_csv="${expected_csv:+${expected_csv},}${section}"
+  done
+
+  awk -v expected_csv="${expected_csv}" '
+    BEGIN {
+      expected_count = split(expected_csv, expected, ",")
+      for (i = 1; i <= expected_count; i += 1) {
+        recognized[expected[i]] = 1
+      }
+    }
+    /^SECTION=/ {
+      name = substr($0, 9)
+      if (complete_count > 0) format_error = 1
+      if (name == "END") {
+        terminator_count += 1
+        saw_terminator = 1
+        next
+      }
+      if (saw_terminator) format_error = 1
+      if (!(name in recognized)) {
+        unknown_count += 1
+        next
+      }
+      section_count += 1
+      seen[name] += 1
+      next
+    }
+    /^RECOVERY_SIGNATURE_COMPLETE=YES$/ {
+      complete_count += 1
+      if (!saw_terminator) format_error = 1
+      next
+    }
+    /^RECOVERY_SIGNATURE_COMPLETE=/ {
+      format_error = 1
+      next
+    }
+    {
+      if (saw_terminator && complete_count == 0 &&
+          $0 !~ /^[[:space:]]*$/) format_error = 1
+      if (complete_count > 0 && $0 !~ /^[[:space:]]*$/) format_error = 1
+    }
+    END {
+      if (expected_count != 8 || section_count != expected_count ||
+          terminator_count != 1 || complete_count != 1 ||
+          unknown_count != 0 || format_error != 0) {
+        exit 1
+      }
+      for (i = 1; i <= expected_count; i += 1) {
+        if (seen[expected[i]] != 1) exit 1
+      }
+    }
+  ' "${sig}"
 }
 
 assert_complete_source_signature() {
   local sig="$1"
   signature_section_markers_valid "${sig}" \
     || abort "PRECHECK_SCOPE_GUARD" \
-      "firma source corrupta: exige ocho SECTION exactas, ordenadas, unicas y un solo RECOVERY_SIGNATURE_COMPLETE=YES"
+      "firma source corrupta: exige ocho secciones reconocidas y unicas, SECTION=END terminal y un solo RECOVERY_SIGNATURE_COMPLETE=YES"
 }
 
 # =============================================================================
@@ -1194,6 +1243,7 @@ split_signature() {
   local sig="$1" out="$2"
   mkdir -p "${out}"
   awk -v out="${out}" '
+    /^SECTION=END$/ { section = ""; next }
     /^SECTION=/ { section = substr($0, 9); next }
     { if (section != "") print > (out "/" section ".txt") }
   ' "${sig}"
@@ -1304,7 +1354,7 @@ fi
 
 if ! signature_section_markers_valid "${ARTIFACTS_DIR}/08_dest_signature.txt"; then
   set_all_signature_section_results "FAIL"
-  abort "VALIDATION" "firma destino corrupta: marcadores ausentes, duplicados o fuera de orden"
+  abort "VALIDATION" "firma destino corrupta: secciones o marcadores terminales invalidos"
 fi
 
 SOURCE_SIGNATURE_ARTIFACT=""
@@ -1330,7 +1380,7 @@ if [[ -n "${SOURCE_SIGNATURE_ARTIFACT}" ]]; then
   if ! signature_section_markers_valid "${SOURCE_SIGNATURE_ARTIFACT}"; then
     SOURCE_SIGNATURE_RESULT="FAIL"
     set_all_signature_section_results "FAIL"
-    abort "VALIDATION" "firma source corrupta: marcadores ausentes, duplicados o fuera de orden"
+    abort "VALIDATION" "firma source corrupta: secciones o marcadores terminales invalidos"
   fi
 
   split_signature "${SOURCE_SIGNATURE_ARTIFACT}" "${ARTIFACTS_DIR}/08_sections_src"
