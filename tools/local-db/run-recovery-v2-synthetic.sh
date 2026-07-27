@@ -6,7 +6,7 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
 
-EXPECTED_BRANCH="test/recovery-v2-20260725"
+AUTHORIZED_BRANCH_REGEX='^(test/recovery-v2-20260725|test/rc-u15d-recovery-v2-20260727)$'
 AUTHORIZED_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"
 SOURCE_PROJECT_ID="tc_local_db_harness"
 SOURCE_DB_PORT="54329"
@@ -164,7 +164,8 @@ read_source_toolchain() {
 }
 
 # Identidad y exclusión mutua antes de cualquier llamada a Docker/Supabase.
-[[ "$(git branch --show-current)" == "${EXPECTED_BRANCH}" ]] \
+CURRENT_BRANCH="$(git branch --show-current)"
+[[ "${CURRENT_BRANCH}" =~ ${AUTHORIZED_BRANCH_REGEX} ]] \
   || fail "WRONG_BRANCH"
 START_HEAD="$(git rev-parse HEAD)"
 git merge-base --is-ancestor "${AUTHORIZED_BASE_HEAD}" "${START_HEAD}" \

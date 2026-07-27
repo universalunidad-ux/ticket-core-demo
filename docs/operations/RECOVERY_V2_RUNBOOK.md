@@ -2,7 +2,7 @@
 
 UNIDAD: `TC-RECOVERY-SITE-CONFIG-OWNERSHIP-01`
 WORKTREE: `_WORKTREES/ticket-core-demo/recovery-v2-20260725`
-BRANCH: `test/recovery-v2-20260725`
+BRANCHES AUTORIZADAS: `test/recovery-v2-20260725` y `test/rc-u15d-recovery-v2-20260727`
 HEAD BASE AUTORIZADO: `7feeebcee01fc655d8594cb80186d7887b06a47b`
 
 **Estado de esta unidad: IMPLEMENTADO LOCAL (código) · NO VALIDADO EN VIVO.**

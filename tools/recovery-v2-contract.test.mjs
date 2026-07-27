@@ -819,7 +819,22 @@ console.log("PASS\tpersisted_source_scorable_contract");
 // 21) Orquestador canónico: fuente cerrada antes del destino
 // ===========================================================================
 assert.match(synthExec, /set -Eeuo pipefail/, "orquestador debe usar bash estricto");
-assert.match(synthExec, /EXPECTED_BRANCH="test\/recovery-v2-20260725"/);
+assert.ok(
+  synthExec.includes(
+    "AUTHORIZED_BRANCH_REGEX='^(test/recovery-v2-20260725|test/rc-u15d-recovery-v2-20260727)$'"
+  ),
+  "orquestador debe autorizar sólo la rama histórica y la RC exacta",
+);
+assert.match(
+  synthExec,
+  /CURRENT_BRANCH="\$\(git branch --show-current\)"/,
+  "orquestador debe resolver la rama real antes de cualquier runtime",
+);
+assert.match(
+  synthExec,
+  /\[\[ "\$\{CURRENT_BRANCH\}" =~ \$\{AUTHORIZED_BRANCH_REGEX\} \]\]/,
+  "el guard debe validar la allowlist exacta y conservar WRONG_BRANCH",
+);
 assert.match(synthExec, /AUTHORIZED_BASE_HEAD="7feeebcee01fc655d8594cb80186d7887b06a47b"/);
 assert.match(synthExec, /read_source_toolchain/, "orquestador debe verificar el toolchain fuente");
 assert.match(synthExec, /SOURCE_CLIENT_SERVER_MAJOR_MISMATCH/,
