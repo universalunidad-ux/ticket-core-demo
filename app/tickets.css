@@ -1736,3 +1736,43 @@ body[data-page="tickets"] .tk-compact-pager .cp-nav{display:flex;align-items:cen
   }
   body[data-page="tickets"][data-from-dashboard="1"] .tk-context-label:not([hidden]){max-width:72px}
 }
+
+/* TC-Q1-A11Y-REFLOW-RESPONSIVE-L100-01
+   Autoridad final: el header de tablet no puede alojar título, búsqueda,
+   métricas y acciones sin cortar las acciones. */
+@media(min-width:721px) and (max-width:900px){
+  body[data-page="tickets"] .hero-metrics,
+  body[data-page="tickets"] #tkMetricsStrip{
+    display:none!important;
+  }
+  body[data-page="tickets"] .hero-tools{
+    min-width:0!important;
+    flex:1 1 320px!important;
+  }
+  body[data-page="tickets"] .hero-actions{
+    flex:0 0 auto!important;
+  }
+}
+
+/* El CTA principal conserva un objetivo 44x44 en todos los breakpoints. */
+body[data-page="tickets"] #tkNewBtn{
+  width:44px!important;
+  min-width:44px!important;
+  height:44px!important;
+  min-height:44px!important;
+}
+
+@media(max-width:720px){
+  body[data-page="tickets"] .tickets-hero{
+    grid-template-columns:minmax(0,1fr) 34px 34px 44px!important;
+  }
+  body[data-page="tickets"][data-from-dashboard="1"] .tickets-hero{
+    grid-template-columns:minmax(72px,auto) minmax(70px,1fr) 34px 34px 44px!important;
+  }
+}
+
+@media(max-width:380px){
+  body[data-page="tickets"][data-from-dashboard="1"] .tickets-hero{
+    grid-template-columns:minmax(54px,72px) minmax(48px,1fr) 34px 34px 44px!important;
+  }
+}
