@@ -30,6 +30,36 @@ tools/local-db/run-local-db-harness.sh --keep-up  # no detener supabase al final
 node --test test/local-db/*.test.mjs
 ```
 
+## Gate de SQL generado
+
+`tools/local-db/generated-sql-generators.json` es la allowlist exhaustiva de
+generadores SQL. Cada owner declara si produce DML dinámico o DDL versionado.
+El gate estático:
+
+```bash
+node tools/local-db/generated-sql-type-safety-gate.mjs
+```
+
+no ejecuta Docker, Supabase CLI, `psql` ni SQL. Exige casts explícitos de
+`uuid`, `timestamptz` y `jsonb` al seed dinámico, verifica el modo productivo
+`BEGIN/COMMIT`, verifica el modo smoke `BEGIN/ROLLBACK`, y rechaza generadores
+no declarados o drift del DDL versionado.
+
+El smoke semántico terminal es:
+
+```bash
+tools/local-db/run-auth-seed-smoke.sh
+```
+
+Contrato: sólo corre en la branch de Recovery V2, con worktree limpio,
+`index.lock` ausente, sin runner ni stack `supabase_*` preexistente y con lock
+de writer exclusivo. Levanta un stack local propio, genera un único usuario
+sintético, comprueba en PostgreSQL los tipos `uuid`, `timestamptz` y `jsonb`
+dentro de la transacción, ejecuta `ROLLBACK`, demuestra que el UUID quedó
+ausente, detiene el stack propio y exige cero stacks residuales. Un fallo de
+teardown o de inventario residual prohíbe `PASS`. No existe `--keep-up` y no se
+aceptan argumentos ni variables de destino.
+
 ## Fases
 
 1. `PRECHECK_HOST` — macOS, Node 22, Docker, Supabase CLI.

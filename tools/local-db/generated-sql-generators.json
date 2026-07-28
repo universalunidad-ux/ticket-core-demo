@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "unit": "TC-GENERATED-SQL-TYPE-SAFETY-GATE-01",
+  "generators": [
+    {
+      "id": "auth-users-synthetic-seed",
+      "owner": "tools/local-db/lib/auth-seed.mjs",
+      "kind": "dynamic-dml",
+      "rendererExport": "renderAuthSeedSql",
+      "target": "auth.users",
+      "productionArgs": ["--emit-sql"],
+      "smokeArgs": ["--emit-sql", "--smoke"],
+      "smokeRunner": "tools/local-db/run-auth-seed-smoke.sh",
+      "sampleIds": ["3f2504e0-4f89-11d3-9a0c-0305e82c3301"],
+      "bindings": [
+        { "column": "instance_id", "expression": "v.instance_id", "sqlType": "uuid", "minimumOccurrences": 1 },
+        { "column": "id", "expression": "v.id", "sqlType": "uuid", "minimumOccurrences": 1 },
+        { "column": "email_confirmed_at", "expression": "'2000-01-01 00:00:00+00'", "sqlType": "timestamptz", "minimumOccurrences": 3 },
+        { "column": "raw_app_meta_data", "expression": "'{\"provider\":\"synthetic\",\"providers\":[\"synthetic\"]}'", "sqlType": "jsonb", "minimumOccurrences": 1 },
+        { "column": "raw_user_meta_data", "expression": "'{}'", "sqlType": "jsonb", "minimumOccurrences": 1 }
+      ]
+    },
+    {
+      "id": "authz-policy-baseline-reconciliation",
+      "owner": "tools/generate-authz-policy-reconciliation.mjs",
+      "kind": "versioned-ddl",
+      "output": "supabase/migrations/20260724035000_tc_policy_baseline_reconciliation.sql",
+      "checkArgs": [".", "--check"]
+    }
+  ]
+}

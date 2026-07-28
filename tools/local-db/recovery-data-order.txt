@@ -1,0 +1,97 @@
+# TC-RECOVERY-V2-IMPLEMENT-RUNTIME-01
+# recovery-data-order.txt — Orden de resolucion de DATOS application-owned
+# Estado: IMPLEMENTADO LOCAL (documento estatico) · NO VALIDADO EN VIVO
+#
+# Fuente de evidencia: grep de "references"/"foreign key" sobre las 31
+# migraciones de supabase/migrations en HEAD 281f79cd03d702e9b0c4b18ca5a0afb32bdd7642
+# (ver _ANALYSIS_OUTPUTS/TC_SUPABASE_RECOVERY_BOUNDARY_OPUS_01/01..02 para el
+# grafo completo application->platform; este archivo cubre solo el orden
+# application<->application para el plano de DATOS, paso 4-5 de la
+# arquitectura obligatoria).
+#
+# FORMATO: una tabla por linea, en el orden en que deben CARGARSE las filas.
+# "#" = comentario. Lineas en blanco se ignoran.
+#
+# REGLA DURA (paso 5 del ticket): auth.users (platform, fuera de este dump)
+# debe existir ANTES de cargar perfiles. auth.users se resuelve por bootstrap
+# Supabase + re-provision (Admin API) o restore selectivo — NUNCA por este
+# dump de datos. Ver RECOVERY_V2_RUNBOOK.md.
+
+# ---------------------------------------------------------------------------
+# PRE-REQUISITO EXTERNO (no viaja en el dump de public/app_private):
+# ---------------------------------------------------------------------------
+# 0  auth.users                         [PLATFORM · bootstrap/Admin API · debe preceder a #1]
+
+# ---------------------------------------------------------------------------
+# ORDEN DE CARGA — tablas APPLICATION-OWNED con filas (public), allowlist
+# {public, app_private}. app_private NO tiene tablas (solo funciones/vistas;
+# verificado: 0 `create table` con schema app_private en las 31 migraciones,
+# 12 funciones + 2 vistas) => nada que restaurar en ese schema en el plano de
+# datos. Se mantiene en la allowlist por si se agregan tablas en el futuro.
+# ---------------------------------------------------------------------------
+1  public.perfiles                      # FK -> auth.users(id); requiere #0 ya poblado
+2  public.ticket_folios                 # standalone (prefix,last_value); sin FK
+3  public.clientes                      # raiz de la jerarquia de clientes; sin FK saliente
+4  public.clientes_contactos            # FK -> clientes
+5  public.clientes_contacto_historial   # FK -> clientes_contactos, clientes
+6  public.cliente_sistemas              # FK -> clientes
+7  public.cliente_aliases               # FK -> clientes
+8  public.cliente_accesos               # FK -> clientes, clientes_contactos
+9  public.solicitudes_alta              # FK (nullable) -> clientes, clientes_contactos
+10 public.solicitudes_registro          # FK (nullable) -> clientes, clientes_contactos
+11 public.solicitudes_soporte           # FK (nullable) -> clientes, clientes_contactos
+                                        # + FK circular -> tickets.id (ver ADVERTENCIA abajo)
+12 public.tickets                       # FK -> clientes, clientes_contactos, perfiles
+                                        # + FK -> solicitudes_soporte.id (ver ADVERTENCIA)
+13 public.solicitud_archivos            # FK -> solicitudes_soporte
+14 public.ticket_eventos                # FK -> tickets, perfiles
+15 public.archivos_ticket               # FK -> tickets, solicitudes_soporte, perfiles
+16 public.ticket_archivos               # legacy; FK -> tickets, perfiles, archivos_ticket
+17 public.ticket_match_decisiones       # FK -> tickets, clientes, clientes_contactos, perfiles
+18 public.reglas_asignacion             # FK -> perfiles (agente/creado/actualizado/eliminado)
+19 public.ticket_respuestas_rapidas     # sin FK detectada a otras tablas de datos
+20 public.bitacora                      # FK -> perfiles (actor_id); columna detalle es SENSIBLE
+                                        # (no imprimir; ver recovery-signature.sql)
+21 public.avisos_globales               # FK -> perfiles (actualizado_por)
+22 public.site_config                   # SOURCE_DATA_OWNED; FK -> perfiles (actualizado_por)
+                                        # restore transaccional separado; allowlist exacta de 6 claves
+
+# ---------------------------------------------------------------------------
+# EXCLUIDAS DEL RESTORE DE DATOS (efimeras/regenerables; 03_DUMP_FILTERS.txt).
+# Se listan para que el conteo cuadre: 22 (arriba) + 4 (abajo) = 26 tablas
+# public totales (evidencia: 01_PLATFORM_VS_APPLICATION_OBJECTS.csv, ST-03).
+# ---------------------------------------------------------------------------
+# EXCLUDED public.rate_limit_events     # efimera; se regenera
+# EXCLUDED public.edge_idempotency      # efimera (TTL); columna response es SENSIBLE
+# EXCLUDED public.support_idempotency   # efimera (TTL)
+# EXCLUDED public.ticket_portal_logs    # logs regenerables
+
+# ---------------------------------------------------------------------------
+# ADVERTENCIA — DEPENDENCIA CIRCULAR (hallazgo de esta unidad, no cubierto
+# explicitamente por 01-08 previos): tickets.solicitud_soporte_id references
+# solicitudes_soporte(id) [creado en el CREATE TABLE, linea 10 de
+# 20260715023821_tickets_and_events.sql] Y solicitudes_soporte.ticket_id
+# references tickets(id) [agregado por ALTER TABLE ... ADD CONSTRAINT
+# solicitudes_soporte_ticket_id_fkey, lineas 70-72 del mismo archivo].
+# NINGUNA de las dos FKs es DEFERRABLE (no se encontro la palabra clave
+# `deferrable` en su definicion). Ambas son nullable (`on delete set null`).
+#
+# Implicacion para el restore: con constraints NO deferrable e INMEDIATOS,
+# un `pg_restore --data-only --single-transaction` que cargue ambas tablas
+# puede fallar por referencia circular si `DISABLE TRIGGER USER` (03/E) no
+# desactiva los triggers internos de integridad referencial (RI) — `USER`
+# solo desactiva triggers definidos por el usuario, no los RI internos de FK.
+#
+# MITIGACION PROPUESTA (a validar en vivo, PLANIFICADO):
+#   a) Cargar ambas tablas con su columna circular (ticket.solicitud_soporte_id
+#      y solicitudes_soporte.ticket_id) en NULL vía --column-inserts filtrado,
+#      luego UPDATE de backfill con los valores reales tomados del dump; o
+#   b) `ALTER TABLE ... DISABLE TRIGGER ALL` (no solo USER) exclusivamente
+#      sobre estas 2 tablas, como owner, durante la carga, y reactivar tras
+#      commit; o
+#   c) Confirmar en runtime real si Postgres administrado por Supabase permite
+#      `DISABLE TRIGGER ALL` sin superuser (a partir de PG 9.x el propietario
+#      de la tabla puede hacerlo; pendiente de confirmar en el entorno objetivo).
+# Esta unidad NO puede validar cual mitigacion aplica sin un Postgres real
+# (ver bloqueo de entorno en RECOVERY_V2_RUNBOOK.md). NEXT_ACTION la marca
+# como punto a resolver en la primera corrida real (RUN_FROM_MACOS_TERMINAL).

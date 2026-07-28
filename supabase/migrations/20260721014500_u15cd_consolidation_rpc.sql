@@ -2,10 +2,38 @@
 -- DO_NOT_APPLY_WITHOUT_STAGING_REVIEW
 -- TC-U15C-D
 -- TC-U15C-D2 HARDENING
+-- TC-U15C-RUNTIME-IMPLEMENT-D1-D4-01
 -- request_hash calculado en servidor; fallos posteriores al reclamo hacen rollback
 --
 -- Consolidación transaccional de cliente/contacto para tickets.
--- Esta migración está preparada localmente y NO ha sido aplicada.
+-- Esta migración está preparada localmente y NO ha sido aplicada. Compilación
+-- y ejecución quedan pendientes de validación runtime real (Docker + Supabase
+-- CLI local, fuera de este sandbox); ver tools/local-db/run-u15c-runtime.sh.
+--
+-- Fixes D1-D4 (TC_U15C_U15D_RESILIENCE_OPUS_AUDIT_01/02_U15C_TRANSACTION_MODEL.md):
+--   D1: el claim de idempotencia usa la acción canónica ya existente en el
+--       CHECK de edge_idempotency.action ('consolidar_cliente'), la misma
+--       que usa public.consolidate_ticket_client. No se amplía el CHECK ni
+--       se introduce un cuarto mecanismo de idempotencia (edge_idempotency /
+--       support_idempotency ya son dos; este RPC inline es un tercer patrón
+--       de acceso sobre la MISMA tabla, no una tabla nueva). Se evaluó migrar
+--       a app_private.claim_edge_idempotency/complete_edge_idempotency (como
+--       hace manage_ticket_assignment); se descarta aquí porque el contrato
+--       estático fuera de alcance de esta unidad
+--       (tools/u15d-consolidation-rpc-contract.test.mjs:129-154) fija
+--       literalmente el patrón "insert into public.edge_idempotency" +
+--       "on conflict (idempotency_key) do nothing" inline. Cambiarlo
+--       requeriría tocar U15D, prohibido por esta unidad.
+--   D2/D3: se elimina toda referencia a tickets.documento_id /
+--       v_ticket.documento_id (columna inexistente). bitacora no tiene
+--       documento_id; se usa entidad_tipo='ticket' + entidad_id=p_ticket_id
+--       (columnas reales de public.bitacora). No se crea columna nueva.
+--   D4: ticket_eventos.meta se reduce al payload mínimo permitido por
+--       app_private.ticket_event_meta_is_safe: 'accion' (no 'action'),
+--       'idempotency_key', 'cliente_id', 'contacto_id'. Las claves fuera de
+--       whitelist ('event', 'operation_id', 'previous_version',
+--       'new_version') se conservan únicamente en bitacora.detalle (sin
+--       whitelist, sólo filtro anti-secretos). No se amplía la whitelist.
 
 alter table public.tickets
   add column if not exists consolidacion_version bigint not null default 0;
@@ -125,8 +153,9 @@ begin
     );
   end if;
 
-  v_request_hash := md5(
-    jsonb_build_object(
+  v_request_hash := encode(
+    sha256(convert_to(
+      jsonb_build_object(
       'ticket_id', p_ticket_id,
       'action', p_action,
       'expected_version', p_expected_version,
@@ -134,7 +163,10 @@ begin
       'contacto_id', p_contacto_id,
       'cliente', coalesce(p_cliente, '{}'::jsonb),
       'contacto', coalesce(p_contacto, '{}'::jsonb)
-    )::text
+    )::text,
+      'UTF8'
+    )),
+    'hex'
   );
 
   insert into public.edge_idempotency (
@@ -146,7 +178,7 @@ begin
   )
   values (
     trim(p_idempotency_key),
-    'tc_consolidar_cliente_ticket',
+    'consolidar_cliente',
     p_ticket_id,
     v_request_hash,
     'processing'
@@ -168,7 +200,7 @@ begin
     end if;
 
     if v_idempotency.action is distinct from
-         'tc_consolidar_cliente_ticket'
+         'consolidar_cliente'
        or v_idempotency.resource_id is distinct from p_ticket_id
        or v_idempotency.request_hash is distinct from v_request_hash
     then
@@ -595,21 +627,18 @@ begin
     'Decisión de consolidación registrada',
     v_actor,
     jsonb_build_object(
-      'event', 'ticket_consolidation',
-      'action', p_action,
-      'operation_id', v_operation_id,
+      'accion', p_action,
       'idempotency_key', trim(p_idempotency_key),
       'cliente_id', v_final_cliente_id,
-      'contacto_id', v_final_contacto_id,
-      'previous_version', v_ticket.consolidacion_version,
-      'new_version', v_ticket.consolidacion_version + 1
+      'contacto_id', v_final_contacto_id
     )
   );
 
   insert into public.bitacora (
     usuario_id,
     accion,
-    documento_id,
+    entidad_tipo,
+    entidad_id,
     cliente_id,
     detalle,
     visibilidad,
@@ -618,7 +647,8 @@ begin
   values (
     v_actor,
     'ticket_consolidacion',
-    v_ticket.documento_id,
+    'ticket',
+    p_ticket_id,
     v_final_cliente_id,
     jsonb_build_object(
       'ticket_id', p_ticket_id,
