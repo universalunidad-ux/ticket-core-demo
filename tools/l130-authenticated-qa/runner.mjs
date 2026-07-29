@@ -22,6 +22,7 @@ export const STOP = Object.freeze({
   CLIENT_MODEL: "E_AUTHENTICATED_CLIENT_AUTHZ_MODEL_MISSING",
   LOGIN_SEED: "E_LOGIN_CAPABLE_SYNTHETIC_SEED_MISSING",
   EDGE: "E_LOCAL_EDGE_DRIVER_MISSING",
+  BROWSER_RUNNER: "E_BROWSER_RUNNER_CONTRACT_INCOMPLETE",
 });
 
 const HERE = resolve(fileURLToPath(new URL(".", import.meta.url)));
@@ -35,16 +36,43 @@ function git(args) {
 }
 
 export function parseArgs(argv) {
-  const out = { execute: false, evidenceDir: null };
+  const out = { execute: false, evidenceDir: null, browserRunner: null };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--preflight-only") out.execute = false;
     else if (arg === "--execute") out.execute = true;
     else if (arg === "--evidence-dir") out.evidenceDir = resolve(argv[++index] || "");
+    else if (arg === "--browser-runner") out.browserRunner = resolve(argv[++index] || "");
     else throw new Error(`ARGUMENT_INVALID:${arg}`);
   }
   if (!out.evidenceDir) throw new Error("EVIDENCE_DIR_REQUIRED");
   return out;
+}
+
+export function inspectBrowserRunner(source) {
+  const has = pattern => pattern.test(source);
+  const browserPipe = /node tools\/l130-authenticated-qa\/m1-browser-e2e\.mjs[\s\S]{0,300}2>&1\s*\|\s*tee "\$\{BROWSER_LOG\}"/;
+  return {
+    browserStdoutCaptureReady: has(browserPipe),
+    browserStderrCaptureReady: has(browserPipe),
+    browserExitCodePreserved: has(/BROWSER_RC=\$\{PIPESTATUS\[0\]\}/),
+    markerCheckUsesBrowserLog: has(/grep -qx "\$\{marker\}=PASS" "\$\{BROWSER_LOG\}"/),
+    browserLogPresenceGuard: has(/\[\[ -s "\$\{BROWSER_LOG\}" \]\] \|\| fail "E_BROWSER_LOG_MISSING_OR_EMPTY"/),
+    browserProcessFailureGuard: has(/\[\[ "\$\{BROWSER_RC\}" -eq 0 \]\] \|\| fail "E_BROWSER_PROCESS_EXIT_NONZERO"/),
+    staticServerGuard: has(/fail "E_STATIC_SERVER_NOT_READY"/),
+    cdpGuard: has(/fail "E_CDP_NOT_READY"/),
+    exactEdgePidCleanupReady: has(/EDGE_PID=\$!/)
+      && has(/kill -TERM "\$\{EDGE_PID\}"/)
+      && has(/kill -KILL "\$\{EDGE_PID\}"/),
+    exactProfileCleanupVerifyReady: has(/--user-data-dir="\$\{EDGE_PROFILE\}"/)
+      && has(/profile_processes "\$\{EDGE_PROFILE\}"/),
+    genericPkillAbsent: !has(/(^|[^a-z])pkill([^a-z]|$)/m),
+    genericKillallAbsent: !has(/(^|[^a-z])killall([^a-z]|$)/m),
+  };
+}
+
+export function browserRunnerContractsReady(contracts) {
+  return Object.values(contracts).every(Boolean);
 }
 
 export function findLocks(commonDir) {
@@ -192,6 +220,25 @@ function main() {
       stop(STOP.EDGE, "Microsoft Edge local ausente", checks);
     }
     checks.push({ check: "LOCAL_EDGE_DRIVER", status: "PASS", detail: "Microsoft Edge local" });
+
+    if (args.browserRunner) {
+      if (!existsSync(args.browserRunner)) {
+        stop(STOP.BROWSER_RUNNER, `runner_missing=${args.browserRunner}`, checks);
+      }
+      const contracts = inspectBrowserRunner(readFileSync(args.browserRunner, "utf8"));
+      if (!browserRunnerContractsReady(contracts)) {
+        const missing = Object.entries(contracts)
+          .filter(([, ready]) => !ready)
+          .map(([name]) => name)
+          .join(",");
+        stop(STOP.BROWSER_RUNNER, `missing=${missing}`, checks);
+      }
+      checks.push({
+        check: "TARGETED_BROWSER_RUNNER_CONTRACTS",
+        status: "PASS",
+        detail: args.browserRunner,
+      });
+    }
 
     if (!args.execute) {
       checks.push({

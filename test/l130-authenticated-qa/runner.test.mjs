@@ -5,7 +5,9 @@ import {
   EXPECTED_BRANCH,
   REQUIRED_ANCESTORS,
   UNIT,
+  browserRunnerContractsReady,
   inspectClientContract,
+  inspectBrowserRunner,
   inspectLoginSeed,
   parseArgs,
   renderResult,
@@ -26,7 +28,22 @@ test("arguments require an evidence directory", () => {
   assert.deepEqual(parseArgs(["--execute", "--evidence-dir", "/tmp/l130-evidence"]), {
     execute: true,
     evidenceDir: "/tmp/l130-evidence",
+    browserRunner: null,
   });
+  assert.deepEqual(
+    parseArgs([
+      "--preflight-only",
+      "--evidence-dir",
+      "/tmp/l130-evidence",
+      "--browser-runner",
+      "/tmp/targeted.sh",
+    ]),
+    {
+      execute: false,
+      evidenceDir: "/tmp/l130-evidence",
+      browserRunner: "/tmp/targeted.sh",
+    },
+  );
 });
 
 test("client contract requires both role and ownership", () => {
@@ -85,4 +102,58 @@ test("authorized M1 preflight reports implementation ready without runtime execu
   assert.match(result, /^RUNTIME_SCRIPT_READY=YES$/m);
   assert.match(result, /^RUNTIME_EXECUTED=NO$/m);
   assert.match(result, /^LOCAL_EXECUTION_POSSIBLE=YES$/m);
+});
+
+test("targeted browser runner requires shared capture, original exit code, and exact cleanup", () => {
+  const safeRunner = `
+BROWSER_LOG="\${EVIDENCE_DIR}/browser-e2e.log"
+EDGE_PROFILE="\${TMP_DIR}/edge-profile"
+"\${EDGE_BIN}" --user-data-dir="\${EDGE_PROFILE}" about:blank >"\${EDGE_LOG}" 2>&1 &
+EDGE_PID=$!
+set +e
+node tools/l130-authenticated-qa/m1-browser-e2e.mjs 2>&1 | tee "\${BROWSER_LOG}"
+BROWSER_RC=\${PIPESTATUS[0]}
+set -e
+[[ -s "\${BROWSER_LOG}" ]] || fail "E_BROWSER_LOG_MISSING_OR_EMPTY"
+[[ "\${BROWSER_RC}" -eq 0 ]] || fail "E_BROWSER_PROCESS_EXIT_NONZERO"
+grep -qx "\${marker}=PASS" "\${BROWSER_LOG}"
+curl localhost || fail "E_STATIC_SERVER_NOT_READY"
+curl localhost || fail "E_CDP_NOT_READY"
+kill -TERM "\${EDGE_PID}"
+kill -KILL "\${EDGE_PID}"
+profile_processes "\${EDGE_PROFILE}"
+`;
+  const contracts = inspectBrowserRunner(safeRunner);
+  assert.equal(browserRunnerContractsReady(contracts), true);
+  assert.deepEqual(contracts, {
+    browserStdoutCaptureReady: true,
+    browserStderrCaptureReady: true,
+    browserExitCodePreserved: true,
+    markerCheckUsesBrowserLog: true,
+    browserLogPresenceGuard: true,
+    browserProcessFailureGuard: true,
+    staticServerGuard: true,
+    cdpGuard: true,
+    exactEdgePidCleanupReady: true,
+    exactProfileCleanupVerifyReady: true,
+    genericPkillAbsent: true,
+    genericKillallAbsent: true,
+  });
+});
+
+test("targeted browser runner rejects the failed marker-routing shape and generic cleanup", () => {
+  const failedRunner = `
+run_logged_phase "\${BROWSER_LOG}" E_BROWSER_E2E_FAILED "\${EDGE_BIN}" &
+EDGE_PID=$!
+node tools/l130-authenticated-qa/m1-browser-e2e.mjs
+grep -qx "\${marker}=PASS" "\${BROWSER_LOG}"
+pkill -f edge
+killall "Microsoft Edge"
+`;
+  const contracts = inspectBrowserRunner(failedRunner);
+  assert.equal(browserRunnerContractsReady(contracts), false);
+  assert.equal(contracts.browserStdoutCaptureReady, false);
+  assert.equal(contracts.browserExitCodePreserved, false);
+  assert.equal(contracts.genericPkillAbsent, false);
+  assert.equal(contracts.genericKillallAbsent, false);
 });
