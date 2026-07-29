@@ -177,7 +177,7 @@ values
     'baja',
     'resuelto',
     'soporte',
-    :'support_uid'::uuid,
+    null,
     'l130_synthetic',
     'TC-L130-B-DONE',
     '[TC-L130-M1] baseline B resolved'
@@ -189,4 +189,6 @@ commit;
 \echo M1_SEED_CLIENTS=2
 \echo M1_SEED_CONTACTS=2
 \echo M1_SEED_TICKETS=4
+\echo M1_SEED_SUPPORT_ASSIGNED_TICKETS=3
+\echo M1_SEED_UNASSIGNED_TICKETS=1
 \echo M1_SEED_INTERNAL_ACTORS=2

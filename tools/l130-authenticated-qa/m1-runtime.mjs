@@ -23,6 +23,9 @@ export const IDS = Object.freeze({
   ticketBResolved: "e1300000-0000-4000-8000-000000000004",
 });
 
+const A_TO_B_WRITE_SENTINEL = "[TC-L130-M1] unauthorized A to B";
+const B_TO_A_WRITE_SENTINEL = "[TC-L130-M1] unauthorized B to A";
+const SUPPORT_UNASSIGNED_WRITE_SENTINEL = "[TC-L130-M1] unauthorized support unassigned";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -49,6 +52,12 @@ export function redact(text) {
     .replace(/(apikey[=:]\s*)[A-Za-z0-9._-]+/gi, "$1***")
     .replace(/(password[=:]\s*)\S+/gi, "$1***")
     .replace(/eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "***JWT***");
+}
+
+export function stopCodeFromError(error) {
+  const message = String(error?.message || error || "");
+  return message.match(/(?:^|[^A-Z0-9_])(E_[A-Z0-9_]+)(?=$|[^A-Z0-9_])/)?.[1]
+    || "E_UNEXPECTED";
 }
 
 function requiredEnv(name) {
@@ -263,20 +272,49 @@ async function runApiE2e(apiUrl, anonKey, serviceRole, statePath) {
   if (aReadsB.length || bReadsA.length) throw new Error("E_CROSS_CLIENT_READ");
   process.stdout.write("CLIENT_ISOLATION_DIRECT_READ=PASS\n");
 
-  const patch = await rest(
+  const aToBPatch = await rest(
     apiUrl, anonKey, sessions.client_a.access_token,
     `tickets?id=eq.${IDS.ticketBOpen}`,
     {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
-      body: JSON.stringify({ contexto_adicional: "[TC-L130-M1] unauthorized" }),
+      body: JSON.stringify({ contexto_adicional: A_TO_B_WRITE_SENTINEL }),
     },
   );
-  if (rows(patch.body).length !== 0) throw new Error("E_CROSS_CLIENT_UPDATE");
-  process.stdout.write("CLIENT_ISOLATION_DIRECT_UPDATE=PASS\n");
+  if (rows(aToBPatch.body).length !== 0) throw new Error("E_A_TO_B_WRITE_NOT_DENIED");
+
+  const bToAPatch = await rest(
+    apiUrl, anonKey, sessions.client_b.access_token,
+    `tickets?id=eq.${IDS.ticketAOpen}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ contexto_adicional: B_TO_A_WRITE_SENTINEL }),
+    },
+  );
+  if (rows(bToAPatch.body).length !== 0) throw new Error("E_B_TO_A_WRITE_NOT_DENIED");
 
   const supportRows = rows((await rest(apiUrl, anonKey, sessions.support.access_token, allTicketsPath)).body);
-  if (supportRows.length !== 4) throw new Error("E_SUPPORT_SCOPE");
+  if (supportRows.length !== 3 || supportRows.some(row => row.id === IDS.ticketBResolved)) {
+    throw new Error("E_SUPPORT_SCOPE");
+  }
+  const supportReadsUnassigned = rows((await rest(
+    apiUrl, anonKey, sessions.support.access_token,
+    `tickets?id=eq.${IDS.ticketBResolved}&select=id`,
+  )).body);
+  if (supportReadsUnassigned.length !== 0) throw new Error("E_SUPPORT_UNASSIGNED_READ_NOT_DENIED");
+  const supportPatchesUnassigned = await rest(
+    apiUrl, anonKey, sessions.support.access_token,
+    `tickets?id=eq.${IDS.ticketBResolved}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ contexto_adicional: SUPPORT_UNASSIGNED_WRITE_SENTINEL }),
+    },
+  );
+  if (rows(supportPatchesUnassigned.body).length !== 0) {
+    throw new Error("E_SUPPORT_UNASSIGNED_WRITE_NOT_DENIED");
+  }
   const supportUpdate = await rest(
     apiUrl, anonKey, sessions.support.access_token,
     `tickets?id=eq.${IDS.ticketAOpen}`,
@@ -303,6 +341,31 @@ async function runApiE2e(apiUrl, anonKey, serviceRole, statePath) {
 
   const adminRows = rows((await rest(apiUrl, anonKey, sessions.admin.access_token, allTicketsPath)).body);
   if (adminRows.length !== 4) throw new Error("E_ADMIN_SCOPE");
+  const verifyDeniedWrites = rows((await rest(
+    apiUrl, anonKey, sessions.admin.access_token,
+    `tickets?id=in.(${IDS.ticketAOpen},${IDS.ticketBOpen},${IDS.ticketBResolved})`
+      + "&select=id,asignado_a,contexto_adicional",
+  )).body);
+  if (verifyDeniedWrites.length !== 3) throw new Error("E_DENIED_WRITE_POSTCHECK_ROWS");
+  const verifiedTicket = id => verifyDeniedWrites.find(row => row.id === id);
+  if (verifiedTicket(IDS.ticketBOpen)?.contexto_adicional === A_TO_B_WRITE_SENTINEL) {
+    throw new Error("E_A_TO_B_WRITE_PERSISTED");
+  }
+  if (verifiedTicket(IDS.ticketAOpen)?.contexto_adicional === B_TO_A_WRITE_SENTINEL) {
+    throw new Error("E_B_TO_A_WRITE_PERSISTED");
+  }
+  const verifiedUnassigned = verifiedTicket(IDS.ticketBResolved);
+  if (!verifiedUnassigned
+      || verifiedUnassigned.asignado_a !== null
+      || verifiedUnassigned.contexto_adicional === SUPPORT_UNASSIGNED_WRITE_SENTINEL) {
+    throw new Error("E_SUPPORT_UNASSIGNED_WRITE_PERSISTED");
+  }
+  process.stdout.write(
+    "A_TO_B_WRITE_DENIAL=PASS\n"
+      + "B_TO_A_WRITE_DENIAL=PASS\n"
+      + "CLIENT_ISOLATION_DIRECT_UPDATE=PASS\n"
+      + "SUPPORT_UNASSIGNED_TICKET_DENIAL=PASS\n",
+  );
   await rest(
     apiUrl, anonKey, sessions.admin.access_token,
     "rpc/admin_set_rol",
@@ -338,13 +401,6 @@ async function runApiE2e(apiUrl, anonKey, serviceRole, statePath) {
   );
   process.stdout.write("CLIENT_DEACTIVATION_REVOCATION=PASS\n");
 
-  const verifyB = rows((await rest(
-    apiUrl, anonKey, sessions.admin.access_token,
-    `tickets?id=eq.${IDS.ticketBOpen}&select=id,contexto_adicional`,
-  )).body);
-  if (verifyB.length !== 1 || verifyB[0].contexto_adicional === "[TC-L130-M1] unauthorized") {
-    throw new Error("E_CROSS_CLIENT_UPDATE_PERSISTED");
-  }
   process.stdout.write("MULTIROLE_API_E2E=PASS\n");
 }
 
@@ -368,7 +424,11 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch(error => {
-    process.stderr.write(`M1_RUNTIME=FAIL\nM1_RUNTIME_ERROR=${redact(error?.message || error)}\n`);
+    process.stderr.write(
+      `M1_RUNTIME=FAIL\n`
+        + `STOP_CODE=${stopCodeFromError(error)}\n`
+        + `M1_RUNTIME_ERROR=${redact(error?.message || error)}\n`,
+    );
     process.exit(5);
   });
 }
