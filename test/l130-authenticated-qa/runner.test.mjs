@@ -32,27 +32,30 @@ test("arguments require an evidence directory", () => {
 test("client contract requires both role and ownership", () => {
   assert.deepEqual(
     inspectClientContract(
-      "check (rol = any (array['cliente'::text]))",
-      "using (cliente_id = (select auth.uid()))",
+      "check (rol = any (array['admin'::text,'soporte'::text]))",
+      "auth_user_id uuid references auth.users(id); auth_user_id = (select auth.uid()); create policy tickets_client_owner_select using (cliente_id = tc_current_client_id())",
     ),
-    { clientRoleAllowed: true, clientOwnership: true },
+    {
+      clientRoleAllowed: false,
+      persistentContactLink: true,
+      clientOwnership: true,
+      internalRolesUnchanged: true,
+      authorizedM1: true,
+    },
   );
-  assert.deepEqual(inspectClientContract("array['admin'::text]", "using (true)"), {
-    clientRoleAllowed: false,
-    clientOwnership: false,
-  });
+  assert.equal(inspectClientContract("array['admin'::text]", "using (true)").authorizedM1, false);
 });
 
 test("login seed must be synthetic, include client, and provision a password", () => {
   const passwordProperty = ["pass", "word"].join("");
   assert.deepEqual(
     inspectLoginSeed(`{ role: "cliente", email: "x@example.invalid", ${passwordProperty}: "synthetic" }`),
-    { syntheticDomain: true, clientActor: true, passwordProvisioned: true },
+    { syntheticDomain: true, clientActor: false, passwordProvisioned: false },
   );
-  assert.deepEqual(inspectLoginSeed(`{ role: "admin", email: "x@example.invalid" }`), {
+  assert.deepEqual(inspectLoginSeed(`{ key: "client_a", email: "a@example.invalid", passwordEnv: "TC_L130_CLIENT_A_PASSWORD" }, { key: "client_b" }`), {
     syntheticDomain: true,
-    clientActor: false,
-    passwordProvisioned: false,
+    clientActor: true,
+    passwordProvisioned: true,
   });
 });
 
@@ -68,4 +71,18 @@ test("blocked preparation is PASS and never a product failure", () => {
   assert.match(result, /^STAGING_REQUIRED=NO$/m);
   assert.match(result, /^LOCAL_EXECUTION_POSSIBLE=NO$/m);
   assert.match(result, /^DOCKER_TOUCHED=NO$/m);
+});
+
+test("authorized M1 preflight reports implementation ready without runtime execution", () => {
+  const result = renderResult({
+    head: "abc",
+    mode: "PREFLIGHT_ONLY",
+    checks: [],
+    blocker: null,
+  });
+  assert.match(result, /^REASON_CODE=AUTHENTICATED_LOCAL_MULTIROLE_IMPLEMENTATION_READY_FOR_TERMINAL$/m);
+  assert.match(result, /^AUTHZ_MODEL_STATUS=AUTHORIZED_M1$/m);
+  assert.match(result, /^RUNTIME_SCRIPT_READY=YES$/m);
+  assert.match(result, /^RUNTIME_EXECUTED=NO$/m);
+  assert.match(result, /^LOCAL_EXECUTION_POSSIBLE=YES$/m);
 });

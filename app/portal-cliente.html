@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Mis tickets | Ticket Core</title>
+  <link rel="stylesheet" href="global.css?v=frontend-final-20260716-01">
+  <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
+  <script type="module" src="theme.js?v=frontend-final-20260716-01"></script>
+  <script type="module" src="portal-cliente.js?v=l130-m1-20260729-01"></script>
+  <style>
+    .client-portal{max-width:960px;margin:0 auto;padding:24px 16px 56px}
+    .client-portal-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+    .client-ticket-list{display:grid;gap:12px}
+    .client-ticket{border:1px solid var(--line,#dbe3ec);border-radius:14px;padding:16px;background:var(--card,#fff)}
+    .client-ticket-meta{color:var(--muted,#64748b);font-size:.9rem}
+    .client-denied{border:1px solid #fecaca;background:#fff7f7;border-radius:14px;padding:18px}
+  </style>
+</head>
+<body data-surface="client-portal" data-authz-state="loading">
+  <main class="client-portal">
+    <header class="client-portal-head">
+      <div>
+        <p class="mut">Portal autenticado</p>
+        <h1>Mis tickets</h1>
+      </div>
+      <button class="btn btn-ghost" id="clientLogout" type="button">Cerrar sesión</button>
+    </header>
+    <p id="clientIdentity" class="mut" aria-live="polite">Validando acceso…</p>
+    <section id="clientStatus" aria-live="polite"></section>
+    <section class="client-ticket-list" id="clientTickets" aria-label="Tickets autorizados"></section>
+  </main>
+</body>
+</html>

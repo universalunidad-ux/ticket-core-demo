@@ -6,22 +6,22 @@
 \if :{?client_a_uid}
 \else
   \echo 'STOP=client_a_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=client_a_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 \if :{?client_b_uid}
 \else
   \echo 'STOP=client_b_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=client_b_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 \if :{?support_uid}
 \else
   \echo 'STOP=support_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=support_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 \if :{?admin_uid}
 \else
   \echo 'STOP=admin_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=admin_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 
 begin;

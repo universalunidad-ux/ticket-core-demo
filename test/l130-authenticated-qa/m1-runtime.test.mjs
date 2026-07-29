@@ -38,6 +38,8 @@ test("seed and teardown are local, marker-scoped, and cover two clients", () => 
   assert.match(seed, /M1_SEED_TICKETS=4/);
   assert.match(seed, /auth_user_id/);
   assert.match(seed, /@example\.invalid/g);
+  assert.match(seed, /set_config\('tc\.l130\.client_a_uid'/);
+  assert.doesNotMatch(`${seed}\n${teardown}`, /\\quit/);
   assert.match(teardown, /M1_RESIDUAL_ROWS=0/);
   assert.doesNotMatch(`${seed}\n${teardown}`, /staging|supabase\.co/i);
 });
@@ -52,4 +54,10 @@ test("browser harness covers login, reload, internal denial, logout, and post-lo
     "BROWSER_POST_LOGOUT_DENIAL=PASS",
   ]) assert.match(source, new RegExp(marker));
   assert.doesNotMatch(source, /service[_-]?role/i);
+});
+
+test("auth teardown verifies that no synthetic login identity remains", () => {
+  const source = readFileSync(resolve(ROOT, "tools/l130-authenticated-qa/m1-runtime.mjs"), "utf8");
+  assert.match(source, /E_AUTH_USER_TEARDOWN_RESIDUAL/);
+  assert.match(source, /AUTH_USER_RESIDUALS=0/);
 });

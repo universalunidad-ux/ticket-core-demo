@@ -171,7 +171,11 @@ async function deleteUsers(apiUrl, serviceRole, statePath) {
       response => response.ok || response.status === 404,
     );
   }
-  process.stdout.write("AUTH_USERS_DELETED=4\n");
+  const remaining = await listAllUsers(apiUrl, serviceRole);
+  if (remaining.some(user => ACTORS.some(actor => actor.email === String(user?.email || "").toLowerCase()))) {
+    throw new Error("E_AUTH_USER_TEARDOWN_RESIDUAL");
+  }
+  process.stdout.write("AUTH_USERS_DELETED=4\nAUTH_USER_RESIDUALS=0\n");
 }
 
 async function signIn(apiUrl, anonKey, actor) {

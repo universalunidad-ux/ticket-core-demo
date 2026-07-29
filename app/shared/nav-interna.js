@@ -27,7 +27,8 @@ export function registerInternalSearchProvider({sb=s,user,rol="soporte"}={}){
 export async function mountNav(active){
   const auth=await guardSession();if(!auth)return null;
   const perfil=await getProfile();
-  const rol=(perfil?.rol||"soporte").toLowerCase();
+  const rol=(perfil?.rol||"").toLowerCase();
+  if(!["admin","supervisor","ventas","soporte"].includes(rol)){location.replace("portal-cliente.html");return null}
   ensureAppShell({page:active,role:rol});
   registerInternalSearchProvider({sb:s,user:auth.user,rol});
   return{auth,perfil,rol,user:auth.user,sb:s};

@@ -6,34 +6,38 @@
 \if :{?client_a_uid}
 \else
   \echo 'STOP=client_a_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=client_a_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 \if :{?client_b_uid}
 \else
   \echo 'STOP=client_b_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=client_b_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 \if :{?support_uid}
 \else
   \echo 'STOP=support_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=support_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 \if :{?admin_uid}
 \else
   \echo 'STOP=admin_uid_REQUIRED'
-  \quit
+  do $$ begin raise exception 'STOP=admin_uid_REQUIRED' using errcode = '22023'; end $$;
 \endif
 
 begin;
 select pg_advisory_xact_lock(hashtextextended('ticket-core-demo:l130:m1:seed', 0));
+select set_config('tc.l130.client_a_uid', :'client_a_uid', true);
+select set_config('tc.l130.client_b_uid', :'client_b_uid', true);
+select set_config('tc.l130.support_uid', :'support_uid', true);
+select set_config('tc.l130.admin_uid', :'admin_uid', true);
 
 do $guard$
 declare
   actor_ids uuid[] := array[
-    :'client_a_uid'::uuid,
-    :'client_b_uid'::uuid,
-    :'support_uid'::uuid,
-    :'admin_uid'::uuid
+    current_setting('tc.l130.client_a_uid')::uuid,
+    current_setting('tc.l130.client_b_uid')::uuid,
+    current_setting('tc.l130.support_uid')::uuid,
+    current_setting('tc.l130.admin_uid')::uuid
   ];
 begin
   if (select count(distinct value) from unnest(actor_ids) ids(value)) <> 4 then

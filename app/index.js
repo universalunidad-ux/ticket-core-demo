@@ -2,6 +2,7 @@ import { supabase, markLoginNow } from "./supabase.js";
 
 const $ = q => document.querySelector(q);
 const qs = new URLSearchParams(location.search);
+const hasExplicitNext = qs.has("next");
 const next = qs.get("next") || "tickets.html";
 const INTERNAL_ROUTES = new Set([
   "alta-cliente.html",
@@ -9,6 +10,7 @@ const INTERNAL_ROUTES = new Set([
   "clientes.html",
   "consolidacion-clientes.html",
   "dashboard.html",
+  "portal-cliente.html",
   "ticket.html",
   "tickets.html"
 ]);
@@ -43,6 +45,29 @@ const safeNext = v => {
   }
 };
 
+const resolveLanding = async () => {
+  if (hasExplicitNext) return safeNext(next);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("perfiles")
+    .select("rol")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.rol && ["admin", "supervisor", "ventas", "soporte"].includes(profile.rol)) {
+    return "tickets.html";
+  }
+
+  const { data: contact } = await supabase
+    .from("clientes_contactos")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .eq("activo", true)
+    .maybeSingle();
+  return contact ? "portal-cliente.html" : null;
+};
+
 const humanLoginError = error => {
   const detail = String(error?.message || error?.error_description || error?.name || "");
   if (/invalid login credentials|invalid credentials|email.*password|correo.*contrase/i.test(detail)) {
@@ -59,9 +84,14 @@ const checkSession = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) throw error;
     if (user) {
-      $("#loginSessionBox")?.classList.remove("hidden");
-      $("#loginNextLink")?.setAttribute("href", safeNext(next));
-      setStatus("Tu sesión sigue activa.", "ok");
+      const landing = await resolveLanding();
+      if (landing) {
+        $("#loginSessionBox")?.classList.remove("hidden");
+        $("#loginNextLink")?.setAttribute("href", landing);
+        setStatus("Tu sesión sigue activa.", "ok");
+      } else {
+        setStatus("Tu identidad no tiene acceso activo.", "bad", true);
+      }
     }
   } catch (error) {
     if (/auth session missing|session missing/i.test(String(error?.message || error?.name || ""))) return;
@@ -87,7 +117,12 @@ const login = async event => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     markLoginNow();
-    location.replace(safeNext(next));
+    const landing = await resolveLanding();
+    if (!landing) {
+      await supabase.auth.signOut({ scope: "local" });
+      throw new Error("AUTHENTICATED_IDENTITY_NOT_AUTHORIZED");
+    }
+    location.replace(landing);
   } catch (error) {
     setStatus(humanLoginError(error), "bad", true);
   } finally {

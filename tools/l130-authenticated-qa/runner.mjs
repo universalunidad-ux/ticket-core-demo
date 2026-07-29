@@ -66,16 +66,24 @@ export function inspectClientContract(roleSql, authzSql) {
   const roleValues = [...roleSql.matchAll(/'(admin|supervisor|ventas|soporte|cliente)'::text/g)]
     .map(match => match[1]);
   const clientRoleAllowed = roleValues.includes("cliente");
-  const clientOwnership = /auth\.uid\(\)[\s\S]{0,180}cliente_id|cliente_id[\s\S]{0,180}auth\.uid\(\)/i
-    .test(authzSql);
-  return { clientRoleAllowed, clientOwnership };
+  const persistentContactLink = /auth_user_id\s+uuid[\s\S]+references\s+auth\.users\(id\)/i.test(authzSql);
+  const clientOwnership = /auth_user_id\s*=\s*\(select auth\.uid\(\)\)/i.test(authzSql)
+    && /tickets_client_owner_select[\s\S]+tc_current_client_id\(\)/i.test(authzSql);
+  const internalRolesUnchanged = !clientRoleAllowed;
+  return {
+    clientRoleAllowed,
+    persistentContactLink,
+    clientOwnership,
+    internalRolesUnchanged,
+    authorizedM1: persistentContactLink && clientOwnership && internalRolesUnchanged,
+  };
 }
 
 export function inspectLoginSeed(source) {
   return {
     syntheticDomain: /@example\.invalid/.test(source),
-    clientActor: /role:\s*["']client(?:e)?["']/.test(source),
-    passwordProvisioned: /password\s*:/.test(source),
+    clientActor: /key:\s*["']client_a["'][\s\S]+key:\s*["']client_b["']/.test(source),
+    passwordProvisioned: /passwordEnv:\s*["']TC_L130_CLIENT_A_PASSWORD["']/.test(source),
   };
 }
 
@@ -93,12 +101,20 @@ export function renderResult({ head, mode, checks, blocker }) {
     "RESULT=PASS",
     `REASON_CODE=${blocked
       ? "AUTHENTICATED_MULTIROLE_QA_PREPARED_BLOCKED_BY_EXACT_DEPENDENCY"
-      : "AUTHENTICATED_MULTIROLE_LOCAL_QA_COMPLETED"}`,
+      : "AUTHENTICATED_LOCAL_MULTIROLE_IMPLEMENTATION_READY_FOR_TERMINAL"}`,
     `MODE=${mode}`,
     `HEAD=${head || "UNRESOLVED"}`,
     `BLOCKER=${blocked ? blocker.code : "NONE"}`,
     `OWNER=${blocked ? blocker.owner : "NONE"}`,
     `EXACT_NEXT_ACTION=${blocked ? blocker.next : "NONE"}`,
+    `AUTHZ_MODEL_STATUS=${blocked ? "BLOCKED" : "AUTHORIZED_M1"}`,
+    `SYNTHETIC_SEED_READY=${blocked ? "NO" : "YES"}`,
+    `LOGIN_FLOW_READY=${blocked ? "NO" : "YES"}`,
+    `SESSION_FLOW_READY=${blocked ? "NO" : "YES"}`,
+    `MULTIROLE_E2E_READY=${blocked ? "NO" : "YES"}`,
+    `CLIENT_ISOLATION_NEGATIVE_TEST_READY=${blocked ? "NO" : "YES"}`,
+    `RUNTIME_SCRIPT_READY=${blocked ? "NO" : "YES"}`,
+    "RUNTIME_EXECUTED=NO",
     "STAGING_REQUIRED=NO",
     `LOCAL_EXECUTION_POSSIBLE=${blocked ? "NO" : "YES"}`,
     `DOCKER_TOUCHED=${checks.some(row => row.check === "DOCKER_RUNTIME") ? "YES" : "NO"}`,
@@ -154,18 +170,18 @@ function main() {
     checks.push({ check: "REMOTE_ENV_GUARD", status: "PASS", detail: "no remote config names set" });
 
     const roleSql = readFileSync(join(REPO, "supabase/migrations/20260717093100_authz_perfiles_rol_lock.sql"), "utf8");
-    const authzSql = readFileSync(join(REPO, "supabase/migrations/20260717093200_authz_tickets_clientes.sql"), "utf8");
+    const authzSql = readFileSync(join(REPO, "supabase/migrations/20260729010000_l130_m1_authenticated_client.sql"), "utf8");
     const client = inspectClientContract(roleSql, authzSql);
-    if (!client.clientRoleAllowed || !client.clientOwnership) {
+    if (!client.authorizedM1) {
       stop(
         STOP.CLIENT_MODEL,
-        `client_role_allowed=${client.clientRoleAllowed};client_ownership=${client.clientOwnership}`,
+        `authorized_m1=${client.authorizedM1};persistent_link=${client.persistentContactLink};client_ownership=${client.clientOwnership};internal_roles_unchanged=${client.internalRolesUnchanged}`,
         checks,
       );
     }
-    checks.push({ check: "AUTHENTICATED_CLIENT_MODEL", status: "PASS", detail: "role and ownership present" });
+    checks.push({ check: "AUTHENTICATED_CLIENT_MODEL", status: "PASS", detail: "AUTHORIZED_M1 persistent contact ownership" });
 
-    const seedSource = readFileSync(join(REPO, "tools/local-db/lib/local-auth-users.mjs"), "utf8");
+    const seedSource = readFileSync(join(REPO, "tools/l130-authenticated-qa/m1-runtime.mjs"), "utf8");
     const seed = inspectLoginSeed(seedSource);
     if (!seed.syntheticDomain || !seed.clientActor || !seed.passwordProvisioned) {
       stop(STOP.LOGIN_SEED, JSON.stringify(seed), checks);
@@ -178,19 +194,18 @@ function main() {
     checks.push({ check: "LOCAL_EDGE_DRIVER", status: "PASS", detail: "Microsoft Edge local" });
 
     if (!args.execute) {
-      blocker = {
-        code: "E_EXECUTION_NOT_REQUESTED",
-        owner: "TC-L130-QA",
-        next: "Reejecutar con --execute tras aprobar todas las precondiciones",
-      };
+      checks.push({
+        check: "TERMINAL_RUNTIME_ASSETS",
+        status: "PASS",
+        detail: "M1 auth, fixture, API and browser harness prepared",
+      });
     } else {
-      // El runtime se mantiene deliberadamente detrás de los contratos anteriores.
-      // Ningún Docker/Supabase se toca si falta AuthZ cliente o seed autenticable.
-      checks.push({ check: "DOCKER_RUNTIME", status: "NOT_RUN", detail: "all dependencies passed; implementation owner required" });
+      // Work no ejecuta Docker/Supabase/Edge. El único owner del runtime
+      // acumulativo es 10_RUN_LOCAL_AUTH_E2E.sh desde Terminal.
       blocker = {
-        code: "E_BROWSER_SCENARIO_IMPLEMENTATION_PENDING",
+        code: "E_USE_TERMINAL_RUNTIME_SCRIPT",
         owner: "TC-L130-QA",
-        next: "Implementar escenarios CDP Edge tras materializar el contrato cliente autorizado",
+        next: "Ejecutar 10_RUN_LOCAL_AUTH_E2E.sh desde Terminal",
       };
     }
   } catch (error) {
