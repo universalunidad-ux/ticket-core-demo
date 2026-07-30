@@ -14,7 +14,7 @@ function deny(message) {
   list.replaceChildren();
 }
 
-function ticketCard(ticket) {
+function ticketCard(ticket, events = []) {
   const article = document.createElement("article");
   article.className = "client-ticket";
   article.dataset.clientTicket = ticket.id;
@@ -27,7 +27,26 @@ function ticketCard(ticket) {
   const description = document.createElement("p");
   description.textContent = ticket.descripcion || "Sin descripción.";
 
-  article.append(title, meta, description);
+  const timeline = document.createElement("section");
+  timeline.className = "client-ticket-events";
+  timeline.setAttribute("aria-label", "Respuestas públicas");
+  if (events.length === 0) {
+    const empty = document.createElement("p");
+    empty.textContent = "Sin respuestas públicas todavía.";
+    timeline.append(empty);
+  } else {
+    for (const event of events) {
+      const row = document.createElement("p");
+      row.className = "client-ticket-event";
+      const stamp = event.created_at
+        ? new Date(event.created_at).toLocaleString("es-MX")
+        : "Sin fecha";
+      row.textContent = `${stamp} · ${event.texto || "Actualización sin texto."}`;
+      timeline.append(row);
+    }
+  }
+
+  article.append(title, meta, description, timeline);
   return article;
 }
 
@@ -59,11 +78,35 @@ async function loadPortal() {
     return;
   }
 
+  const ticketIds = tickets.map(ticket => ticket.id);
+  let events = [];
+  if (ticketIds.length > 0) {
+    const { data: publicEvents, error: eventError } = await supabase
+      .from("ticket_eventos")
+      .select("id,ticket_id,kind,texto,created_at")
+      .in("ticket_id", ticketIds)
+      .eq("visibilidad", "publica")
+      .order("created_at", { ascending: true });
+    if (eventError) {
+      deny("No fue posible consultar las respuestas públicas autorizadas.");
+      return;
+    }
+    events = publicEvents || [];
+  }
+  const eventsByTicket = new Map();
+  for (const event of events) {
+    const rows = eventsByTicket.get(event.ticket_id) || [];
+    rows.push(event);
+    eventsByTicket.set(event.ticket_id, rows);
+  }
+
   identity.textContent = `Sesión de ${contact.nombre}`;
   status.textContent = tickets.length
     ? `${tickets.length} ticket${tickets.length === 1 ? "" : "s"} disponible${tickets.length === 1 ? "" : "s"}.`
     : "No hay tickets disponibles.";
-  list.replaceChildren(...tickets.map(ticketCard));
+  list.replaceChildren(
+    ...tickets.map(ticket => ticketCard(ticket, eventsByTicket.get(ticket.id) || [])),
+  );
   document.body.dataset.authzState = "authorized";
 }
 

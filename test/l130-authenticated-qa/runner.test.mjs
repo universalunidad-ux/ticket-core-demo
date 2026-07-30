@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   EXPECTED_BRANCH,
@@ -156,4 +157,44 @@ killall "Microsoft Edge"
   assert.equal(contracts.browserExitCodePreserved, false);
   assert.equal(contracts.genericPkillAbsent, false);
   assert.equal(contracts.genericKillallAbsent, false);
+});
+
+test("canonical Q2 terminal orchestrator is fail-closed and owns exact teardown", () => {
+  const source = readFileSync(
+    new URL("../../tools/l130-authenticated-qa/10_RUN_LOCAL_AUTH_E2E.sh", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /^#!\/usr\/bin\/env bash/m);
+  assert.match(source, /set -Eeuo pipefail/);
+  assert.match(source, /bootstrap\.mjs[\s\S]+--reset-runtime/);
+  assert.match(source, /edge-runtime-serve\.mjs/);
+  assert.match(source, /edge-contract-http\.mjs/);
+  assert.match(source, /m1-response-visibility\.mjs/);
+  assert.match(source, /kill -TERM "\$EDGE_PID"/);
+  assert.match(source, /kill -KILL "\$EDGE_PID"/);
+  assert.match(source, /m1_synthetic_teardown\.sql/);
+  assert.match(source, /auth-down "\$STATE_FILE"/);
+  assert.match(source, /--stop --remove-runtime/);
+  assert.match(source, /B130_003_EDGE_E2E=%s/);
+  assert.match(source, /B130_004_EDGE_E2E=%s/);
+  assert.match(source, /Q2_B130_003_004_EDGE_E2E=%s/);
+  assert.match(source, /TEARDOWN=%s/);
+  assert.doesNotMatch(source, /\bpkill\b|\bkillall\b|git add -A|git reset|git clean/);
+});
+
+test("Q2 edge supervisor serves exactly the canonical four functions", () => {
+  const source = readFileSync(
+    new URL("../../tools/l130-authenticated-qa/edge-runtime-serve.mjs", import.meta.url),
+    "utf8",
+  );
+  for (const name of [
+    "support-submit-secure",
+    "estado-ticket-ts",
+    "estado-ticket-responder-ts",
+    "ticket-escalar-admin",
+  ]) {
+    assert.match(source, new RegExp(`"${name}"`));
+  }
+  assert.doesNotMatch(source, /"match-cliente"|"support-orphan-cleanup"|"crear-ticket-interno"/);
+  assert.match(source, /EDGE_FUNCTION_COUNT=\$\{CANONICAL_FUNCTIONS\.length\}/);
 });

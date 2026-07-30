@@ -13,6 +13,8 @@ const responderPath = "supabase/functions/estado-ticket-responder-ts/index.ts";
 const supportPath = "supabase/functions/support-submit-secure/index.ts";
 const helperPath = "supabase/functions/_shared/rate-limit.ts";
 const denoTestPath = "supabase/functions/_shared/rate-limit.test.ts";
+const supportSecurityMigrationPath =
+  "supabase/migrations/20260730030000_q2_support_security_contract.sql";
 const contractTestPath = "tools/edge-public-responder-antiabuse-contract.test.mjs";
 const runnerPath = "tools/run-contract-tests.mjs";
 const allowlist = new Map([
@@ -91,12 +93,22 @@ assert.deepEqual(allowed.calls.select, [
 ]);
 assert.deepEqual(allowed.calls.filters.slice(0, 2), [
   ["eq", "scope", scope],
-  ["eq", "key", key],
+  ["eq", "key_hash", allowed.calls.filters[1][2]],
 ]);
+const keyHash = allowed.calls.filters[1][2];
+assert.match(keyHash, /^[a-f0-9]{64}$/u);
+assert.notEqual(keyHash, key);
+assert.equal(keyHash.includes(key), false);
 assert.equal(allowed.calls.filters[2][0], "gte");
 assert.equal(allowed.calls.filters[2][1], "created_at");
 assert.equal(Number.isFinite(Date.parse(allowed.calls.filters[2][2])), true);
-assert.deepEqual(allowed.calls.inserts, [{ scope, key }]);
+assert.deepEqual(allowed.calls.inserts, [{ scope, key_hash: keyHash }]);
+assert.equal(Object.hasOwn(allowed.calls.inserts[0], "key"), false);
+assert.equal(
+  allowed.calls.filters.some(([, column]) => column === "key"),
+  false,
+);
+console.log("EDGE_PUBLIC_RESPONDER_KEY_HASH_ONLY=PASS");
 
 const limited = makeClient({ count: 8 });
 assert.equal(await rateLimit(limited.sb, scope, key, 8, 10), false);
@@ -135,6 +147,42 @@ for (const client of [
 console.log("EDGE_PUBLIC_RESPONDER_HELPER_FAIL_CLOSED=PASS");
 
 const responderRaw = readFileSync(join(root, responderPath), "utf8");
+const supportRaw = readFileSync(join(root, supportPath), "utf8");
+const supportSecurityMigration = readFileSync(
+  join(root, supportSecurityMigrationPath),
+  "utf8",
+);
+assert.match(
+  supportRaw,
+  /fingerprintSupportSubmission\(dto,validatedUploads\.map\(upload=>upload\.metadata\)\)/u,
+);
+assert.doesNotMatch(
+  supportRaw,
+  /fingerprintSupportSubmission[\s\S]{0,160}\.slice\(/u,
+);
+assert.match(
+  supportSecurityMigration,
+  /p_fingerprint\s*!~\s*'\^\[a-f0-9\]\{64\}\$'/u,
+);
+const fingerprintMismatch = supportSecurityMigration.indexOf(
+  "existing.fingerprint <> p_fingerprint",
+);
+const retryAfterFailure = supportSecurityMigration.indexOf(
+  "existing.status = 'failed'",
+);
+assert.ok(fingerprintMismatch >= 0);
+assert.ok(retryAfterFailure > fingerprintMismatch);
+assert.match(
+  supportSecurityMigration,
+  /raise exception 'TC_IDEMPOTENCY_KEY_REUSED'/u,
+);
+assert.match(
+  supportRaw,
+  /code:"TC_IDEMPOTENCY_KEY_REUSED"\},409/u,
+);
+console.log("SUPPORT_FINGERPRINT_FULL_SHA256=PASS");
+console.log("SUPPORT_IDEMPOTENCY_REUSE_FAIL_CLOSED=PASS");
+
 const responder = responderRaw
   .replace(/\/\*[\s\S]*?\*\//gu, "")
   .replace(/(^|[^:])\/\/.*$/gmu, "$1")

@@ -1,5 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parsePublicSupportDto, type PublicSupportDto } from "../_shared/support-contract.ts";
+import {
+  fingerprintSupportSubmission,
+  parsePublicSupportDto,
+  type PublicSupportDto,
+} from "../_shared/support-contract.ts";
 import { validateAttachmentBatch, type AttachmentInput, type ValidatedAttachment } from "../_shared/upload-contract.ts";
 import { escapeHtml, sanitizeEmailSubject } from "../_shared/security-primitives.ts";
 import {
@@ -69,7 +73,7 @@ async function verifyTurnstile(
   }catch{return{ok:false,code:"TURNSTILE_UNAVAILABLE"}}
   finally{clearTimeout(timeout)}
 }
-async function rateLimit(scope:string,key:string,limit:number,windowMinutes:number){const since=new Date(Date.now()-windowMinutes*60_000).toISOString();const {count,error}=await sb.from("rate_limit_events").select("*",{count:"exact",head:true}).eq("scope",scope).eq("key",key).gte("created_at",since);if(error)throw error;if((count||0)>=limit)return false;const ins=await sb.from("rate_limit_events").insert({scope,key});if(ins.error)throw ins.error;return true}
+async function rateLimit(scope:string,key:string,limit:number,windowMinutes:number){const key_hash=await sha256hex(key);const since=new Date(Date.now()-windowMinutes*60_000).toISOString();const {count,error}=await sb.from("rate_limit_events").select("*",{count:"exact",head:true}).eq("scope",scope).eq("key_hash",key_hash).gte("created_at",since);if(error)throw error;if((count||0)>=limit)return false;const ins=await sb.from("rate_limit_events").insert({scope,key_hash});if(ins.error)throw ins.error;return true}
 const LOG_BLOCK=new Set(["correo","email","telefono","phone","token","token_publico","idempotency_key","idemkey","payload","stack","message","nombre","descripcion"]);
 async function logSecurity(accion:string,cliente_id:string|null,detalle:Record<string,unknown>){try{const safe:Record<string,unknown>={};for(const [k,v] of Object.entries(detalle||{})){const kl=k.toLowerCase();if(LOG_BLOCK.has(kl))continue;if(kl==="ip"){safe.ip_hash=await ipHashOf(String(v||""));continue;}safe[k]=v;}const {error}=await sb.from("bitacora").insert({accion,cliente_id,detalle:safe,visibilidad:"interna",tipo:"nota_interna"});if(error)console.error("LOG_SECURITY_DB_ERROR")}catch(_e){console.error("LOG_SECURITY_ERROR")}}
 async function sendMail({to,subject,html}:{to:string;subject:string;html:string}){if(!RESEND_API_KEY||!to)return;const r=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${RESEND_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({from:MAIL_FROM,to:[to],subject,html})});if(!r.ok)throw new Error(`MAIL_ERROR_${r.status}`)}
@@ -214,15 +218,29 @@ export const handler=async(req:Request):Promise<Response>=>{
 
     let idemActive=false;
     if(idemKey){
-      const fp=(await sha256hex(`${correo}|${titulo}|${descripcion}`)).slice(0,32);
+      const fp=await fingerprintSupportSubmission(dto,validatedUploads.map(upload=>upload.metadata));
       const claim=await sb.rpc("support_idem_claim",{p_key:idemKey,p_fingerprint:fp});
-      if(claim.error){console.error("IDEM_CLAIM_ERROR")}
-      else{const c=Array.isArray(claim.data)?claim.data[0]:claim.data;
-        if(c&&c.claimed===false){
-          if(c.status==="succeeded"&&isPublicSuccessResponse(c.response)){await logSecurity("idempotent_replay_served",null,{ip});return json(c.response,200)}
-          await logSecurity("idempotent_inflight",null,{ip});return json({message:"Solicitud en curso.",code:"IDEMPOTENCY_IN_FLIGHT"},409);
-        }else{idemActive=true}
+      if(claim.error){
+        const reused=String(claim.error.message||"").includes("TC_IDEMPOTENCY_KEY_REUSED");
+        await logSecurity(reused?"idempotency_key_reused":"idempotency_claim_failed",null,{ip});
+        return reused
+          ?json({message:"La llave de idempotencia ya fue usada con otra solicitud.",code:"TC_IDEMPOTENCY_KEY_REUSED"},409)
+          :json({message:"No fue posible reservar la solicitud.",code:"IDEMPOTENCY_UNAVAILABLE"},503);
       }
+      const c=Array.isArray(claim.data)?claim.data[0]:claim.data;
+      if(!c||typeof c!=="object"||typeof c.claimed!=="boolean"||typeof c.status!=="string"){
+        await logSecurity("idempotency_claim_malformed",null,{ip});
+        return json({message:"No fue posible reservar la solicitud.",code:"IDEMPOTENCY_UNAVAILABLE"},503);
+      }
+      if(c.claimed===false){
+        if(c.status==="succeeded"&&isPublicSuccessResponse(c.response)){await logSecurity("idempotent_replay_served",null,{ip});return json(c.response,200)}
+        await logSecurity("idempotent_inflight",null,{ip});return json({message:"Solicitud en curso.",code:"IDEMPOTENCY_IN_FLIGHT"},409);
+      }
+      if(c.status!=="processing"||c.response!==null){
+        await logSecurity("idempotency_claim_malformed",null,{ip});
+        return json({message:"No fue posible reservar la solicitud.",code:"IDEMPOTENCY_UNAVAILABLE"},503);
+      }
+      idemActive=true;
     }
 
     const match=await matchCliente(empresa||"",correo,telefono);
@@ -286,14 +304,20 @@ export const handler=async(req:Request):Promise<Response>=>{
     }).catch(()=>null);
 
     const resp:PublicSuccessResponse={ok:true,folio,token_publico,status:"ticket_creado"};
-    if(idemActive)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"succeeded",p_response:resp})}catch(_e){console.error("IDEM_FINISH_ERROR")}
+    if(idemActive){
+      const finish=await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"succeeded",p_response:resp});
+      if(finish.error){
+        await logSecurity("idempotency_finish_failed",cliente_id,{ticket_id:ticket.id,request_id:crypto.randomUUID()});
+        throw new Error("IDEMPOTENCY_FINISH_FAILED");
+      }
+    }
     return json(resp,200);
   }catch(_err:unknown){
     const reqId=crypto.randomUUID();
     console.error("SUPPORT_FATAL",reqId);
     if(validationBarrierReached){
       if(uploadedPaths.length)try{await sb.storage.from("soporte_adjuntos").remove(uploadedPaths)}catch(_e){console.error("COMPENSATION_REMOVE_ERROR")}
-      if(idemKey)try{await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"failed",p_response:null})}catch(_e){/* noop */}
+      if(idemKey)try{const finish=await sb.rpc("support_idem_finish",{p_key:idemKey,p_status:"failed",p_response:null});if(finish.error)console.error("IDEM_FAILURE_FINISH_ERROR")}catch(_e){console.error("IDEM_FAILURE_FINISH_THROW")}
       try{await logSecurity("support_submit_error",null,{ip,request_id:reqId})}catch(_e){console.error("SUPPORT_LOG_ERROR")}
     }
     return json({message:"No se pudo procesar la solicitud.",code:"INTERNAL_ERROR",request_id:reqId},500);
