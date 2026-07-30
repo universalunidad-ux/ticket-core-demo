@@ -99,6 +99,13 @@ html[data-theme=dark] input[type=date].input{color-scheme:dark}
   margin-top:8px;
 }
 
+/* Macro-batch 04: header compacto sin texto visual redundante. */
+.app-header,.app-head-inner{min-height:54px}
+.app-brand{min-width:42px;gap:0}
+.app-brand img{width:38px;height:38px}
+.app-page-context{display:none!important}
+@media(max-width:740px){.app-header,.app-head-inner{min-height:58px}}
+
 .tcSoundTestBtn:hover{
   border-color:color-mix(in srgb,var(--brand) 45%,var(--line));
 }

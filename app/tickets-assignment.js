@@ -19,6 +19,7 @@ let CURRENT_USER_ID = "";
 let IS_ADMIN = false;
 let BUSY = false;
 let OBS = null;
+const ASSIGN_HINT_TIMERS = new Set();
 
 /* TC-U15A-1: el alcance vive en la URL (única fuente de verdad), resuelto por tickets.js.
    Aquí sólo lo leemos para reflejar selección visible + aria-pressed. */
@@ -68,8 +69,8 @@ function ticketById(id){
   return ticketRows().find(t => String(t.id) === String(id));
 }
 
-function toast(text){
-  if(window.toast) return window.toast(text, "ok");
+function toast(text, kind="ok"){
+  if(window.toast) return window.toast(text, kind);
   console.log(text);
 }
 
@@ -302,35 +303,41 @@ async function saveAssignment(){
   if(!t) return;
 
   const next = $("#tcAssignSelect")?.value || null;
+  const previous = { asignado_a:t.asignado_a || null, asignado_en:t.asignado_en || null };
   const now = new Date().toISOString();
   const asignado_en = next ? now : null;
+  if(String(previous.asignado_a || "") === String(next || "")){ closeAssign(); return; }
 
   if(!isUuid(id)){
     t.asignado_a = next;
     t.asignado_en = asignado_en;
     closeAssign();
     applyAssignmentDecorations();
-    toast("Demo local: asignación simulada.");
+    toast(next ? `Ticket «${t.titulo || t.folio || "Sin título"}» asignado a ${assignedLabel(next)}` : `Ticket «${t.titulo || t.folio || "Sin título"}» quedó sin asignar.`);
     return;
   }
 
   BUSY = true;
+  t.asignado_a = next;
+  t.asignado_en = asignado_en;
+  applyAssignmentDecorations();
   let error=null;
   try{const result=await s.from("tickets").update({asignado_a:next,asignado_en,fecha_actualizacion:now}).eq("id",id);error=result.error}
   catch(err){error=err}
   finally{BUSY=false}
 
   if(error){
+    t.asignado_a = previous.asignado_a;
+    t.asignado_en = previous.asignado_en;
+    applyAssignmentDecorations();
     console.error("ASSIGN_BOARD_SAVE_ERROR",{code:String(error?.code||error?.name||"UNKNOWN"),status:Number(error?.status||0)||null,operation:"tickets.update_assignment"});
-    alert(error.message || "No se pudo guardar asignación.");
+    toast(error.message || "No se pudo guardar la asignación; se restauró el responsable anterior.", "bad");
     return;
   }
 
-  t.asignado_a = next;
-  t.asignado_en = asignado_en;
   closeAssign();
   applyAssignmentDecorations();
-  toast(next ? "Asignación actualizada." : "Ticket sin asignar.");
+  toast(next ? `Ticket «${t.titulo || t.folio || "Sin título"}» asignado a ${assignedLabel(next)}` : `Ticket «${t.titulo || t.folio || "Sin título"}» quedó sin asignar.`);
 }
 
 /* ---- Badge en cada card (integrado al row de acciones) ---- */
@@ -341,9 +348,30 @@ function ensureCardAssignButton(card, t){
   badge.className = "tcAssignBadge";
   const id = String(t.id || cardId(card));
   badge.dataset.assignOpen = id;
-  // B.1: apertura por listener DIRECTO en el badge (pointerdown), NO por
-  // document-click-capture (que competía con los stopImmediatePropagation de tickets.js).
-  badge.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); openAssign(id, badge); });
+  const openExplicitly = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    openAssign(id, badge);
+  };
+  badge.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const current = ticketById(id);
+    if(!current?.asignado_a || e.detail === 0 || matchMedia("(pointer:coarse)").matches) return openAssign(id, badge);
+    const timer = setTimeout(() => {
+      ASSIGN_HINT_TIMERS.delete(timer);
+      toast("Doble clic para reasignar.", "info");
+    }, 260);
+    ASSIGN_HINT_TIMERS.add(timer);
+  });
+  badge.addEventListener("dblclick", e => {
+    ASSIGN_HINT_TIMERS.forEach(timer => clearTimeout(timer));
+    ASSIGN_HINT_TIMERS.clear();
+    openExplicitly(e);
+  });
+  badge.addEventListener("keydown", e => {
+    if(e.key === "Enter" || e.key === " " ) openExplicitly(e);
+  });
 
   // B.2/B.2.2: el badge de agente va en la ZONA DE IDENTIDAD (junto al nombre/remitente).
   // B2_2_KANBAN_ASSIGN_BADGE_INLINE: kanban también va junto al nombre/remitente, no en acciones.
@@ -490,6 +518,12 @@ function bind(){
     window.__tcAssignScopeBound = true;
     window.addEventListener("tk:scopechange", () => { syncViewPills(); syncViewButton(); });
   }
+  window.addEventListener("pagehide", () => {
+    OBS?.disconnect();
+    clearTimeout(window.__tcAssignBoardTimer);
+    ASSIGN_HINT_TIMERS.forEach(timer => clearTimeout(timer));
+    ASSIGN_HINT_TIMERS.clear();
+  }, { once:true });
 }
 
 async function boot(){

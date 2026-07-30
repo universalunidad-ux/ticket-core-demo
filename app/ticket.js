@@ -66,14 +66,14 @@ const isTicketTerminal=t=>["cerrado","cerrada","cancelado","cancelada","closed",
 /* B17C39_QR_JANOME_CANONICAL: variables canónicas {cliente}{producto}{folio}{contacto};
    alias {empresa}/{sistema}/{usuario} siguen resolviendo vía quick-replies.shared.js. */
 const QR={
-modelo:{text:"Para revisar {producto} de {cliente}, comparte el modelo exacto y cualquier dato adicional que ayude a identificarlo.",kind:"solicitud",state:"esperando_cliente"},
-evidencia:{text:"Para revisar {producto}, comparte una foto clara y un video corto del problema y de la acción que realizas.",kind:"solicitud",state:"esperando_cliente"},
-garantia:{text:"Para validar la garantía de {producto}, comparte comprobante de compra, fecha de compra y modelo.",kind:"solicitud",state:"esperando_cliente"},
-muestra:{text:"Comparte una muestra o evidencia del resultado esperado frente al resultado actual en {producto}.",kind:"solicitud",state:"esperando_cliente"},
-horario:{text:"Compártenos uno o dos horarios disponibles para revisar {producto} de {cliente}, y el medio preferido de contacto.",kind:"solicitud",state:"esperando_cliente"},
+modelo:{text:"Para revisar {producto} de {cliente}, por favor comparta el modelo exacto y cualquier dato adicional que ayude a identificarlo.",kind:"solicitud",state:"esperando_cliente"},
+evidencia:{text:"Para revisar {producto}, por favor comparta una foto clara y un video corto del problema y de la acción que realiza.",kind:"solicitud",state:"esperando_cliente"},
+garantia:{text:"Para validar la garantía de {producto}, por favor comparta el comprobante de compra, la fecha de compra y el modelo.",kind:"solicitud",state:"esperando_cliente"},
+muestra:{text:"Por favor comparta una muestra o evidencia del resultado esperado frente al resultado actual en {producto}.",kind:"solicitud",state:"esperando_cliente"},
+horario:{text:"Por favor indíquenos uno o dos horarios disponibles para revisar {producto} de {cliente}, así como su medio preferido de contacto.",kind:"solicitud",state:"esperando_cliente"},
 espera:{text:"Quedamos en espera de la información solicitada para continuar con la revisión de {producto} de {cliente}.",kind:"seguimiento",state:"esperando_cliente"},
-solucion:{text:"Se aplicó la solución correspondiente en {producto}. Favor de validar operación con {cliente}.",kind:"solucion",state:""},
-resuelto:{text:"Se registró solución para {producto}. El caso queda resuelto y puede reabrirse si el problema vuelve a presentarse.",kind:"solucion",state:"resuelto"}
+solucion:{text:"Se aplicó la solución correspondiente en {producto}. Por favor confirme la operación con {cliente}.",kind:"solucion",state:""},
+resuelto:{text:"Se registró la solución para {producto}. El caso queda resuelto; puede reabrirlo si el problema vuelve a presentarse.",kind:"solucion",state:"resuelto"}
 };
 QR.captura=QR.evidencia;
 QR.remoto=QR.horario;

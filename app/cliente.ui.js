@@ -12,6 +12,17 @@ const kv = (k, v) => `<div class="cf-item"><div class="k">${esc(k)}</div><div cl
 /* Estado vacío diseñado: título + qué aparecerá aquí + CTA permitido */
 const emptyBox = (titulo, desc, ctaHtml = "") =>
   `<div class="cf-empty"><div class="cf-empty-t">${esc(titulo)}</div><div class="cf-empty-d">${esc(desc)}</div>${ctaHtml}</div>`;
+const ticketEventLabel = action => ({
+  ticket_nota:"Nota interna",
+  ticket_seguimiento:"Seguimiento al cliente",
+  portal_abierto:"Portal abierto",
+  ticket_asignado:"Asignación",
+  ticket_reasignado:"Reasignación",
+  estado_actualizado:"Cambio de estado",
+  ticket_cierre:"Cierre",
+  ticket_solucion:"Solución",
+}[String(action || "")] || "Actividad del ticket");
+const isTicketEvent = row => Boolean(row?.detalle?.ticket_id);
 
 export const skeletonHtml = (n = 3) => Array.from({ length: n }, () => '<div class="cf-skel"></div>').join("");
 export const errorHtml = (tab, msg = "") =>
@@ -79,7 +90,7 @@ export function renderEquipos(equipos) {
 /* Fila de ticket profesional: folio, título 1–2 líneas, estado humano,
    prioridad, agente, producto, actualización; fila completa clicable. */
 export function renderTickets(data) {
-  const { tickets, agentes } = data;
+  const { tickets, agentes, eventsByTicket = {} } = data;
   if (!tickets.length) return emptyBox(
     "Este cliente aún no tiene tickets",
     "Aquí aparecerá el historial de casos: folio, estado, prioridad, agente y última actualización.",
@@ -96,6 +107,7 @@ export function renderTickets(data) {
           ${Number(t.evidencia_count) > 0 ? `<span>· 📎 ${t.evidencia_count}</span>` : ""}
           <span>· Actualizado ${fmtFecha(t.fecha_actualizacion)}</span>
         </div>
+        ${(eventsByTicket[String(t.id)] || []).length ? `<div class="cf-ticket-events" aria-label="Actividad del ticket">${eventsByTicket[String(t.id)].slice(0,4).map(event => `<span><b>${esc(ticketEventLabel(event.accion))}</b> · ${fmtFechaHora(event.fecha)}</span>`).join("")}</div>` : ""}
       </div>
       <span class="cf-ticket-cta" aria-hidden="true">›</span>
     </div>`).join("")}</div>`;
@@ -112,11 +124,12 @@ export function renderAdjuntos(data) {
 }
 
 export function renderBitacora(rows) {
-  if (!rows.length) return emptyBox(
+  const clientRows = rows.filter(row => !isTicketEvent(row));
+  if (!clientRows.length) return emptyBox(
     "Sin actividad en bitácora",
-    "Aquí aparecerán los eventos internos relacionados con este cliente (altas, cambios, consolidaciones).",
+    "La actividad propia de tickets aparece agrupada dentro de cada ticket. Aquí se muestran sólo altas, cambios y consolidaciones del cliente.",
   );
-  return `<div class="cf-list">${rows.map(b => `<div class="cf-rowitem"><div><div class="cl-name">${esc(b.accion || "evento")}</div><div class="cl-sub">${fmtFechaHora(b.fecha)}</div></div></div>`).join("")}</div>`;
+  return `<p class="mut">Las notas, seguimientos, asignaciones y cierres se consultan dentro de la pestaña Tickets.</p><div class="cf-list">${clientRows.map(b => `<div class="cf-rowitem"><div><div class="cl-name">${esc(String(b.accion || "Actividad").replaceAll("_"," "))}</div><div class="cl-sub">${fmtFechaHora(b.fecha)}</div></div></div>`).join("")}</div>`;
 }
 
 export function renderConsolidacion(data) {
