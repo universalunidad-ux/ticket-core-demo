@@ -65,21 +65,78 @@ do $verify_q2_support_acl$
 declare
   signature text;
   role_name text;
+  function_oid oid;
+  role_oid oid;
+  service_role_oid oid;
+  has_direct_service_role_grant boolean;
 begin
+  select oid
+  into service_role_oid
+  from pg_catalog.pg_roles
+  where rolname = 'service_role';
+
+  if service_role_oid is null then
+    raise exception 'Q2_SUPPORT_ACL_ROLE_MISSING:service_role';
+  end if;
+
   foreach signature in array array[
     'public.support_idem_claim(text,text)',
     'public.support_idem_finish(text,text,jsonb)',
     'public.support_idem_cleanup()'
   ] loop
-    foreach role_name in array array['PUBLIC', 'anon', 'authenticated'] loop
-      if pg_catalog.has_function_privilege(role_name, signature, 'EXECUTE') then
+    function_oid := pg_catalog.to_regprocedure(signature)::oid;
+
+    if function_oid is null then
+      raise exception 'Q2_SUPPORT_ACL_FUNCTION_MISSING:%', signature;
+    end if;
+
+    foreach role_name in array array['anon', 'authenticated'] loop
+      select oid
+      into role_oid
+      from pg_catalog.pg_roles
+      where rolname = role_name;
+
+      if role_oid is null then
+        raise exception 'Q2_SUPPORT_ACL_ROLE_MISSING:%', role_name;
+      end if;
+
+      if pg_catalog.has_function_privilege(
+        role_oid, function_oid, 'EXECUTE'
+      ) then
         raise exception 'Q2_SUPPORT_ACL_FORBIDDEN:%:%', signature, role_name;
       end if;
     end loop;
+
+    if pg_catalog.has_function_privilege(
+      'public', function_oid, 'EXECUTE'
+    ) then
+      raise exception 'Q2_SUPPORT_ACL_FORBIDDEN:%:PUBLIC', signature;
+    end if;
+
     if not pg_catalog.has_function_privilege(
-      'service_role', signature, 'EXECUTE'
+      service_role_oid, function_oid, 'EXECUTE'
     ) then
       raise exception 'Q2_SUPPORT_ACL_SERVICE_ROLE_MISSING:%', signature;
+    end if;
+
+    select exists (
+      select 1
+      from pg_catalog.pg_proc as p
+      cross join lateral pg_catalog.aclexplode(
+        coalesce(
+          p.proacl,
+          pg_catalog.acldefault('f', p.proowner)
+        )
+      ) as acl
+      where p.oid = function_oid
+        and acl.grantee = service_role_oid
+        and acl.privilege_type = 'EXECUTE'
+    )
+    into has_direct_service_role_grant;
+
+    if not has_direct_service_role_grant then
+      raise exception 'Q2_SUPPORT_ACL_SERVICE_ROLE_DIRECT_GRANT_MISSING:%',
+        signature;
     end if;
   end loop;
 end
