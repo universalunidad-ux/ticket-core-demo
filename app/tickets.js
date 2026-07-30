@@ -5,6 +5,7 @@ import{$,$$,toast,debounce,openDialog,closeDialog,norm,ensureAppShell,setAppRole
 import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260716-01";
 import{resolveTicketScope,scopeAssignedFilter,isAdminRole,scopeLabel}from"./shared/ticket-scope.js?v=frontend-final-20260716-01";
 import{mountOperationsJourney}from"./shared/operations-journey.js";
+import{createLatestRequestCoordinator,createTicketWorkspaceStore,sanitizeTicketWorkspace,ticketWorkspaceSummary}from"./shared/ticket-workspace.js";
 
 window.s=s;
 let QR_SHARED_OK=false;
@@ -38,6 +39,8 @@ window.__qrSharedStatus=()=>({ok:QR_SHARED_OK,loaded:QR_SHARED_OK});
 const tkEsc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const tkAttr=v=>tkEsc(v).replace(/\n/g,"&#10;");
 let LOAD_SEQ=0;
+const TK_WORKSPACE_STORE=createTicketWorkspaceStore();
+const TK_REQUESTS=createLatestRequestCoordinator();
 let TK=[],FILTER={q:"",priority:"",state:"",type:"",client:"",clienteId:"",noEvidence:false,impactHigh:false,urgentStale:false,noClientLinked:false,matchMedium:false,frBreach:false,rsBreach:false,slaSoon:false},CLOSED={mode:"all",range:"30d",q:"",page:0,pageSize:10},MOBILE_STATE=["abierto","en_proceso","resuelto"].includes(localStorage.getItem("tc_tickets_mobile_state"))?localStorage.getItem("tc_tickets_mobile_state"):"abierto",VIEW=localStorage.getItem("tc_tickets_view")||"kanban",SELECTED_ID="",EDIT_MODE=false,DRAG_COL=null,BOARD_NOTIF=JSON.parse(localStorage.getItem("tc_tickets_notif")||'{"visual":true,"sound":true,"strongOnly":false,"volume":0.5,"muted":false}'),COL_PAGE={abierto:0,en_proceso:0,esperando_cliente:0,resuelto:0},COL_PAGE_SIZE=10,COMPACT_GROUP=localStorage.getItem("tc_tickets_compact_group")||"abierto",COMPACT_PAGE=Number(localStorage.getItem("tc_tickets_compact_page")||0)||0,COMPACT_PAGE_SIZE=10,QUICK={lastCopied:"",lastAction:"",open:false},SAVE_BUSY=false;window.TK=TK; if(Array.isArray(TK)&&TK.length){document.body.dataset.ticketsReady="1"}/* B2_3_TICKETS_READY_AFTER_LOAD */;
 if(!["abierto","en_proceso","resuelto"].includes(MOBILE_STATE)){MOBILE_STATE="abierto";localStorage.setItem("tc_tickets_mobile_state","abierto")}
 const MOBILE_QUERY_STATE=new URLSearchParams(location.search).get("column");
@@ -95,6 +98,62 @@ const tkKpiIsCanonical=(kpi=qp("kpi"))=>kpi==="urgent"?FILTER.priority==="urgent
 const tkTicketColumn=t=>{const state=ticketStateKey(rawState(t));return state==="resuelto"?"resuelto":["en_proceso","esperando_cliente"].includes(state)?"en_proceso":"abierto"};
 const tkResetPages=()=>{TK_LIST_COLUMNS.forEach(k=>COL_PAGE[k]=0);COMPACT_PAGE=0;try{localStorage.setItem("tc_tickets_compact_page","0")}catch{}};
 const tkCurrentListPosition=(ticket=null)=>{const selected=ticket||TK.find(x=>String(x?.id)===String(SELECTED_ID)),column=VIEW==="compact"?COMPACT_GROUP:selected?tkTicketColumn(selected):(TK_LIST_COLUMNS.includes(qp("column"))?qp("column"):MOBILE_STATE),page=VIEW==="compact"?COMPACT_PAGE:(COL_PAGE[column]||0);return{column:TK_LIST_COLUMNS.includes(column)?column:"abierto",page:Math.max(0,Number(page)||0)}};
+const tkWorkspaceSnapshot=()=>{const pos=tkCurrentListPosition();return sanitizeTicketWorkspace({sort:tkOrderMode(),density:document.body.dataset.ticketDensity||"comfortable",view:VIEW,column:pos.column,page:pos.page,filters:{...FILTER}})};
+const tkWorkspaceStatus=(text="")=>{const el=$("#tkWorkspaceStatus");if(el)el.textContent=text||ticketWorkspaceSummary(tkWorkspaceSnapshot(),filtered().length)};
+const tkApplyWorkspace=state=>{
+  const safe=sanitizeTicketWorkspace(state);
+  FILTER={...FILTER,...safe.filters};
+  VIEW=safe.view;
+  COMPACT_GROUP=safe.column;
+  COMPACT_PAGE=safe.page;
+  MOBILE_STATE=safe.column;
+  if(VIEW==="compact")localStorage.setItem("tc_tickets_compact_page",String(safe.page));
+  else COL_PAGE[safe.column]=safe.page;
+  localStorage.setItem(TK_ORDER_KEY,safe.sort);
+  localStorage.setItem("tc_tickets_order_touched","1");
+  localStorage.setItem("tc_tickets_view",safe.view);
+  localStorage.setItem("tc_tickets_mobile_state",safe.column);
+  document.body.dataset.ticketDensity=safe.density;
+  syncFilterUI();
+  tkSyncOrderControls();
+  tkSyncListUrl({column:safe.column,page:safe.page});
+  renderAll();
+  tkWorkspaceStatus();
+};
+const tkBindWorkspace=()=>{
+  if(document.documentElement.dataset.tkWorkspaceBound)return;
+  document.documentElement.dataset.tkWorkspaceBound="1";
+  const saved=TK_WORKSPACE_STORE.read();
+  document.body.dataset.ticketDensity=saved.density;
+  const sort=$("#tkWorkspaceSort"),density=$("#tkWorkspaceDensity");
+  if(sort)sort.value=tkOrderMode();
+  if(density){density.setAttribute("aria-pressed",String(saved.density==="compact"));density.textContent=saved.density==="compact"?"Vista cómoda":"Vista compacta"}
+  sort?.addEventListener("change",()=>{
+    localStorage.setItem(TK_ORDER_KEY,sort.value==="smart"?"smart":"chrono");
+    localStorage.setItem("tc_tickets_order_touched","1");
+    tkSyncOrderControls();
+    renderAll();
+    tkWorkspaceStatus();
+  });
+  density?.addEventListener("click",()=>{
+    const next=document.body.dataset.ticketDensity==="compact"?"comfortable":"compact";
+    document.body.dataset.ticketDensity=next;
+    density.setAttribute("aria-pressed",String(next==="compact"));
+    density.textContent=next==="compact"?"Vista cómoda":"Vista compacta";
+    TK_WORKSPACE_STORE.write({...tkWorkspaceSnapshot(),density:next});
+    tkWorkspaceStatus(next==="compact"?"Densidad compacta activa.":"Densidad cómoda activa.");
+  });
+  $("#tkWorkspaceSave")?.addEventListener("click",()=>{
+    TK_WORKSPACE_STORE.write(tkWorkspaceSnapshot());
+    tkWorkspaceStatus("Vista guardada. Se conservarán filtros, orden y página.");
+  });
+  $("#tkWorkspaceRestore")?.addEventListener("click",()=>{
+    tkApplyWorkspace(TK_WORKSPACE_STORE.read());
+    tkWorkspaceStatus("Vista restaurada.");
+  });
+  window.addEventListener("pagehide",()=>TK_REQUESTS.destroy(),{once:true});
+  tkWorkspaceStatus();
+};
 const tkSyncNavigationContext=()=>{
   const url=new URL(location.href);
   const fromDashboard=url.searchParams.get("from")==="dashboard";
@@ -716,8 +775,8 @@ const demoPatchTicket=async(id,patch={})=>{
 };
 
 const restHeaders=async()=>{const key=s.supabaseKey,token=TK_ACTIVE_TOKEN||await tkSessionToken(1200);if(!token&&!DEV_READONLY())throw new Error("Sesión no activa. Inicia sesión.");return{apikey:key,Authorization:`Bearer ${token||key}`,"Content-Type":"application/json"}};
-const fetchTicketsRest=async()=>{const url=s.supabaseUrl,h=await restHeaders(),ctx=DEV_READONLY()?{isAdmin:true,canAllScope:true,userId:""}:await tkAuthContext(),q=new URLSearchParams({select:"*",order:"fecha_actualizacion.desc"});/* TC-U15A-1: alcance canónico aplicado EN LA CONSULTA. Soporte queda forzado a "mine"
-   aunque manipule ?scope=; sólo administración accede a all/unassigned. */const scope=resolveTicketScope(qp("scope"),{isAdmin:!!ctx.canAllScope}),assignedFilter=scopeAssignedFilter(scope,ctx.userId);if(assignedFilter)q.set("asignado_a",assignedFilter);else if(ctx.canAllScope&&qp("assignee"))q.set("asignado_a",`eq.${qp("assignee")}`);const endpoint=`${url}/rest/v1/tickets?${q}`;console.info("TICKETS_REQUEST",{endpoint:new URL(endpoint).pathname+new URL(endpoint).search,scope,role:ctx.canAllScope?"admin":"support"});const r=await fetch(endpoint,{headers:h});if(!r.ok){const body=await r.text();const e=new Error(`Tickets HTTP ${r.status}: ${body}`);e.status=r.status;e.endpoint=endpoint;throw e}const rows=await r.json(),ids=[...new Set(rows.map(x=>x.cliente_id).filter(Boolean))];if(!ids.length){rows.forEach(t=>t.clientes=null);return rows}const clientEndpoint=`${url}/rest/v1/clientes?select=id,nombre&id=in.(${ids.join(",")})`;const cr=await fetch(clientEndpoint,{headers:h});if(!cr.ok){const body=await cr.text();const e=new Error(`Clientes de tickets HTTP ${cr.status}: ${body}`);e.status=cr.status;e.endpoint=clientEndpoint;throw e}const clientes=await cr.json(),map=Object.fromEntries(clientes.map(x=>[x.id,x]));rows.forEach(t=>t.clientes=map[t.cliente_id]||null);return rows};
+const fetchTicketsRest=async(signal)=>{const url=s.supabaseUrl,h=await restHeaders(),ctx=DEV_READONLY()?{isAdmin:true,canAllScope:true,userId:""}:await tkAuthContext(),q=new URLSearchParams({select:"*",order:"fecha_actualizacion.desc"});/* TC-U15A-1: alcance canónico aplicado EN LA CONSULTA. Soporte queda forzado a "mine"
+   aunque manipule ?scope=; sólo administración accede a all/unassigned. */const scope=resolveTicketScope(qp("scope"),{isAdmin:!!ctx.canAllScope}),assignedFilter=scopeAssignedFilter(scope,ctx.userId);if(assignedFilter)q.set("asignado_a",assignedFilter);else if(ctx.canAllScope&&qp("assignee"))q.set("asignado_a",`eq.${qp("assignee")}`);const endpoint=`${url}/rest/v1/tickets?${q}`;console.info("TICKETS_REQUEST",{endpoint:new URL(endpoint).pathname+new URL(endpoint).search,scope,role:ctx.canAllScope?"admin":"support"});const r=await fetch(endpoint,{headers:h,signal});if(!r.ok){const body=await r.text();const e=new Error(`Tickets HTTP ${r.status}: ${body}`);e.status=r.status;e.endpoint=endpoint;throw e}const rows=await r.json(),ids=[...new Set(rows.map(x=>x.cliente_id).filter(Boolean))];if(!ids.length){rows.forEach(t=>t.clientes=null);return rows}const clientEndpoint=`${url}/rest/v1/clientes?select=id,nombre&id=in.(${ids.join(",")})`;const cr=await fetch(clientEndpoint,{headers:h,signal});if(!cr.ok){const body=await cr.text();const e=new Error(`Clientes de tickets HTTP ${cr.status}: ${body}`);e.status=cr.status;e.endpoint=clientEndpoint;throw e}const clientes=await cr.json(),map=Object.fromEntries(clientes.map(x=>[x.id,x]));rows.forEach(t=>t.clientes=map[t.cliente_id]||null);return rows};
 const updateTicketRest=async(id,payload)=>{if(!id)throw new Error("Falta id de ticket");const h=await restHeaders(),r=await fetch(`${s.supabaseUrl}/rest/v1/tickets?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{...h,Prefer:"return=representation"},body:JSON.stringify(payload)});const txt=await r.text();if(!r.ok)throw new Error(txt);return JSON.parse(txt||"[]")};
 
 window.__fetchTicketsRest=fetchTicketsRest;
@@ -848,7 +907,7 @@ const tkNormalizeJanomeSeedTicket=(x,i=0)=>{
   };
 };
 
-const tkLoadJanomeSeedRows=async()=>{
+const tkLoadJanomeSeedRows=async(signal)=>{
   if(!tkJanomeSeedEnabled())return[];
   let rows=[];
   const keys=["janome_test_tickets","tickets","ticketCoreTickets","ticket_core_tickets","janomeTickets","janome_tickets","supportTickets","soporte_tickets","app_tickets","tc_tickets","tickets_data","ticketData"];
@@ -862,7 +921,7 @@ const tkLoadJanomeSeedRows=async()=>{
     }catch{}
   }
   try{
-    const r=await fetch("janome-test-tickets.json?v="+Date.now(),{cache:"no-store"});
+    const r=await fetch("janome-test-tickets.json?v="+Date.now(),{cache:"no-store",signal});
     if(r.ok){
       const j=await r.json();
       if(Array.isArray(j))rows=rows.concat(j);
@@ -880,10 +939,10 @@ const tkLoadJanomeSeedRows=async()=>{
   });
 };
 
-const tkMergeJanomeVisualSeed=async(base=[])=>{
+const tkMergeJanomeVisualSeed=async(base=[],signal)=>{
   const clean=Array.isArray(base)?base:[];
   if(!tkJanomeSeedEnabled())return clean;
-  const seed=await tkLoadJanomeSeedRows();
+  const seed=await tkLoadJanomeSeedRows(signal);
   if(!seed.length){
     console.warn("JANOME_VISUAL_SEED_ENABLED_BUT_EMPTY");
     return clean;
@@ -894,7 +953,7 @@ const tkMergeJanomeVisualSeed=async(base=[])=>{
   return add.concat(clean);
 };
 
-const load=async()=>{if(!Array.isArray(TK)||!TK.length){document.body.dataset.ticketsLoading="1"}else{delete document.body.dataset.ticketsLoading}/* B2_2_LOADING_ONLY_EMPTY */;const seq=++LOAD_SEQ,t0=performance.now();console.info(DEV_READONLY()?"load start DEV_READONLY":"load start AUTH_FAST");let profile={rol:"soporte"},authFallback=false;document.body.dataset.authFallback="0";document.body.dataset.ticketsError="0";ensureAppShell({page:"tickets",role:profile.rol||"soporte",title:"Tickets",kicker:"Ticket Core · mesa operativa",actionsHtml:`<a class="mini btn-ghost" href="dashboard.html">Dashboard</a><button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>`});setAppRole(profile.rol||"soporte");if(!DEV_READONLY()){const token=await tkSessionToken(1800);if(!token){console.warn("AUTH_NO_TOKEN_FAST");location.replace("index.html?next=tickets.html");return}console.info("AUTH_TOKEN_OK_FAST");setTimeout(async()=>{try{const p=(await withTimeout(s.from("perfiles").select("*").limit(1).maybeSingle(),500,"perfil bg")).data;if(p?.rol)setAppRole(p.rol)}catch{}},0)}const oldIds=new Set(TK.map(x=>String(x.id))),hadRows=TK.length>0;let data=[],error=null;if(DEV_READONLY()){if(DEV_XSS_FIXTURE()){data=xssFixtureTickets()}else try{data=s.supabaseUrl&&s.supabaseKey?await fetchTicketsRest():demoTickets()}catch(e){console.warn("READONLY_REST_UNAVAILABLE_USING_DEMO",e);data=demoTickets();error=null}}else{try{authFallback=true;document.body.dataset.authFallback="fast-rest";data=await withTimeout(fetchTicketsRest(),4500,"tickets rest fast")}catch(e){const m=e?.message||String(e);console.warn("TICKETS_REST_FAST_ERROR",e);if(/JWT expired|PGRST303|Invalid Refresh Token|Refresh Token|Sesión no activa|session_not_found|Unauthorized|401/i.test(m)){TK_ACTIVE_TOKEN="";localStorage.removeItem("tc_tickets_last_ok");location.replace("index.html?next=tickets.html");return}error=e}}if(seq!==LOAD_SEQ)return console.warn("LOAD_STALE_IGNORED",seq,LOAD_SEQ);console.info("tickets loaded source",DEV_XSS_FIXTURE()?"XSS_FIXTURE":DEV_READONLY()?"REST_READONLY":authFallback?"REST_AUTH_FAST":"AUTH_RETRY",data?.length,error,Math.round(performance.now()-t0)+"ms");if(error){window.TK=TK;delete document.body.dataset.ticketsLoading;document.body.dataset.ticketsError="1";return toast(msg(error),"bad")}TK=DEV_XSS_FIXTURE()?data:await tkMergeJanomeVisualSeed(Array.isArray(data)?data:[]);const newRows=hadRows?TK.filter(x=>!oldIds.has(String(x.id))):[];if(newRows.length)COL_PAGE={abierto:0,en_proceso:0,esperando_cliente:0,resuelto:0};["abierto","en_proceso","resuelto"].forEach(k=>COL_PAGE[k]=Number(COL_PAGE[k]||0));window.TK=TK;if(Array.isArray(TK)&&TK.length){document.body.dataset.ticketsReady="1"}/* B2_4_TICKETS_READY_AFTER_REAL_LOAD */;if(newRows.length)notifyNewTickets(newRows);setGlobalSearchData({tickets:TK,clientes:TK.map(t=>t.clientes).filter(Boolean)});setBreadcrumb([{label:"Panel",href:"dashboard.html"},{label:"Tickets"}]);setRailOpenCount(openCount(TK));applyBoardOrder();setEditMode(EDIT_MODE);VIEW=isMobileTickets()?"kanban":VIEW==="compact"?"compact":"kanban";if(isMobileTickets())localStorage.setItem("tc_tickets_view","kanban");$("#tkBoard")?.classList.toggle("hidden",VIEW==="compact");$("#tkCompact")?.classList.toggle("hidden",VIEW!=="compact");document.querySelector(".board-layout")?.classList.remove("hidden");mountMobileStateTabs();const _prevQ=FILTER.q;applyUrlFilters();if(!qp("q")&&_prevQ){FILTER.q=_prevQ;const _qs=$("#tkSearch");if(_qs&&document.activeElement!==_qs)_qs.value=_prevQ}ensureSelectedVisible();renderAll();syncSelected();syncHeaderIconButtons();syncMobileClearIcon();syncHeaderClearBtns();tkSyncFilterActiveUi?.();delete document.body.dataset.ticketsLoading};
+const load=async()=>{const request=TK_REQUESTS.begin();if(!Array.isArray(TK)||!TK.length){document.body.dataset.ticketsLoading="1"}else{delete document.body.dataset.ticketsLoading}/* B2_2_LOADING_ONLY_EMPTY */;const seq=++LOAD_SEQ,t0=performance.now();console.info(DEV_READONLY()?"load start DEV_READONLY":"load start AUTH_FAST");let profile={rol:"soporte"},authFallback=false;document.body.dataset.authFallback="0";document.body.dataset.ticketsError="0";ensureAppShell({page:"tickets",role:profile.rol||"soporte",title:"Tickets",kicker:"Ticket Core · mesa operativa",actionsHtml:`<a class="mini btn-ghost" href="dashboard.html">Dashboard</a><button class="mini" data-theme-toggle>🌓 <span data-theme-label>Claro</span></button>`});setAppRole(profile.rol||"soporte");if(!DEV_READONLY()){const token=await tkSessionToken(1800);if(!token){request.finish();console.warn("AUTH_NO_TOKEN_FAST");location.replace("index.html?next=tickets.html");return}console.info("AUTH_TOKEN_OK_FAST");setTimeout(async()=>{try{const p=(await withTimeout(s.from("perfiles").select("*").limit(1).maybeSingle(),500,"perfil bg")).data;if(p?.rol)setAppRole(p.rol)}catch{}},0)}const oldIds=new Set(TK.map(x=>String(x.id))),hadRows=TK.length>0;let data=[],error=null;if(DEV_READONLY()){if(DEV_XSS_FIXTURE()){data=xssFixtureTickets()}else try{data=s.supabaseUrl&&s.supabaseKey?await fetchTicketsRest(request.signal):demoTickets()}catch(e){if(e?.name==="AbortError")return console.info("TICKETS_REQUEST_ABORTED",request.token);console.warn("READONLY_REST_UNAVAILABLE_USING_DEMO",e);data=demoTickets();error=null}}else{try{authFallback=true;document.body.dataset.authFallback="fast-rest";data=await withTimeout(fetchTicketsRest(request.signal),4500,"tickets rest fast")}catch(e){if(e?.name==="AbortError")return console.info("TICKETS_REQUEST_ABORTED",request.token);const m=e?.message||String(e);console.warn("TICKETS_REST_FAST_ERROR",e);if(/JWT expired|PGRST303|Invalid Refresh Token|Refresh Token|Sesión no activa|session_not_found|Unauthorized|401/i.test(m)){request.finish();TK_ACTIVE_TOKEN="";localStorage.removeItem("tc_tickets_last_ok");location.replace("index.html?next=tickets.html");return}error=e}}if(seq!==LOAD_SEQ||!request.isLatest()){request.finish();return console.warn("LOAD_STALE_IGNORED",seq,LOAD_SEQ)}console.info("tickets loaded source",DEV_XSS_FIXTURE()?"XSS_FIXTURE":DEV_READONLY()?"REST_READONLY":authFallback?"REST_AUTH_FAST":"AUTH_RETRY",data?.length,error,Math.round(performance.now()-t0)+"ms");if(error){request.finish();window.TK=TK;delete document.body.dataset.ticketsLoading;document.body.dataset.ticketsError="1";tkWorkspaceStatus("No se pudo actualizar. Conservamos la última vista.");return toast(msg(error),"bad")}TK=DEV_XSS_FIXTURE()?data:await tkMergeJanomeVisualSeed(Array.isArray(data)?data:[],request.signal);if(!request.isLatest()){request.finish();return console.warn("LOAD_STALE_IGNORED_AFTER_SEED",seq,LOAD_SEQ)}const newRows=hadRows?TK.filter(x=>!oldIds.has(String(x.id))):[];if(newRows.length)COL_PAGE={abierto:0,en_proceso:0,esperando_cliente:0,resuelto:0};["abierto","en_proceso","resuelto"].forEach(k=>COL_PAGE[k]=Number(COL_PAGE[k]||0));window.TK=TK;if(Array.isArray(TK)&&TK.length){document.body.dataset.ticketsReady="1"}/* B2_4_TICKETS_READY_AFTER_REAL_LOAD */;if(newRows.length)notifyNewTickets(newRows);setGlobalSearchData({tickets:TK,clientes:TK.map(t=>t.clientes).filter(Boolean)});setBreadcrumb([{label:"Panel",href:"dashboard.html"},{label:"Tickets"}]);setRailOpenCount(openCount(TK));applyBoardOrder();setEditMode(EDIT_MODE);VIEW=isMobileTickets()?"kanban":VIEW==="compact"?"compact":"kanban";if(isMobileTickets())localStorage.setItem("tc_tickets_view","kanban");$("#tkBoard")?.classList.toggle("hidden",VIEW==="compact");$("#tkCompact")?.classList.toggle("hidden",VIEW!=="compact");document.querySelector(".board-layout")?.classList.remove("hidden");mountMobileStateTabs();const _prevQ=FILTER.q;applyUrlFilters();if(!qp("q")&&_prevQ){FILTER.q=_prevQ;const _qs=$("#tkSearch");if(_qs&&document.activeElement!==_qs)_qs.value=_prevQ}ensureSelectedVisible();renderAll();syncSelected();syncHeaderIconButtons();syncMobileClearIcon();syncHeaderClearBtns();tkSyncFilterActiveUi?.();delete document.body.dataset.ticketsLoading;request.finish();tkWorkspaceStatus()};
 window.__tkLoad=load;
 const setTxt=(id,v)=>{$("#"+id)&&($("#"+id).textContent=String(v))};
 
@@ -1016,7 +1075,7 @@ const ensureMobileClearBtn=()=>{};
 const bindCompactUi=()=>{$("#tkCompactPrev")&&($("#tkCompactPrev").onclick=e=>{e.preventDefault();e.stopPropagation();COMPACT_PAGE=Math.max(0,(COMPACT_PAGE||0)-1);localStorage.setItem("tc_tickets_compact_page",String(COMPACT_PAGE));renderCompact();bindCompactUi()});$("#tkCompactNext")&&($("#tkCompactNext").onclick=e=>{e.preventDefault();e.stopPropagation();COMPACT_PAGE=(COMPACT_PAGE||0)+1;localStorage.setItem("tc_tickets_compact_page",String(COMPACT_PAGE));renderCompact();bindCompactUi()});$("#tkClearFiltersMobile")&&($("#tkClearFiltersMobile").onclick=e=>{e.preventDefault();e.stopPropagation();clearAllFilters?.()})};
 
 const syncViewSurface=()=>{document.body.dataset.view=VIEW==="compact"?"compact":"kanban"};
-const renderAll=()=>{if(isMobileTickets()){VIEW="kanban";localStorage.setItem("tc_tickets_view","kanban");$("#tkBoard")?.classList.remove("hidden");$("#tkCompact")?.classList.add("hidden");$("#tkCompactRows")&&($("#tkCompactRows").innerHTML="")}ensureSelectedVisible();syncViewSurface();syncHeaderIconButtons();markTicketsToolbar?.();renderMetrics();renderBoard();if(!isMobileTickets()&&VIEW==="compact")renderCompact();else{$("#tkCompact")?.classList.add("hidden");$("#tkCompactRows")&&($("#tkCompactRows").innerHTML="")}renderClosed();syncSelected();syncMobileClearIcon?.();syncHeaderClearBtns?.();tkSyncFilterActiveUi();if(QUICK.open){setQuickPanelOpen(true);syncSelected()}bindDynamic();if(!isMobileTickets()&&VIEW==="compact")bindCompactUi?.()};
+const renderAll=()=>{if(isMobileTickets()){VIEW="kanban";localStorage.setItem("tc_tickets_view","kanban");$("#tkBoard")?.classList.remove("hidden");$("#tkCompact")?.classList.add("hidden");$("#tkCompactRows")&&($("#tkCompactRows").innerHTML="")}ensureSelectedVisible();syncViewSurface();syncHeaderIconButtons();markTicketsToolbar?.();renderMetrics();renderBoard();if(!isMobileTickets()&&VIEW==="compact")renderCompact();else{$("#tkCompact")?.classList.add("hidden");$("#tkCompactRows")&&($("#tkCompactRows").innerHTML="")}renderClosed();syncSelected();syncMobileClearIcon?.();syncHeaderClearBtns?.();tkSyncFilterActiveUi();tkWorkspaceStatus?.();if(QUICK.open){setQuickPanelOpen(true);syncSelected()}bindDynamic();if(!isMobileTickets()&&VIEW==="compact")bindCompactUi?.()};
 window.__tkDiag=()=>({TK:TK.length,filtered:filtered().length,view:VIEW,body:document.body.dataset.view,cards:[...document.querySelectorAll(".k-card")].length,compactRows:[...document.querySelectorAll(".compact-row")].length,cols:window._TK_COLS,quick:{open:QUICK.open,panel:!!$("#tkQuickPanel"),editor:!!$("#tkQrEditor"),qr:window.__qrSharedStatus?.()}});
 const clientIdFromInput=async raw=>{const x=(raw||"").trim();if(!x)return null;if(/^[0-9a-f-]{8,}$/i.test(x))return x;const {data,error}=await s.from("clientes").select("id,nombre").ilike("nombre",`%${x}%`).limit(1);if(error||!data?.length)return null;return data[0].id};
 const saveTicket=async()=>{if(SAVE_BUSY)return;const clienteRaw=$("#tkCliente")?.value?.trim()||"",nombre=$("#tkNombre")?.value?.trim()||"",correo=$("#tkCorreo")?.value?.trim()||"",telefono=$("#tkTelefono")?.value?.trim()||"",sistema=$("#tkSistema")?.value?.trim()||"",titulo=$("#tkTitulo")?.value?.trim()||"",desc=$("#tkDesc")?.value?.trim()||"",tipo=normTipo($("#tkTipo")?.value||"soporte"),prioridad=$("#tkPrioridad")?.value||"media",notificar=!!$("#tkNotificar")?.checked,cliente_id=/^[0-9a-f-]{8,}$/i.test(clienteRaw)?clienteRaw:null,empresa=cliente_id?"":clienteRaw;if(!titulo)return $("#tkStatus").textContent="El título es obligatorio.";if(titulo.length<6)return $("#tkStatus").textContent="El título es demasiado corto.";if(!desc||desc.length<8)return $("#tkStatus").textContent="Describe un poco más el caso.";if(false&&notificar&&!correo)return $("#tkStatus").textContent="Agrega un correo o desactiva el aviso al cliente.";SAVE_BUSY=true;$("#tkSave")&&($("#tkSave").disabled=true);$("#tkStatus").textContent="Creando ticket...";try{const payload={cliente_id,empresa,nombre,correo:"",telefono:"",sistema,titulo,descripcion:desc,tipo:"soporte",prioridad,notificar:false};const{data,error}=await s.functions.invoke("crear-ticket-interno",{body:payload});if(error){console.error("crear-ticket-interno error",error);throw new Error(error.message||"Error en Edge Function")}console.log("crear-ticket-interno data",data);if(!data?.ok)throw new Error(data?.error||data?.details||data?.hint||"No se pudo crear el ticket");$("#tkStatus").textContent=data.mail_sent?"Ticket creado y aviso enviado.":"Ticket creado.";closeNewTicketModal();["tkCliente","tkNombre","tkCorreo","tkTelefono","tkSistema","tkTitulo","tkDesc"].forEach(id=>{$("#"+id)&&($("#"+id).value="")});$("#tkTipo")&&($("#tkTipo").value="soporte");$("#tkPrioridad")&&($("#tkPrioridad").value="media");$("#tkNotificar")&&($("#tkNotificar").checked=false);toast(data.mail_sent?`Ticket ${data.folio} creado · aviso enviado`:`Ticket ${data.folio} creado${data.mail_error?` · sin correo`:``}`,"ok");await load();if(data?.ticket_id){SELECTED_ID=String(data.ticket_id);renderAll();syncSelected()}}catch(e){const m=e?.message||String(e||"Error");$("#tkStatus")&&($("#tkStatus").textContent=m);toast(m,"bad")}finally{SAVE_BUSY=false;$("#tkSave")&&($("#tkSave").disabled=false)}};
@@ -1552,7 +1611,7 @@ const tkBindCriticalControls=()=>{if(document.documentElement.dataset.tkCritical
 
 const bindDynamic=()=>{window.__tkOpenQuick=()=>openQuickFromButton(document.querySelector("[data-quick-panel]"));bindNewTicketOutsideClose?.();tkBindCriticalControls();bindMobileHistory();bindMobileTabKeyboard();if(!isMobileTickets()&&VIEW==="compact"){mountCompactModeTabs();renderCompact();bindCompactUi?.()}else{$("#tkCompactSwitch")?.remove();$("#tkCompactPager")?.remove()}if(!document.documentElement.dataset.ticketsDynamicBound){window.__ticketsClickHandler=ticketClickRouter;document.addEventListener("click",window.__ticketsClickHandler,true);document.documentElement.dataset.ticketsDynamicBound="1"}document.documentElement.dataset.ticketsDragBound="disabled";bindNotifControls();bindMobileSwipe();tkApplyBg();tkMountOrderControls?.();tkSyncOrderControls?.()};
 const refreshTicketsJourney=async()=>{if(QUICK.open||!$("#tkModal")?.hidden||!$("#tkClosedModal")?.hidden||!$("#tkGearMenu")?.hidden||!$("#tkAdvancedFilters")?.hidden)return;await load();if(document.body.dataset.ticketsError==="1")throw new Error("TICKETS_REFRESH_FAILED");try{bindDynamic()}catch(e){console.error("bindDynamic refresh error",e)}if(typeof syncHeroMetrics==="function")syncHeroMetrics()};
-const bootTickets=()=>{if(document.documentElement.dataset.tkBooted)return;document.documentElement.dataset.tkBooted="1";console.info("tickets boot");try{bindStatic()}catch(e){console.error("bindStatic error",e)}try{bindDynamic()}catch(e){console.error("bindDynamic error",e)}mountOperationsJourney({page:"tickets",onRefresh:refreshTicketsJourney,intervalMs:60000});load().then(()=>{console.info("tickets loaded",TK.length);try{bindDynamic()}catch(e){console.error("bindDynamic after load error",e)}if(typeof syncHeroMetrics==="function")syncHeroMetrics()}).catch(err=>{console.error("load error",err);toast(msg(err),"bad")});setTimeout(()=>{try{bindDynamic()}catch(e){console.error("bindDynamic timeout 600 error",e)}},600);setTimeout(()=>{try{bindDynamic()}catch(e){console.error("bindDynamic timeout 1600 error",e)}},1600)};
+const bootTickets=()=>{if(document.documentElement.dataset.tkBooted)return;document.documentElement.dataset.tkBooted="1";console.info("tickets boot");try{bindStatic()}catch(e){console.error("bindStatic error",e)}try{bindDynamic()}catch(e){console.error("bindDynamic error",e)}try{tkBindWorkspace()}catch(e){console.error("ticket workspace bind error",e)}mountOperationsJourney({page:"tickets",onRefresh:refreshTicketsJourney,intervalMs:60000});load().then(()=>{console.info("tickets loaded",TK.length);try{bindDynamic()}catch(e){console.error("bindDynamic after load error",e)}if(typeof syncHeroMetrics==="function")syncHeroMetrics()}).catch(err=>{console.error("load error",err);tkWorkspaceStatus("No se pudo cargar. Reintenta desde la barra superior.");toast(msg(err),"bad")});setTimeout(()=>{try{bindDynamic()}catch(e){console.error("bindDynamic timeout 600 error",e)}},600);setTimeout(()=>{try{bindDynamic()}catch(e){console.error("bindDynamic timeout 1600 error",e)}},1600)};
 document.readyState==="loading"?document.addEventListener("DOMContentLoaded",bootTickets,{once:true}):bootTickets();
 
 

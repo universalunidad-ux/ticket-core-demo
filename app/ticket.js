@@ -5,6 +5,7 @@ import{qrTpl as qrTplShared,qrCanon,qrDefaults as qrDefaultsShared}from"./quick-
 import{JANOME_CATALOGO}from"./janome/janome_catalogo.js";
 import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260716-01";
 import{mountOperationsJourney}from"./shared/operations-journey.js";
+import{createTicketWorkspaceStore,ticketWorkspaceReturnHref,ticketWorkspaceSummary}from"./shared/ticket-workspace.js";
 
 let CLIENT_SYSTEMS=[];
 const $$=(q,ctx=document)=>[...ctx.querySelectorAll(q)];
@@ -28,6 +29,12 @@ const syncChannelIcon = globalThis.syncChannelIcon || (globalThis.syncChannelIco
 const QS=new URLSearchParams(location.search),ID=QS.get("id")||"",QK=(QS.get("qk")||"").trim().toLowerCase(),MUTE_KEY=`tc_ticket_mute_${ID}`,ST={busy:false,linkedContact:null,logFiles:[],portalMeta:null,notif:null,lastNotifSig:"",poller:null,ticketMuted:false,quickBootDone:false,quickBootKey:"",quickBootText:""};let T=null,C=null,LOGS=[],HEAT={periodDays:30,rows:[],total30:0,urgent30:0,waitOpen:0,level:"Normal"},FILES=[],QRS=[],CLIENT_ACCESSES=[];
 const ticketListReturnUrl=()=>{const raw=QS.get("return")||"tickets.html";try{const url=new URL(raw,location.href);if(url.origin!==location.origin||!/\/tickets\.html$/.test(url.pathname))return"tickets.html";return url.pathname+url.search+url.hash}catch{return"tickets.html"}};
 const TICKET_LIST_RETURN=ticketListReturnUrl();
+const TICKET_WORKSPACE_STORE=createTicketWorkspaceStore();
+const syncTicketWorkspaceReturn=()=>{
+  const state=TICKET_WORKSPACE_STORE.read(),link=$("#tkWorkspaceReturn"),summary=document.querySelector("[data-ticket-workspace-summary]");
+  if(link)link.href=QS.has("return")?TICKET_LIST_RETURN:ticketWorkspaceReturnHref(state);
+  if(summary)summary.textContent=state.savedAt?ticketWorkspaceSummary(state,0).replace(/^0 tickets · /,"Vista guardada · "):"Volverás a la mesa general.";
+};
 export const canManageQuickReplies=(scope="global",profile=ST.profile)=>["global","producto"].includes(String(scope||"").toLowerCase())&&["admin","owner","administrador"].includes(String(profile?.rol||"").toLowerCase());
 const denyQuickReplyManagement=()=>{toast("Las respuestas Globales y de Producto son administradas por Administrador.","warn");return false};
 const syncQuickReplyAdminUi=()=>{const allowed=canManageQuickReplies("global"),edit=$("#tkQrEditBtn");if(edit){edit.hidden=!allowed;edit.disabled=!allowed}if(!allowed&&!$("#tkQrModal")?.hidden)qrClose()};
@@ -1300,7 +1307,7 @@ window.addEventListener("tc:admin-escalated",event=>{
   withLogScrollPreserved(renderLogs);
   setTimeout(async()=>{try{const{data,error}=await s.from("ticket_eventos").select("id,ticket_id,autor_tipo,visibilidad,kind,texto,created_at,created_by,meta").eq("id",eventId).eq("ticket_id",ID).maybeSingle();if(error)throw error;if(data){LOGS=LOGS.map(x=>String(x?.id)===eventId?data:x);withLogScrollPreserved(renderLogs)}console.info("ADMIN_STAGE=BACKGROUND_RECONCILE",{evento_id:eventId,found:!!data})}catch(err){console.warn("ADMIN_RECONCILE_ERROR",err?.message||"query_failed")}},250);
 });
-document.addEventListener("DOMContentLoaded",()=>{const _st=document.createElement("style");_st.textContent="@keyframes tkspin{to{transform:rotate(360deg)}}";document.head.appendChild(_st);ensureAppShell({page:"ticket",title:"",kicker:"",role:"soporte",actionsHtml:""});const _la=document.getElementById("logArea");if(_la)_la.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:48px 16px;color:var(--muted,#64748b);font:600 14px Inter,system-ui,sans-serif"><span style="width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;display:inline-block;animation:tkspin .7s linear infinite"></span> Cargando conversación…</div>';try{bind();renderLogFilesMeta();renderComposerMode();setComposerMode("seguimiento","");load().catch(err=>{const e=document.getElementById("logArea");if(e)e.innerHTML='<div class="empty-state">No se pudo cargar la conversación.</div>';toast(msg(err),"bad")});startTicketPolling()}catch(err){console.error("TICKET_BOOT_ERROR",err);toast(msg(err),"bad")}});window.addEventListener("beforeunload",stopTicketPolling,{passive:true});
+document.addEventListener("DOMContentLoaded",()=>{const _st=document.createElement("style");_st.textContent="@keyframes tkspin{to{transform:rotate(360deg)}}";document.head.appendChild(_st);ensureAppShell({page:"ticket",title:"",kicker:"",role:"soporte",actionsHtml:""});syncTicketWorkspaceReturn();document.addEventListener("click",e=>{if(e.target?.closest?.("#tkConversationRetry"))location.reload()});const _la=document.getElementById("logArea");if(_la)_la.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:48px 16px;color:var(--muted,#64748b);font:600 14px Inter,system-ui,sans-serif"><span style="width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;display:inline-block;animation:tkspin .7s linear infinite"></span> Cargando conversación…</div>';try{bind();renderLogFilesMeta();renderComposerMode();setComposerMode("seguimiento","");load().catch(err=>{const e=document.getElementById("logArea");if(e)e.innerHTML='<div class="empty-state">No se pudo cargar la conversación. <button class="mini btn-ghost" id="tkConversationRetry" type="button">Reintentar</button></div>';toast(msg(err),"bad")});startTicketPolling()}catch(err){console.error("TICKET_BOOT_ERROR",err);toast(msg(err),"bad")}});window.addEventListener("beforeunload",stopTicketPolling,{passive:true});
 
 // D2F: Enter label lo normaliza ticket-composer-polish.js.
 
