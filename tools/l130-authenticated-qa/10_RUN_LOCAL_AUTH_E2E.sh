@@ -135,7 +135,7 @@ done
 
 RUNTIME_DIR="$(mktemp -d "$REPO/tools/local-db/q2-canonical-runtime.XXXXXX")"
 BOOTSTRAP_FILE="$EVIDENCE_DIR/bootstrap.env"
-chmod 600 "$BOOTSTRAP_FILE"
+install -m 600 /dev/null "$BOOTSTRAP_FILE"
 node "$REPO/tools/local-db/lib/bootstrap.mjs" \
   --project-id "$PROJECT_ID" \
   --db-port "$DB_PORT" \

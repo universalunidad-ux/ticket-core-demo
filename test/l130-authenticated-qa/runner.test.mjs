@@ -164,9 +164,43 @@ test("canonical Q2 terminal orchestrator is fail-closed and owns exact teardown"
     new URL("../../tools/l130-authenticated-qa/10_RUN_LOCAL_AUTH_E2E.sh", import.meta.url),
     "utf8",
   );
+  const bootstrapFileAssignment = 'BOOTSTRAP_FILE="$EVIDENCE_DIR/bootstrap.env"';
+  const bootstrapFileInitialization = 'install -m 600 /dev/null "$BOOTSTRAP_FILE"';
+  const bootstrapInvocation = 'node "$REPO/tools/local-db/lib/bootstrap.mjs"';
+  const bootstrapRedirection =
+    '--reset-runtime >"$BOOTSTRAP_FILE" 2>"$EVIDENCE_DIR/bootstrap.log"';
+  const assignmentIndex = source.indexOf(bootstrapFileAssignment);
+  const initializationIndex = source.indexOf(bootstrapFileInitialization);
+  const invocationIndex = source.indexOf(bootstrapInvocation, initializationIndex);
+  const redirectionIndex = source.indexOf(bootstrapRedirection, invocationIndex);
+
   assert.match(source, /^#!\/usr\/bin\/env bash/m);
   assert.match(source, /set -Eeuo pipefail/);
+  assert.ok(assignmentIndex >= 0, "bootstrap.env path must remain evidence-owned");
+  assert.ok(
+    initializationIndex > assignmentIndex,
+    "bootstrap.env must be initialized only after its evidence path is assigned",
+  );
+  assert.ok(
+    invocationIndex > initializationIndex,
+    "bootstrap.env must exist with mode 0600 before bootstrap.mjs executes",
+  );
+  assert.ok(
+    redirectionIndex > invocationIndex,
+    "bootstrap.mjs must continue truncating and writing bootstrap.env",
+  );
+  assert.doesNotMatch(
+    source.slice(assignmentIndex, invocationIndex),
+    /chmod\s+600\s+"\$BOOTSTRAP_FILE"/,
+    "bootstrap.env must not depend on chmod before the file exists",
+  );
   assert.match(source, /bootstrap\.mjs[\s\S]+--reset-runtime/);
+  assert.match(source, /\[\[ "\$\{1:-\}" == "--evidence-dir"[\s\S]+fail "E_USAGE"/);
+  assert.match(source, /require_local_url\(\)[\s\S]+127\.0\.0\.1[\s\S]+localhost[\s\S]+::1/);
+  assert.match(
+    source,
+    /SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_PROJECT_REF STAGING_URL DATABASE_URL/,
+  );
   assert.match(source, /edge-runtime-serve\.mjs/);
   assert.match(source, /edge-contract-http\.mjs/);
   assert.match(source, /m1-response-visibility\.mjs/);
@@ -180,6 +214,11 @@ test("canonical Q2 terminal orchestrator is fail-closed and owns exact teardown"
   assert.match(source, /Q2_B130_003_004_EDGE_E2E=%s/);
   assert.match(source, /TEARDOWN=%s/);
   assert.doesNotMatch(source, /\bpkill\b|\bkillall\b|git add -A|git reset|git clean/);
+  assert.doesNotMatch(
+    source,
+    /\beyJ[A-Za-z0-9_-]{20,}\b|\bsb_secret_[A-Za-z0-9_-]+\b|SUPABASE_SERVICE_ROLE_KEY=["'][^"$]/,
+    "the runner must not contain hardcoded credentials",
+  );
 });
 
 test("Q2 edge supervisor serves exactly the canonical four functions", () => {
