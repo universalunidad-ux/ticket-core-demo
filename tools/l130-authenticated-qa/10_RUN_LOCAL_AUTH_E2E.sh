@@ -8,6 +8,7 @@ DB_PORT="${TC_Q2_DB_PORT:-56300}"
 RUNTIME_DIR=""
 EVIDENCE_DIR=""
 STATE_FILE=""
+CREDENTIAL_FILE=""
 EDGE_PID=""
 STACK_STARTED=NO
 AUTH_CREATED=NO
@@ -85,6 +86,15 @@ teardown() {
     AUTH_CREATED=NO
   fi
 
+  if [[ -n "$CREDENTIAL_FILE" && -e "$CREDENTIAL_FILE" ]]; then
+    node "$REPO/tools/l130-authenticated-qa/local-credential-material.mjs" \
+      destroy "$CREDENTIAL_FILE" || rc=1
+  fi
+  unset TC_L130_CLIENT_A_PASSWORD
+  unset TC_L130_CLIENT_B_PASSWORD
+  unset TC_L130_SUPPORT_PASSWORD
+  unset TC_L130_ADMIN_PASSWORD
+
   if [[ "$STACK_STARTED" == YES && -n "$RUNTIME_DIR" ]]; then
     node "$REPO/tools/local-db/lib/bootstrap.mjs" \
       --project-id "$PROJECT_ID" \
@@ -134,6 +144,14 @@ for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_PROJECT_REF STAGI
 done
 
 RUNTIME_DIR="$(mktemp -d "$REPO/tools/local-db/q2-canonical-runtime.XXXXXX")"
+CREDENTIAL_FILE="$RUNTIME_DIR/.l130-credentials.env"
+node "$REPO/tools/l130-authenticated-qa/local-credential-material.mjs" \
+  create "$CREDENTIAL_FILE"
+# El archivo sólo contiene valores base64url o fixtures sin caracteres de
+# control, está bajo el runtime efímero y fue creado O_EXCL con modo 0600.
+# shellcheck disable=SC1090
+source "$CREDENTIAL_FILE"
+
 BOOTSTRAP_FILE="$EVIDENCE_DIR/bootstrap.env"
 install -m 600 /dev/null "$BOOTSTRAP_FILE"
 node "$REPO/tools/local-db/lib/bootstrap.mjs" \
