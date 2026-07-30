@@ -4,6 +4,7 @@ import{montarFichaAgente}from"./janome/janome_ticket.js";
 import{qrTpl as qrTplShared,qrCanon,qrDefaults as qrDefaultsShared}from"./quick-replies.shared.js";
 import{JANOME_CATALOGO}from"./janome/janome_catalogo.js";
 import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260716-01";
+import{mountOperationsJourney}from"./shared/operations-journey.js";
 
 let CLIENT_SYSTEMS=[];
 const $$=(q,ctx=document)=>[...ctx.querySelectorAll(q)];
@@ -201,7 +202,7 @@ const openEvidence=async i=>{
   };
 
   if(!u)return setPreview(`<div class="empty-state">Este adjunto no tiene URL disponible para vista previa.</div>`);
-  if(isImg(x))return setPreview(`<img class="ev-img" src="${escHtml(u)}" alt="${escHtml(name)}">`);
+  if(isImg(x))return setPreview(`<img class="ev-img" src="${escHtml(u)}" alt="${escHtml(name)}" loading="lazy" decoding="async">`);
   if(isVid(x))return setPreview(`<video class="ev-video" src="${escHtml(u)}" controls playsinline autoplay></video>`);
   if(isPdf(x))return setPreview(`<iframe class="ev-frame" src="${escHtml(u)}" title="${escHtml(name)}"></iframe>`);
   if(isText(x)){
@@ -471,7 +472,7 @@ if(!window.__tcImgRecoveryBound){
     img.dataset.tcResigned="1";
     signedEvidenceUrl({storage_path:path},"original").then(u=>{if(u&&u!==img.src){img.dataset.tcStoragePath=path;img.addEventListener("error",()=>tcMarkImageUnavailable(img,true),{once:true});img.src=u}else tcMarkImageUnavailable(img,true)}).catch(()=>tcMarkImageUnavailable(img,true));
   },true);
-  document.addEventListener("click",async e=>{const btn=e.target.closest?.("[data-tc-image-retry]"),box=btn?.closest?.(".tc-image-unavailable"),path=box?.dataset.tcStoragePath;if(!btn||!box||!path||btn.disabled)return;btn.disabled=true;btn.textContent="Reintentando…";const u=await signedEvidenceUrl({storage_path:path},"original").catch(()=>"");if(!u){btn.textContent="Reintento agotado";return}const img=document.createElement("img");img.alt="";img.dataset.tcResigned="1";img.dataset.tcStoragePath=path;img.addEventListener("error",()=>tcMarkImageUnavailable(img,false),{once:true});box.replaceWith(img);img.src=u},true);
+  document.addEventListener("click",async e=>{const btn=e.target.closest?.("[data-tc-image-retry]"),box=btn?.closest?.(".tc-image-unavailable"),path=box?.dataset.tcStoragePath;if(!btn||!box||!path||btn.disabled)return;btn.disabled=true;btn.textContent="Reintentando…";const u=await signedEvidenceUrl({storage_path:path},"original").catch(()=>"");if(!u){btn.textContent="Reintento agotado";return}const img=document.createElement("img");img.alt="";img.loading="lazy";img.decoding="async";img.dataset.tcResigned="1";img.dataset.tcStoragePath=path;img.addEventListener("error",()=>tcMarkImageUnavailable(img,false),{once:true});box.replaceWith(img);img.src=u},true);
 }
 const isImgF=f=>/^image\//.test(f?.type||"")||/\.(jpe?g|png|webp|heic)$/i.test(f?.name||"");
 const isVidF=f=>/^video\//.test(f?.type||"")||/\.(mp4|mov|m4v)$/i.test(f?.name||"");
@@ -638,8 +639,9 @@ const evaluateInternalNotif=()=>{const sig=notifSig();if(!ST.lastNotifSig){ST.la
 const ticketVisibleSnapshot=()=>({sig:notifSig(),state:ticketStateKey(T?.estado),reply:ST.portalMeta?.lastReply||"",view:ST.portalMeta?.lastView||"",clientId:T?.cliente_id||null,logsLen:(LOGS||[]).length,filesLen:(FILES||[]).length,updated:T?.fecha_actualizacion||"",timelineLen:Array.isArray(T?.timeline_publica)?T.timeline_publica.length:0});
 const refreshTicketLive=async()=>{const prev=ticketVisibleSnapshot(),tk=await loadTicketCore();if(!tk)return;T=tk;await loadTicketContext();ST.portalMeta=await loadPortalMeta();const clientChanged=(T?.cliente_id||null)!==prev.clientId;if(clientChanged){ST.linkedContact=await loadLinkedContact();await loadClientContacts();CLIENT_SYSTEMS=await loadClientSystems();CLIENT_ACCESSES=await loadClientAccesses()}else{if(!ST.linkedContact&&T?.cliente_id)ST.linkedContact=await loadLinkedContact();if(T?.cliente_id)CLIENT_ACCESSES=await loadClientAccesses()}const next=ticketVisibleSnapshot(),shouldRender=clientChanged||next.sig!==prev.sig||next.state!==prev.state||next.reply!==prev.reply||next.view!==prev.view||next.logsLen!==prev.logsLen||next.filesLen!==prev.filesLen||next.updated!==prev.updated||next.timelineLen!==prev.timelineLen;if(shouldRender)withLogScrollPreserved(()=>render());if(next.sig!==prev.sig||next.state!==prev.state||next.reply!==prev.reply||next.view!==prev.view)evaluateInternalNotif()};
 
-const startTicketPolling=()=>{stopTicketPolling();ST.poller=setInterval(()=>refreshTicketLive().catch(()=>{}),20000)};
-const stopTicketPolling=()=>{if(ST.poller)clearInterval(ST.poller);ST.poller=null};
+let ticketJourney=null;
+const startTicketPolling=()=>{stopTicketPolling();ticketJourney=mountOperationsJourney({page:"ticket",onRefresh:()=>refreshTicketLive(),intervalMs:20000});ST.poller=ticketJourney};
+const stopTicketPolling=()=>{ST.poller?.destroy?.();ST.poller=null;ticketJourney=null};
 const refreshTicketAfterIdentityChange=async()=>{const tk=await loadTicketCore();if(!tk)return;T=tk;await loadTicketContext();ST.linkedContact=await loadLinkedContact();ST.portalMeta=await loadPortalMeta();await loadClientContacts();CLIENT_SYSTEMS=await loadClientSystems();CLIENT_ACCESSES=await loadClientAccesses();withLogScrollPreserved(()=>render());applyNotifUi();if(!ST.lastNotifSig)ST.lastNotifSig=notifSig()};
 
 const applyTicketIdentityUpdate=async({payload,accion,detalle,toastOk})=>{if(ST.busy)return;setBusy(true);try{const ticketPatch={...payload,fecha_actualizacion:new Date().toISOString()};if(!T?.asignado_a&&!ticketPatch.asignado_a)ticketPatch.asignado_en=null;const up=await s.from("tickets").update(ticketPatch).eq("id",ID).select().single();if(up.error)throw up.error;T=up.data;await logAction({accion,cliente_id:T?.cliente_id||null,detalle:{ticket_id:String(ID),...detalle}}).catch(()=>{});await refreshTicketAfterIdentityChange();toast(toastOk,"ok")}catch(err){toast(msg(err),"bad")}finally{setBusy(false)}};
@@ -698,7 +700,7 @@ const logSenderName=x=>x.side==="other"?(T?.nombre_capturado||T?.nombre_cliente_
   const label=kind==="img"?"Imagen":kind==="video"?"Video":kind==="pdf"?"PDF":kind==="text"?"Texto":"Archivo";
   const icon=kind==="img"?"🖼️":kind==="video"?"🎬":kind==="pdf"?"📄":kind==="text"?"📝":"📎";
   const thumb=kind==="img"&&direct
-    ? `<img class="thread-file-thumb-img" src="${escHtml(direct)}" alt="">`
+    ? `<img class="thread-file-thumb-img" src="${escHtml(direct)}" alt="" loading="lazy" decoding="async">`
     : kind==="video"&&direct
       ? `<video class="thread-file-thumb-img" src="${escHtml(direct)}" muted playsinline></video>`
       : `<span class="thread-file-thumb-icon">${icon}</span>`;
@@ -737,7 +739,7 @@ const hydrateThreadFileThumbs=async()=>{
       continue;
     }
     node.innerHTML=isImg(f)
-      ? `<img class="thread-file-thumb-img" src="${escHtml(u)}" alt="">`
+      ? `<img class="thread-file-thumb-img" src="${escHtml(u)}" alt="" loading="lazy" decoding="async">`
       : `<video class="thread-file-thumb-img" src="${escHtml(u)}" muted playsinline></video>`;
     node.dataset.ready="1";
     const media=node.querySelector("img");if(media)media.addEventListener("error",()=>tcMarkImageUnavailable(media),{once:true});
@@ -891,7 +893,7 @@ LOGS=evNorm.length?evNorm:legacy;HEAT.rows=Array.isArray(heatRows?.data)?heatRow
 const canonFiles=normalizeFiles(newArchRows?.data),legacyFiles=normalizeFiles(legacyArchRows?.data),ticketFiles=normalizeFiles(T?.adjuntos),timelineFiles=normalizeFiles((Array.isArray(T?.timeline_publica)?T.timeline_publica:[]).flatMap(x=>Array.isArray(x?.adjuntos)?x.adjuntos:[]));FILES=[...canonFiles,...ticketFiles,...timelineFiles,...legacyFiles].filter((x,i,a)=>a.findIndex(y=>fileUniqKey(y)===fileUniqKey(x))===i);try{const huerf=FILES.filter(f=>!safeUrl(f.url)&&!f.storage_path);if(huerf.length)console.warn("B17C42_ADJUNTOS_SIN_URL_NI_PATH",huerf.map(f=>({nombre:f.nombre,origen:f.origen,fecha:f.fecha})))}catch{}$("#tkDataMode")&&($("#tkDataMode").textContent=ev.length||canonFiles.length||timelineFiles.length?"new":"legacy")};
 const hydrateTicketUi=async()=>{/* B17C42_PERF: cargas independientes en paralelo (antes 8 round-trips secuenciales) */const t0=performance.now();setRailOpenCount();if(C?.id&&C?.nombre)pushRecentClient({id:C.id,nombre:C.nombre});setGlobalSearchData({clientes:C?[C]:[],tickets:T?[{...T,clientes:C||null}]:[]});setBreadcrumb([{label:"Panel",href:"dashboard.html"},{label:"Tickets",href:TICKET_LIST_RETURN},{label:T?.titulo||"Caso"}]);loadTicketMute();const[linked,portalMeta,notif,,systems,accesses]=await Promise.all([loadLinkedContact(),loadPortalMeta(),ST.notif?Promise.resolve(ST.notif):loadNotifPrefs(),loadClientContacts(),loadClientSystems(),loadClientAccesses(),loadQuickReplies(),loadRenewalChip()]);ST.linkedContact=linked;ST.portalMeta=portalMeta;ST.notif=notif;CLIENT_SYSTEMS=systems;CLIENT_ACCESSES=accesses;console.info("B17C42_HYDRATE_MS",Math.round(performance.now()-t0));withLogScrollPreserved(()=>render());applyQuickBoot();if(!ST.lastNotifSig)evaluateInternalNotif()};
 
-const load=async()=>{const auth=await guardSession();if(!auth)return;const profile=(await getProfile())||{rol:"soporte"};ST.profile=profile||null;ensureAppShell({page:"ticket",title:"",kicker:"",role:profile?.rol||"soporte",actionsHtml:""});setAppRole(profile.rol||"soporte");syncQuickReplyAdminUi();registerInternalSearchProvider({sb:s,user:auth.user,rol:profile?.rol||"soporte"});if(!ID){toast("Falta ID del ticket","bad");setTimeout(()=>location.href=TICKET_LIST_RETURN,900);return}const tk=await loadTicketCore();if(!tk){toast("Ticket no encontrado","bad");setTimeout(()=>location.href=TICKET_LIST_RETURN,900);return}T=tk;await loadTicketContext();await hydrateTicketUi()};
+const load=async()=>{const auth=await guardSession();if(!auth)return;const profile=(await getProfile())||{rol:"soporte"};ST.profile=profile||null;ensureAppShell({page:"ticket",title:"",kicker:"",role:profile?.rol||"soporte",actionsHtml:""});setAppRole(profile.rol||"soporte");syncQuickReplyAdminUi();registerInternalSearchProvider({sb:s,user:auth.user,rol:profile?.rol||"soporte"});if(!ID){toast("Falta ID del ticket","bad");setTimeout(()=>location.href=TICKET_LIST_RETURN,900);return}const tk=await loadTicketCore();if(!tk){toast("Ticket no encontrado","bad");setTimeout(()=>location.href=TICKET_LIST_RETURN,900);return}T=tk;await loadTicketContext();await hydrateTicketUi();ticketJourney?.setClient(T?.cliente_id,T?.clientes?.nombre||T?.empresa_capturada||"Ficha")};
 const refreshTicketAfterWrite=async()=>{const prevClientId=T?.cliente_id||null;const tk=await loadTicketCore();if(!tk)return;T=tk;await loadTicketContext();ST.linkedContact=await loadLinkedContact();ST.portalMeta=await loadPortalMeta();if((T?.cliente_id||null)!==prevClientId){await loadClientContacts();CLIENT_SYSTEMS=await loadClientSystems()}withLogScrollPreserved(()=>render());const renewal=await loadRenewalChip(); renderComposerMode();renderLogFilesMeta();applyNotifUi();if(!ST.lastNotifSig)ST.lastNotifSig=notifSig()};
 const buildTicketPublicEntry=({kind,texto,uploaded,now})=>["solicitud","solucion","seguimiento"].includes(kind)?{kind:"mensaje",autor:"soporte",titulo:publicEntryTitle(kind),texto:texto||(uploaded.length?`Se adjuntaron ${uploaded.length} archivo(s) para revisión.`:"Actualización de soporte."),fecha:now,adjuntos:uploaded}:null;
 const buildTicketUpdatePayload=({nextState,entry,uploaded=[],now})=>{

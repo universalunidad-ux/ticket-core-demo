@@ -11,6 +11,7 @@ import { esc, debounce } from "./global.js?v=frontend-final-20260716-01";
 import { JANOME_CATALOGO } from "./janome/janome_catalogo.js";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
+import { mountOperationsJourney } from "./shared/operations-journey.js";
 
 const $ = (q, c = document) => c.querySelector(q);
 const OPEN = new Set(["abierto", "en_proceso", "esperando_cliente"]);
@@ -376,5 +377,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#clList").addEventListener("click", event => go(event.target.closest?.(".cl-row"))); $("#clList").addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); go(event.target.closest?.(".cl-row")); } });
   document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#clFiltersPanel").hidden) { event.preventDefault(); closeFilters(); } });
   document.addEventListener("pointerdown", event => { if (!$("#clFiltersPanel").hidden && !event.target.closest(".cl-filter-wrap")) closeFilters({ focusTrigger: false }); });
+  mountOperationsJourney({ page: "clientes", onRefresh: async () => {
+    await loadDirectory();
+    if (ST.error) throw new Error(ST.error.code || "CLIENTS_REFRESH_FAILED");
+  } });
   await loadDirectory();
 });

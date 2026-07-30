@@ -22,6 +22,7 @@ import { evaluateAssignment, matchingRules, OUTCOME, REASON } from "./shared/ass
 import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel, copyTxt } from "./global.js?v=frontend-final-20260716-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { classifyLoadError, describeLoadError, paginate, pageItems, createSequence, keepLastValid, evidenceView, evidenceStoragePath, internalMessagePreview } from "./shared/dashboard-resilience.js?v=frontend-final-20260716-01";
+import { mountOperationsJourney } from "./shared/operations-journey.js";
 
 const $ = (q, c = document) => c.querySelector(q);
 const OPEN_STATES = ["abierto", "en_proceso", "esperando_cliente"];
@@ -1390,6 +1391,17 @@ async function init() {
   }
 
   /* Progresivo: KPIs primero; actividad y adaptador de vistas después. */
+  const refreshDashboardJourney=()=>Promise.allSettled([
+    loadMetrics(),
+    loadActividad(),
+    loadAgentSummary(),
+    CTX.isAdmin?loadSupervision():Promise.resolve(),
+  ]);
+  mountOperationsJourney({
+    page:"dashboard",
+    onRefresh:refreshDashboardJourney,
+    intervalMs:60000,
+  });
   await loadMetrics();
   perfPageReady();
   Promise.allSettled([loadActividad(), loadAgentSummary(), CTX.isAdmin?loadSupervision():Promise.resolve()]).then(perfSecondaryDone);

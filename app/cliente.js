@@ -14,10 +14,12 @@ import { loadIdentidad, loadEquipos, loadTickets, loadBitacora, loadSugeridos } 
 import * as UI from "./cliente.ui.js";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
+import { mountOperationsJourney } from "./shared/operations-journey.js";
 
 const $ = q => document.querySelector(q);
 const TABS = ["resumen", "contactos", "equipos", "tickets", "adjuntos", "bitacora", "consolidacion"];
 const ST = { sb: null, id: null, identidad: null, tab: "resumen", cache: {}, seq: {}, loading: {} };
+let clientJourney = null;
 
 function clientListReturn() {
   const requested = new URLSearchParams(location.search).get("return");
@@ -158,6 +160,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   UI.renderHeader(ST.identidad);
+  clientJourney = mountOperationsJourney({
+    page: "cliente",
+    onRefresh: async () => {
+      ST.identidad = await withTimeout(loadIdentidad(ST.sb, ST.id), 12000);
+      ST.cache = {};
+      UI.renderHeader(ST.identidad);
+      syncCounts();
+      await openTab(ST.tab, false);
+    },
+  });
   syncCounts();
   perfPrimaryDone();
   await openTab(hashTab || "resumen", false);
