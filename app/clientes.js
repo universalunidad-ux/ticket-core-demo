@@ -1,6 +1,6 @@
 /* ==========================================================================
    CLIENTES-02 — filtros y paginación sobre el directorio completo autorizado.
-   Sistemas se consultan sólo para IDs de clientes ya visibles por RLS. Si ese
+   Productos se consultan sólo para IDs de clientes ya visibles por RLS. Si ese
    contrato no responde, el filtro de equipo se deshabilita de forma honesta.
    ========================================================================== */
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
@@ -15,7 +15,7 @@ import { mountOperationsJourney } from "./shared/operations-journey.js";
 
 const $ = (q, c = document) => c.querySelector(q);
 const OPEN = new Set(["abierto", "en_proceso", "esperando_cliente"]);
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 12;
 const ORDERS = new Set(["actividad", "tickets", "abiertos", "az", "za"]);
 const FILTER_KEYS = new Set(["recent", "open", "waiting", "priority", "sla", "consolidation", "machines"]);
 const BATCH = 500, SYSTEM_CHUNK = 80;
@@ -205,11 +205,22 @@ function render() {
     $("#clCount").textContent = "Carga interrumpida"; $("#clPagination").innerHTML = ""; $("#clRetry")?.addEventListener("click", loadDirectory); return;
   }
   rebuildRows();
-  const total = ST.rows.length, totalPages = Math.max(1, Math.ceil(total / ST.size)), from = (ST.page - 1) * ST.size, shown = ST.rows.slice(from, from + ST.size);
+  const total = Number.isFinite(ST.rows.length) ? ST.rows.length : 0;
+  const safeSize = Number.isFinite(ST.size) && ST.size > 0 ? Math.trunc(ST.size) : PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(total / safeSize));
+  const requestedPage = Number.isFinite(ST.page) ? Math.trunc(ST.page) : 1;
+  ST.page = Math.min(Math.max(1, requestedPage), totalPages);
+  const from = (ST.page - 1) * safeSize;
+  const shown = ST.rows.slice(from, from + safeSize);
   $("#clVistaTabla")?.classList.toggle("is-active", ST.vista === "tabla"); $("#clVistaCards")?.classList.toggle("is-active", ST.vista === "cards");
   $("#clCount").textContent = total ? `${total} cliente${total === 1 ? "" : "s"} · ${from + 1}–${from + shown.length}` : "0 clientes";
   if (!shown.length) {
-    box.innerHTML = `<div class="empty-state"><b>Sin resultados</b><span>${hasAnyFilter() ? "No hay clientes que coincidan con los filtros aplicados." : "No hay clientes dentro de tu alcance autorizado."}</span>${hasAnyFilter() ? '<button class="btn btn-ghost" id="clEmptyClear" type="button">Limpiar búsqueda y filtros</button>' : ""}</div>`;
+    const emptyCopy = hasAnyFilter()
+      ? "No hay clientes que coincidan con los filtros aplicados."
+      : ST.isAdmin
+        ? "No hay clientes registrados."
+        : "No hay clientes asignados dentro de su alcance autorizado.";
+    box.innerHTML = `<div class="empty-state"><b>Sin resultados</b><span>${emptyCopy}</span>${hasAnyFilter() ? '<button class="btn btn-ghost" id="clEmptyClear" type="button">Limpiar búsqueda y filtros</button>' : ""}</div>`;
     $("#clEmptyClear")?.addEventListener("click", clearAll);
   } else box.innerHTML = ST.vista === "cards"
     ? `<div class="cl-cards">${shown.map(rowCard).join("")}</div>`
@@ -248,6 +259,16 @@ function chooseEquipment(button) {
   if (!item) return;
   ST.draftEquipment = item; $("#clEquipmentInput").value = item.label; $("#clEquipmentList").hidden = true; $("#clEquipmentInput").setAttribute("aria-expanded", "false");
   $("#clFilterStatus").textContent = `${item.kind === "family" ? "Familia" : "Modelo"}: ${item.label}`;
+  $("#clEquipmentInput").focus({ preventScroll: true });
+}
+
+function closeEquipmentSuggestions({ restoreFocus = false } = {}) {
+  const input = $("#clEquipmentInput"), list = $("#clEquipmentList");
+  if (!input || !list || list.hidden) return;
+  list.hidden = true;
+  input.setAttribute("aria-expanded", "false");
+  ST.equipmentOptionIndex = -1;
+  if (restoreFocus) input.focus({ preventScroll: true });
 }
 
 function syncFilterDraft() {
@@ -284,7 +305,7 @@ function syncFilterDraft() {
 
 function closeFilters({ focusTrigger = true } = {}) {
   const popup = $("#clFiltersPanel"); if (popup.hidden) return;
-  popup.hidden = true; $("#clFiltersBtn").setAttribute("aria-expanded", "false"); $("#clEquipmentList").hidden = true;
+  popup.hidden = true; $("#clFiltersBtn").setAttribute("aria-expanded", "false"); closeEquipmentSuggestions();
   if (focusTrigger) $("#clFiltersBtn").focus();
 }
 
@@ -365,9 +386,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const options = [...document.querySelectorAll("#clEquipmentList [data-equipment-kind]")];
     if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); ST.equipmentOptionIndex = event.key === "ArrowDown" ? Math.min(ST.equipmentOptionIndex + 1, options.length - 1) : Math.max(ST.equipmentOptionIndex - 1, 0); renderEquipmentSuggestions(); }
     else if (event.key === "Enter" && options.length) { event.preventDefault(); chooseEquipment(options[Math.max(0, ST.equipmentOptionIndex)]); }
+    else if (event.key === "Escape" && !$("#clEquipmentList").hidden) { event.preventDefault(); event.stopPropagation(); closeEquipmentSuggestions({ restoreFocus: true }); }
   });
   $("#clEquipmentList").addEventListener("click", event => { const option = event.target.closest("[data-equipment-kind]"); if (option) chooseEquipment(option); });
-  $("#clPagination").addEventListener("click", event => { const button = event.target.closest("[data-page]"); if (!button || button.disabled) return; ST.page = Number(button.dataset.page); refresh(); });
+  $("#clPagination").addEventListener("click", event => {
+    const button = event.target.closest("[data-page]"), page = Number.parseInt(button?.dataset.page, 10);
+    if (!button || button.disabled || !Number.isFinite(page) || page < 1) return;
+    ST.page = page; refresh();
+  });
   const go = row => {
     if (!row) return;
     persist();
@@ -376,7 +402,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   $("#clList").addEventListener("click", event => go(event.target.closest?.(".cl-row"))); $("#clList").addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); go(event.target.closest?.(".cl-row")); } });
   document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#clFiltersPanel").hidden) { event.preventDefault(); closeFilters(); } });
-  document.addEventListener("pointerdown", event => { if (!$("#clFiltersPanel").hidden && !event.target.closest(".cl-filter-wrap")) closeFilters({ focusTrigger: false }); });
+  document.addEventListener("pointerdown", event => {
+    if (!$("#clEquipmentList").hidden && !event.target.closest(".cl-equipment-field")) closeEquipmentSuggestions();
+    if (!$("#clFiltersPanel").hidden && !event.target.closest(".cl-filter-wrap")) closeFilters({ focusTrigger: false });
+  });
   mountOperationsJourney({ page: "clientes", onRefresh: async () => {
     await loadDirectory();
     if (ST.error) throw new Error(ST.error.code || "CLIENTS_REFRESH_FAILED");

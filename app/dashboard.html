@@ -19,10 +19,8 @@
 <div id="appShell"></div>
 
 <main class="wrap">
-  <!-- Hero compacto: máximo 2 filas visuales (kicker+acciones / texto+badge de rol).
-       B20-FABLE-01: el rol vive INLINE dentro de #dashLead (owner: init() en
-       dashboard.js). Se eliminó .dash-hero-meta con #dashRoleBadge y #dashScope:
-       eran redundantes con el badge inline (owner retirado, no oculto con CSS). -->
+  <!-- Hero compacto: el rol vive junto a “Mesa de soporte Janome”; el texto
+       operativo queda en una línea independiente y no repite metadatos. -->
   <section class="panel dash-hero">
     <div class="dash-hero-copy">
       <div class="section-kicker" id="dashKicker">Mesa de soporte Janome</div>
@@ -99,20 +97,6 @@
     </div>
   </div>
 
-  <section class="panel dash-admin-only hidden" id="dashAgents" style="margin-top:12px">
-    <div class="section-head"><div><div class="section-kicker">Equipo</div><h2>Agentes de soporte</h2></div></div>
-    <p class="sr-only" id="dashSupervisionHelp">Tickets que fueron escalados y todavía requieren revisión administrativa.</p>
-    <div class="dash-agent-grid" id="dashAgentGrid"><div class="dash-skel"></div></div>
-  </section>
-
-  <div class="overlay" id="dashAgentModal" role="dialog" aria-modal="true" aria-labelledby="dashAgentTitle" aria-describedby="dashAgentMetricTitle" tabindex="-1" hidden>
-    <div class="modal dash-agent-modal">
-      <div class="section-head"><div><div class="section-kicker" id="dashAgentRole">Soporte</div><h3 id="dashAgentTitle">Agente</h3><p class="mut" id="dashAgentMetricTitle">Tickets · 0</p></div><button class="icon-btn" id="dashAgentClose" type="button" aria-label="Cerrar">✕</button></div>
-      <div class="dash-agent-detail" id="dashAgentDetail" aria-live="polite"></div>
-      <div class="dash-agent-pager"><button class="mini btn-ghost" id="dashAgentPrev" type="button">Anterior</button><span class="mut" id="dashAgentPage">Página 1 de 1</span><button class="mini btn-ghost" id="dashAgentNext" type="button">Siguiente</button></div>
-    </div>
-  </div>
-
   <!-- Administración: solo admin; tabs con estado en hash y contenido lazy. -->
   <section class="panel dash-admin-only hidden" id="dashAdmin" style="margin-top:12px">
     <div class="section-head">
@@ -122,9 +106,8 @@
       <button class="adm-tab" data-adm="avisos" id="admTabAvisos" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Avisos del sitio</button>
       <button class="adm-tab" data-adm="personalizacion" id="admTabPersonalizacion" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Personalización</button>
       <button class="adm-tab" data-adm="reglas" id="admTabReglas" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Reglas de asignación</button>
-      <button class="adm-tab" data-adm="bitacora" id="admTabBitacora" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Bitácora</button>
     </nav>
-    <div class="adm-panel" id="admPanel" role="tabpanel"><div class="mut">Elige una sección. Cada sección carga sus datos solo al abrirla.</div></div>
+    <div class="adm-panel" id="admPanel" role="tabpanel"><div class="mut">Cargando Avisos del sitio…</div></div>
   </section>
 </main>
 
