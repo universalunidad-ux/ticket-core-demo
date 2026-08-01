@@ -33,12 +33,13 @@
 @keyframes clPulse{0%,100%{opacity:.55}50%{opacity:1}}
 .mini.is-active{border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:color-mix(in srgb,var(--brand) 12%,transparent)}
 /* Vista de tarjetas */
-.cl-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
+.cl-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:6px}
 .cl-card{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--panel-2) 96%,transparent);cursor:pointer;min-width:0}
 .cl-card:hover{border-color:color-mix(in srgb,var(--brand) 35%,var(--line))}
 .cl-card:focus-visible{outline:none;box-shadow:var(--focus)}
 .cl-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .cl-card-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+@media (max-width:1120px){.cl-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:860px){
   .cl-toolbar{grid-template-columns:1fr}
   .cl-filter-panel{left:0;right:auto}
@@ -47,7 +48,8 @@
   .cl-table thead{display:none}
   .cl-table .cl-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:color-mix(in srgb,var(--panel-2) 96%,transparent)}
   .cl-table .cl-row td{display:block;border:0!important;background:transparent;padding:0}
+  .cl-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:520px){
-  .cl-filter-options{grid-template-columns:1fr}.cl-pager{align-items:center}.cl-pagination{width:auto}.cl-pagination .mini{flex:none}
+  .cl-filter-options{grid-template-columns:1fr}.cl-pager{align-items:center}.cl-pagination{width:auto}.cl-pagination .mini{flex:none}.cl-cards{grid-template-columns:1fr}
 }

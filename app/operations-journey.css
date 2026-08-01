@@ -1,0 +1,15 @@
+.tc-operations-journey{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:18px;background:color-mix(in srgb,var(--panel) 94%,transparent);box-shadow:0 10px 28px rgba(15,23,42,.06)}
+.tc-operations-links,.tc-operations-sync{display:flex;align-items:center;gap:8px;min-width:0}
+.tc-operations-links{overflow-x:auto;scrollbar-width:none}
+.tc-operations-links::-webkit-scrollbar{display:none}
+.tc-operations-links a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 13px;border-radius:12px;color:var(--muted);font-size:.86rem;font-weight:800;text-decoration:none;white-space:nowrap}
+.tc-operations-links a:hover,.tc-operations-links a:focus-visible{background:color-mix(in srgb,var(--brand) 10%,var(--panel));color:var(--text)}
+.tc-operations-links a[aria-current="page"]{background:color-mix(in srgb,var(--brand) 14%,var(--panel));color:var(--brand);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 28%,transparent)}
+.tc-operations-state{max-width:220px;color:var(--muted);font-size:.78rem;font-weight:750;text-align:right}
+.tc-operations-journey[data-sync-state="busy"] .tc-operations-state{color:var(--brand)}
+.tc-operations-journey[data-sync-state="error"] .tc-operations-state{color:var(--bad,#b91c1c)}
+.tc-operations-journey[data-sync-state="paused"] .tc-operations-state{color:var(--warn,#9a6700)}
+.tc-operations-sync button{min-width:92px;min-height:40px}
+.tc-operations-sync button[aria-busy="true"]{cursor:progress;opacity:.72}
+@media(max-width:720px){.tc-operations-journey{align-items:stretch;flex-direction:column;padding:9px;border-radius:16px}.tc-operations-links{width:100%}.tc-operations-links a{flex:1 0 auto;min-height:44px}.tc-operations-sync{justify-content:space-between}.tc-operations-state{max-width:none;text-align:left}.tc-operations-sync button{min-height:44px}}
+@media(prefers-reduced-motion:reduce){.tc-operations-journey *{scroll-behavior:auto!important;transition:none!important}}

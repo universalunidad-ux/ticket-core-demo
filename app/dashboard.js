@@ -22,10 +22,11 @@ import { evaluateAssignment, matchingRules, OUTCOME, REASON } from "./shared/ass
 import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel, copyTxt } from "./global.js?v=frontend-final-20260716-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { classifyLoadError, describeLoadError, paginate, pageItems, createSequence, keepLastValid, evidenceView, evidenceStoragePath, internalMessagePreview } from "./shared/dashboard-resilience.js?v=frontend-final-20260716-01";
+import { mountOperationsJourney } from "./shared/operations-journey.js";
 
 const $ = (q, c = document) => c.querySelector(q);
 const OPEN_STATES = ["abierto", "en_proceso", "esperando_cliente"];
-const CTX = { rol: "soporte", isAdmin: false, me: null, nombre: "" };
+const CTX = { rol: "soporte", isAdmin: false, me: null, nombre: "", roleResolved: false };
 const busy = new Set(); // guardas anti doble-submit por acción
 let AGENT_ROWS = [], AGENT_MODAL_STATE={agent:null,metric:null,page:0,trigger:null};
 /* U15A-2: perfiles y tickets se cargan por separado; el último resultado válido se
@@ -549,27 +550,39 @@ function renderViewsPending() {
 const ADM = { current: "", mounted: {}, dirty:false };
 const admHash = tab => `#admin${tab ? "/" + tab : ""}`;
 
+/* OBS-17 — guarda semántica de Administración.
+   «Avisos del sitio» se muestra ABIERTO por defecto para el administrador, pero
+   estar abierto NO autoriza por sí solo montar ni consultar datos. Montar/leer
+   exige simultáneamente: rol resuelto, rol administrador, módulo de
+   Administración presente y contenedor de panel montado en el documento.
+   Es una precondición explícita del dominio, no un timeout ni una condición
+   cosmética: sin ella el dashboard consultaba avisos_globales en cada carga. */
+const admSurfaceReady = () =>
+  Boolean(CTX.roleResolved && CTX.isAdmin && $("#dashAdmin") && $("#admTabs") && $("#admPanel")?.isConnected);
+
 function openAdmin(tab, push = true) {
-  if (!CTX.isAdmin) return;
+  if (!admSurfaceReady()) return;
   const sec = $("#dashAdmin");
   sec?.classList.remove("hidden");
-  tab = ["avisos", "personalizacion", "reglas", "bitacora"].includes(tab) ? tab : "avisos";
+  tab = ["avisos", "personalizacion", "reglas"].includes(tab) ? tab : "avisos";
   if(ADM.current==="personalizacion"&&tab!==ADM.current&&ADM.dirty&&!confirm("Hay cambios sin guardar en la vista previa. ¿Salir de Personalización y descartarlos?"))return;
   if(tab!=="personalizacion")ADM.dirty=false;
   ADM.current = tab;
-  setPageContextLabel(({avisos:"AVISOS DEL SITIO",personalizacion:"PERSONALIZACIÓN",reglas:"REGLAS DE ASIGNACIÓN",bitacora:"BITÁCORA ADMINISTRATIVA"})[tab]);
+  setPageContextLabel(({avisos:"AVISOS DEL SITIO",personalizacion:"PERSONALIZACIÓN",reglas:"REGLAS DE ASIGNACIÓN"})[tab]);
   let activeBtn = null;
   document.querySelectorAll("#admTabs .adm-tab").forEach(b => {const active=b.dataset.adm===tab;b.classList.toggle("is-active",active);b.setAttribute("aria-selected",String(active));b.tabIndex=active?0:-1;if(active)activeBtn=b});
   if (activeBtn?.id) $("#admPanel")?.setAttribute("aria-labelledby", activeBtn.id);
   document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => {const active=p.dataset.admPanel===tab;p.classList.toggle("hidden",!active);p.hidden=!active;p.inert=!active});
   if (!ADM.mounted[tab]) {
-    ADM.mounted[tab] = true;
+    const panel = $("#admPanel");
+    if (!panel) return; /* sin contenedor no se monta ni se rompe el dashboard */
     const host = document.createElement("div");
     host.dataset.admPanel = tab;
-    if ($("#admPanel > .mut")) $("#admPanel").innerHTML = "";
-    $("#admPanel").appendChild(host);
+    if ($("#admPanel > .mut")) panel.innerHTML = "";
+    panel.appendChild(host);
+    ADM.mounted[tab] = true; /* sólo tras montar realmente: sin estado fantasma */
     document.querySelectorAll("#admPanel [data-adm-panel]").forEach(p => {const active=p.dataset.admPanel===tab;p.classList.toggle("hidden",!active);p.hidden=!active;p.inert=!active});
-    ({ avisos: mountAvisos, personalizacion: mountConfig, reglas: mountReglas, bitacora: mountBitacora }[tab])(host);
+    ({ avisos: mountAvisos, personalizacion: mountConfig, reglas: mountReglas }[tab])(host);
   }
   /* replaceState: el hash refleja la tab sin crear historial ni provocar
      scroll-jump (nunca location.hash= ni anchors reales). */
@@ -577,6 +590,7 @@ function openAdmin(tab, push = true) {
 }
 
 function bindAdmin() {
+  if (!admSurfaceReady()) return; /* OBS-17: sin módulo administrativo no se enlaza ni se consulta */
   if (document.documentElement.dataset.adminTabsBound === "1") return; /* singleton: sin listeners duplicados */
   document.documentElement.dataset.adminTabsBound = "1";
   $("#admTabs")?.addEventListener("click", e => {
@@ -599,8 +613,11 @@ function bindAdmin() {
     const m = location.hash.match(/^#admin(?:\/(\w+))?/);
     if (m) openAdmin(m[1] || ADM.current || "avisos", false);
   });
+  /* Abierto por defecto para el administrador autorizado (sin interacción): la
+     apertura ya pasó por admSurfaceReady, y la consulta queda acotada por
+     avRequestOnce. Nunca se abre para soporte, cliente ni rol sin resolver. */
   const m = location.hash.match(/^#admin(?:\/(\w+))?/);
-  if (m) openAdmin(m[1] || "avisos", false);
+  openAdmin(m?.[1] || "avisos", false);
 }
 
 /* ============================================================================
@@ -658,8 +675,20 @@ const avCardHtml = a => `<article class="av-card ${CLASE[a.tipo] || "info"}${a.a
         : `<button class="mini btn-ghost" type="button" data-av-toggle="${a.id}" data-on="0">Publicar</button>`}
     </div>
   </article>`;
+/* OBS-17 — una sola consulta por instancia montada del panel de Avisos.
+   Un segundo render, una inicialización duplicada o un desmontaje no vuelven a
+   pedir datos; el retry explícito y las mutaciones sí usan avRefrescar directo. */
+let AV_FETCHED = null;
+function avRequestOnce() {
+  if (!admSurfaceReady()) return;
+  const cont = $("#avLista");
+  if (!cont?.isConnected) return; /* contenedor ausente o desmontado: sin red */
+  if (AV_FETCHED === cont) return; /* ya consultado para esta instancia */
+  AV_FETCHED = cont;
+  return avRefrescar();
+}
 async function avRefrescar() {
-  const cont = $("#avLista"); if (!cont) return;
+  const cont = $("#avLista"); if (!cont?.isConnected) return;
   cont.innerHTML = '<div class="dash-skel"></div><div class="dash-skel"></div>';
   const r = await avListar();
   if (r.error) { cont.innerHTML = `<div class="empty-state av-state-error">${esc(errText(r.error, "leer los avisos"))} <button class="mini btn-ghost" id="avRetry" type="button">Reintentar</button></div>`; $("#avRetry")?.addEventListener("click", avRefrescar); return; }
@@ -759,7 +788,7 @@ function mountAvisos(host) {
   $("#avPublicar")?.addEventListener("click", avPublicar);
   host.addEventListener("click", avClick);
   avSyncPreview();
-  avRefrescar();
+  avRequestOnce(); /* OBS-17: consulta única y condicionada, no incondicional */
 }
 
 /* ============================================================================
@@ -1331,14 +1360,6 @@ export async function loadLogSummary(box) {
   }
 }
 
-async function mountBitacora(host) {
-  host.innerHTML = `
-    <div class="section-head"><div><h3>Bitácora administrativa</h3><p class="mut">Resumen de la actividad administrativa y operativa de la mesa.</p></div>
-      <a class="mini btn-ghost" href="bitacora-admin.html">Abrir actividad y auditoría</a></div>
-    <div class="adm-log-summary" data-log-summary><div class="dash-skel"></div></div>`;
-  loadLogSummary(host.querySelector("[data-log-summary]"));
-}
-
 /* ============================================================================
    INIT
    ============================================================================ */
@@ -1349,18 +1370,20 @@ async function init() {
   CTX.isAdmin = isAdminRole(ctx.rol);
   CTX.me = ctx.perfil?.id || ctx.user?.id || null;
   CTX.nombre = ctx.perfil?.nombre || "";
+  CTX.roleResolved = true; /* OBS-17: nada administrativo consulta antes de esta línea */
   document.body.dataset.accessRole=CTX.isAdmin?"admin":"soporte";
   document.body.dataset.surface=CTX.isAdmin?"admin":"support";
 
-  /* Hero — owner único del rol: badge INLINE al final de #dashLead (sin
-     .dash-hero-meta ni badge duplicado a la derecha). Texto y badge fluyen
-     juntos; máximo 2 filas visuales para admin (kicker+acciones / lead+badge). */
+  /* Hero — badge de rol junto al kicker; el lead sólo conserva el contexto
+     operativo para reducir altura y evitar metadatos repetidos. */
   const setLead = (text, badgeLabel, extraTag) => {
     const l1 = $("#dashLead"); if (!l1) return;
-    l1.textContent = text + " ";
+    l1.textContent = text;
+    const kicker = $("#dashKicker");
+    kicker?.querySelector(".dash-role-inline")?.remove();
     const b = document.createElement("span");
     b.className = "tag ok dash-role-inline"; b.textContent = badgeLabel;
-    l1.appendChild(b);
+    kicker?.appendChild(b);
     if (extraTag) { const x = document.createElement("span"); x.className = "tag dash-role-inline"; x.textContent = extraTag; l1.appendChild(document.createTextNode(" ")); l1.appendChild(x); }
   };
   if (!CTX.isAdmin) {
@@ -1376,13 +1399,7 @@ async function init() {
     const t1 = $("#dashTitle"); if (t1) { t1.textContent = "Administración de la mesa de soporte Janome"; t1.classList.add("sr-only"); }
     setLead("Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.", "Administrador");
     $("#dashAdmin")?.classList.remove("hidden");
-    $("#dashAgents")?.classList.remove("hidden");
     $("#dashSupervision")?.classList.remove("hidden");
-    $("#dashAgentGrid")?.addEventListener("click",e=>{const metric=e.target.closest("[data-agent-metric]"),card=metric?.closest("[data-agent-row]");if(metric&&card)openAgentMetric(AGENT_ROWS[Number(card.dataset.agentRow)],metric.dataset.agentMetric,metric)});
-    $("#dashAgentClose")?.addEventListener("click",()=>closeDialog("#dashAgentModal"));
-    $("#dashAgentModal")?.addEventListener("click",e=>{if(e.target.id==="dashAgentModal")closeDialog("#dashAgentModal")});
-    $("#dashAgentPrev")?.addEventListener("click",()=>{if(AGENT_MODAL_STATE.page>0){AGENT_MODAL_STATE.page--;renderAgentModal()}});
-    $("#dashAgentNext")?.addEventListener("click",()=>{AGENT_MODAL_STATE.page++;renderAgentModal()});
     $("#dashSupClose")?.addEventListener("click",()=>closeDialog("#dashSupervisionModal"));
     $("#dashSupervisionModal")?.addEventListener("click",e=>{if(e.target.id==="dashSupervisionModal")closeDialog("#dashSupervisionModal")});
     $("#dashSupCopy")?.addEventListener("click",()=>{const f=SUP_MODAL_STATE.row?.folio;if(f&&f!=="—")copyTxt(f,`Folio ${f} copiado`)});
@@ -1390,9 +1407,19 @@ async function init() {
   }
 
   /* Progresivo: KPIs primero; actividad y adaptador de vistas después. */
+  const refreshDashboardJourney=()=>Promise.allSettled([
+    loadMetrics(),
+    loadActividad(),
+    CTX.isAdmin?loadSupervision():Promise.resolve(),
+  ]);
+  mountOperationsJourney({
+    page:"dashboard",
+    onRefresh:refreshDashboardJourney,
+    intervalMs:60000,
+  });
   await loadMetrics();
   perfPageReady();
-  Promise.allSettled([loadActividad(), loadAgentSummary(), CTX.isAdmin?loadSupervision():Promise.resolve()]).then(perfSecondaryDone);
+  Promise.allSettled([loadActividad(), CTX.isAdmin?loadSupervision():Promise.resolve()]).then(perfSecondaryDone);
 }
 
 if(document.body?.dataset.page==="dashboard")document.addEventListener("DOMContentLoaded", init);

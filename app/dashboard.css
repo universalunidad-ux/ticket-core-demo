@@ -7,15 +7,13 @@
    global.css y no bloquea contenido.
    ============================================================================ */
 
-/* ---- Hero compacto (B20-FABLE-01): máx. 2 filas visuales para admin.
-   El rol vive inline en .dash-hero-lead; .dash-hero-meta se retiró (owner
-   eliminado en HTML/JS, no oculto con CSS). ---- */
+/* ---- Hero compacto: rol junto al kicker y contexto operativo separado. ---- */
 .dash-hero{display:flex;justify-content:space-between;gap:12px 16px;align-items:flex-start;flex-wrap:wrap;padding:14px 18px}
 .dash-hero-copy{min-width:0;flex:1 1 420px}
 .dash-hero h1{font-size:clamp(22px,2.6vw,30px);font-weight:950;letter-spacing:-.03em;line-height:1.1;margin:2px 0 4px}
 .dash-hero .mut{max-width:70ch}
 .dash-hero-lead{margin-top:4px;line-height:1.5}
-.dash-role-inline{vertical-align:middle;margin-left:2px;padding:3px 9px;font-size:11px;white-space:nowrap}
+.dash-role-inline{vertical-align:middle;margin-left:8px;padding:3px 9px;font-size:11px;white-space:nowrap;letter-spacing:0;text-transform:none}
 .dash-hero-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
 /* ---- KPI rail horizontal (B21) ----
@@ -169,7 +167,7 @@ html[data-theme=dark] .av-del-btn img{filter:invert(1) brightness(1.4)}
 .notice-text{font-size:13px;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
 
 /* Personalización premium */
-.sc-group{border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:12px;background:color-mix(in srgb,var(--panel-2) 94%,transparent)}
+.sc-group{border:1px solid color-mix(in srgb,var(--brand) 15%,var(--line));border-radius:18px;padding:16px;display:grid;gap:13px;background:linear-gradient(145deg,color-mix(in srgb,var(--brand) 5%,var(--panel)),color-mix(in srgb,var(--panel-2) 96%,transparent));box-shadow:var(--shadow-xs)}
 .sc-group>h4{margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .sc-field{display:grid;gap:5px}
 .sc-field-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
@@ -179,7 +177,7 @@ html[data-theme=dark] .av-del-btn img{filter:invert(1) brightness(1.4)}
 .sc-dirty{display:none;width:8px;height:8px;border-radius:99px;background:var(--warn);flex:none}
 .sc-field.is-dirty .sc-dirty{display:inline-block}
 .sc-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-.sc-preview{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--bg)}
+.sc-preview{border:1px solid color-mix(in srgb,var(--brand) 20%,var(--line));border-radius:20px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow-sm)}
 .sc-preview.is-mobile{max-width:390px;margin:0 auto}
 .sc-preview-body{padding:16px;display:grid;gap:14px}
 .sc-mock{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--panel);display:grid;gap:6px}

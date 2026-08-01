@@ -32,6 +32,13 @@
 .cf-ticket-title{font-weight:850;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cf-ticket-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .cf-ticket-cta{font-size:20px;color:var(--muted);flex:none}
+.cf-ticket-pager{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px}
+.cf-ticket-pager .mini{min-width:38px}
+.cf-product-actions{justify-content:flex-end;margin-top:12px}
+.cf-product-modal{width:min(720px,100%);display:grid;gap:14px}
+.cf-product-kind{display:flex;gap:8px;flex-wrap:wrap;border:0;padding:0;margin:0}.cf-product-kind legend{width:100%;font-weight:850;margin-bottom:5px}.cf-product-kind .pill{cursor:pointer}.cf-product-kind .pill:has(input:checked){border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:color-mix(in srgb,var(--brand) 10%,var(--panel))}
+.cf-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cf-product-grid .field{display:grid;gap:5px}.cf-product-grid .field:nth-child(2){grid-column:span 1}
+.cf-consolidation-note{display:grid;gap:4px;padding:12px 14px;margin-bottom:14px;border:1px solid color-mix(in srgb,var(--info) 30%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--info) 7%,var(--panel));font-size:13px}.cf-consolidation-note span{color:var(--muted)}
 
 /* Skeleton y estado vacío por pestaña (nunca panel blanco) */
 .cf-skel{height:56px;border-radius:14px;background:color-mix(in srgb,var(--panel-2) 92%,transparent);animation:cfPulse 1.2s ease-in-out infinite;margin-bottom:8px}
@@ -47,3 +54,4 @@
   .cf-ticket{align-items:flex-start}
   .cf-ticket-meta{flex-direction:column;gap:2px}
 }
+@media (max-width:600px){.cf-product-grid{grid-template-columns:1fr}}

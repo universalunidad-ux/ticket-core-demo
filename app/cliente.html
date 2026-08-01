@@ -4,7 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Cliente | Ticket Core Janome</title>
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
-<link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="cliente.css?v=frontend-final-20260716-01">
+<link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="cliente.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="operations-journey.css?v=functional-product-macrobatch-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B19A: sin ?id= esta página redirige a clientes.html.
      B19D: carga progresiva (identidad → tab activa → lazy por pestaña). -->
@@ -34,6 +34,22 @@
   </nav>
   <section class="panel" id="cfBody" role="tabpanel" aria-labelledby="cfTabResumen"><div class="cf-skel"></div><div class="cf-skel"></div><div class="cf-skel"></div></section>
 </main>
+<div class="overlay" id="cfProductModal" role="dialog" aria-modal="true" aria-labelledby="cfProductTitle" tabindex="-1" hidden>
+  <form class="modal cf-product-modal" id="cfProductForm" novalidate>
+    <div class="section-head"><div><div class="section-kicker">Producto del cliente</div><h2 id="cfProductTitle">Registrar producto</h2></div><button class="icon-btn" id="cfProductClose" type="button" aria-label="Cerrar">✕</button></div>
+    <p class="mut">Capture los datos disponibles. El registro no se enviará hasta que exista una operación backend autorizada.</p>
+    <fieldset class="cf-product-kind"><legend>Tipo de producto</legend><label class="pill"><input type="radio" name="productKind" value="machine" checked> Máquina</label><label class="pill"><input type="radio" name="productKind" value="accessory"> Accesorio</label></fieldset>
+    <div class="cf-product-grid">
+      <label class="field"><span class="lbl">Buscar en catálogo</span><input class="input" id="cfProductSearch" type="search" autocomplete="off" placeholder="Nombre o familia"></label>
+      <label class="field"><span class="lbl">Modelo o accesorio</span><select class="select" id="cfProductModel" required><option value="">Seleccione una opción</option></select></label>
+      <label class="field"><span class="lbl">Variante <span class="mut">(opcional)</span></span><input class="input" id="cfProductVariant" maxlength="80"></label>
+      <label class="field"><span class="lbl">Número de serie <span class="mut">(opcional)</span></span><input class="input" id="cfProductSerial" maxlength="80"></label>
+      <label class="field"><span class="lbl">Fecha de compra <span class="mut">(opcional)</span></span><input class="input" id="cfProductDate" type="date"></label>
+    </div>
+    <p class="status warn" id="cfProductStatus" aria-live="polite">Persistencia pendiente de contrato backend.</p>
+    <div class="actions"><button class="btn btn-ghost" id="cfProductCancel" type="button">Cancelar</button><button class="btn btn-brand" type="submit">Validar registro</button></div>
+  </form>
+</div>
 <script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
 <script type="module" src="cliente.js?v=frontend-final-20260716-01"></script>
 </body>
