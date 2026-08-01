@@ -3,14 +3,17 @@
 import { spawn } from "node:child_process";
 import {
   chmodSync,
+  copyFileSync,
+  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
-  readlinkSync,
-  symlinkSync,
+  readFileSync,
+  readdirSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const CANONICAL_FUNCTIONS = Object.freeze([
@@ -23,6 +26,145 @@ export const CANONICAL_FUNCTIONS = Object.freeze([
 const HERE = resolve(fileURLToPath(new URL(".", import.meta.url)));
 const REPO = resolve(HERE, "..", "..");
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
+// Minimal-closure materialisation of local modules imported from outside
+// supabase/functions. The Edge runtime builds its module graph exclusively
+// inside the temporary workdir, so every reachable local module must exist
+// there at the exact same repository-relative path the import expects.
+export const DEPENDENCY_SOURCE_EXTENSIONS = Object.freeze([
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".js",
+  ".mjs",
+  ".json",
+]);
+export const MAX_EXTERNAL_DEPENDENCIES = 64;
+const EXCLUDED_DEPENDENCY_PATH = /(^|\/)(\.git|node_modules|\.env)(\/|$)/i;
+const EXCLUDED_DEPENDENCY_FILE = /\.(env|key|pem|p12|pfx|crt|pgpass|secret)$/i;
+
+function stripSourceComments(source) {
+  let out = "";
+  let mode = "code";
+  let quote = "";
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    const next = source[i + 1];
+    if (mode === "code") {
+      if (char === "/" && next === "*") { mode = "block"; i += 1; continue; }
+      if (char === "/" && next === "/") { mode = "line"; i += 1; continue; }
+      if (char === '"' || char === "'" || char === "`") { mode = "string"; quote = char; }
+      out += char;
+      continue;
+    }
+    if (mode === "string") {
+      out += char;
+      if (char === "\\") { out += next ?? ""; i += 1; continue; }
+      if (char === quote) { mode = "code"; quote = ""; }
+      continue;
+    }
+    if (mode === "line") {
+      if (char === "\n") { mode = "code"; out += char; }
+      continue;
+    }
+    if (mode === "block") {
+      if (char === "*" && next === "/") { mode = "code"; i += 1; continue; }
+      if (char === "\n") out += char;
+    }
+  }
+  return out;
+}
+
+export function extractRelativeSpecifiers(source) {
+  const code = stripSourceComments(source);
+  const found = new Set();
+  const patterns = [
+    /\bfrom\s*(['"])(\.[^'"]*)\1/g,
+    /\bimport\s*(['"])(\.[^'"]*)\1/g,
+    /\bimport\s*\(\s*(['"])(\.[^'"]*)\1\s*\)/g,
+    /\brequire\s*\(\s*(['"])(\.[^'"]*)\1\s*\)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of code.matchAll(pattern)) found.add(match[2]);
+  }
+  return [...found];
+}
+
+function insideDir(candidate, root) {
+  return candidate === root || candidate.startsWith(root + sep);
+}
+
+function listSourceFiles(root) {
+  const files = [];
+  const visit = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else if (DEPENDENCY_SOURCE_EXTENSIONS.some(ext => entry.name.endsWith(ext))) files.push(path);
+    }
+  };
+  visit(root);
+  return files;
+}
+
+// Pure computation: repository-relative paths of every local module reachable
+// from supabase/functions that lives outside supabase/functions.
+export function collectExternalDependencyClosure(repoRoot = REPO) {
+  const functionsRoot = join(repoRoot, "supabase", "functions");
+  const queue = listSourceFiles(functionsRoot).map(path => ({ path, seed: true }));
+  const externals = new Map();
+  const seen = new Set(queue.map(item => item.path));
+
+  while (queue.length > 0) {
+    const { path } = queue.shift();
+    const source = readFileSync(path, "utf8");
+    for (const specifier of extractRelativeSpecifiers(source)) {
+      const target = resolve(dirname(path), specifier);
+      if (insideDir(target, functionsRoot)) continue;
+      if (!insideDir(target, repoRoot)) {
+        throw new Error(`E_RUNTIME_DEPENDENCY_ESCAPE:${specifier}`);
+      }
+      const rel = relative(repoRoot, target);
+      if (EXCLUDED_DEPENDENCY_PATH.test(rel) || EXCLUDED_DEPENDENCY_FILE.test(rel)) {
+        throw new Error(`E_RUNTIME_DEPENDENCY_FORBIDDEN:${rel}`);
+      }
+      if (!DEPENDENCY_SOURCE_EXTENSIONS.some(ext => rel.endsWith(ext))) {
+        throw new Error(`E_RUNTIME_DEPENDENCY_EXTENSION:${rel}`);
+      }
+      if (!existsSync(target) || lstatSync(target).isSymbolicLink() || !statSync(target).isFile()) {
+        throw new Error(`E_RUNTIME_DEPENDENCY_UNRESOLVED:${rel}`);
+      }
+      if (!externals.has(rel)) externals.set(rel, target);
+      if (!seen.has(target)) { seen.add(target); queue.push({ path: target, seed: false }); }
+    }
+  }
+
+  if (externals.size > MAX_EXTERNAL_DEPENDENCIES) {
+    throw new Error(`E_RUNTIME_DEPENDENCY_FANOUT:${externals.size}`);
+  }
+  return [...externals.keys()].sort();
+}
+
+// Materialises the closure as regular files at identical relative paths.
+export function stageLocalDependencyClosure(runtimeDir, repoRoot = REPO) {
+  const staged = [];
+  for (const rel of collectExternalDependencyClosure(repoRoot)) {
+    const source = join(repoRoot, rel);
+    const target = join(runtimeDir, rel);
+    if (existsSync(target)) throw new Error(`E_RUNTIME_DEPENDENCY_PREEXISTS:${rel}`);
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(source, target);
+    chmodSync(target, 0o600);
+    if (lstatSync(target).isSymbolicLink() || !statSync(target).isFile()) {
+      throw new Error(`E_RUNTIME_DEPENDENCY_NONREGULAR:${rel}`);
+    }
+    if (readFileSync(target, "utf8").includes(repoRoot)) {
+      throw new Error(`E_RUNTIME_DEPENDENCY_ABSOLUTE_REFERENCE:${rel}`);
+    }
+    staged.push(rel);
+  }
+  return staged;
+}
 
 function required(name) {
   const value = String(process.env[name] || "");
@@ -55,20 +197,41 @@ export function parseArgs(argv) {
   return args;
 }
 
-function linkExactFunctions(runtimeDir) {
+function assertRegularTree(root) {
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (lstatSync(path).isSymbolicLink()) throw new Error(`E_RUNTIME_FUNCTION_SYMLINK:${path}`);
+    if (entry.isDirectory()) assertRegularTree(path);
+    else if (!statSync(path).isFile()) throw new Error(`E_RUNTIME_FUNCTION_NONREGULAR:${path}`);
+  }
+}
+
+export function stageExactFunctions(runtimeDir) {
   const targetDir = join(runtimeDir, "supabase", "functions");
   if (existsSync(targetDir)) throw new Error("E_RUNTIME_FUNCTION_DIR_PREEXISTS");
   mkdirSync(targetDir, { recursive: false });
   const names = ["_shared", ...CANONICAL_FUNCTIONS];
   for (const name of names) {
     const source = join(REPO, "supabase", "functions", name);
-    if (!existsSync(source)) throw new Error(`E_FUNCTION_SOURCE_MISSING:${name}`);
+    if (!existsSync(source) || !lstatSync(source).isDirectory()) {
+      throw new Error(`E_FUNCTION_SOURCE_MISSING:${name}`);
+    }
     const target = join(targetDir, name);
-    symlinkSync(source, target, "dir");
-    if (!lstatSync(target).isSymbolicLink() || resolve(targetDir, readlinkSync(target)) !== source) {
-      throw new Error(`E_FUNCTION_LINK_MISMATCH:${name}`);
+    cpSync(source, target, {
+      recursive: true,
+      dereference: true,
+      errorOnExist: true,
+      force: false,
+    });
+    assertRegularTree(target);
+    if (CANONICAL_FUNCTIONS.includes(name)) {
+      const entrypoint = join(target, "index.ts");
+      if (!existsSync(entrypoint) || !statSync(entrypoint).isFile()) {
+        throw new Error(`E_FUNCTION_ENTRYPOINT_MISSING:${name}`);
+      }
     }
   }
+  stageLocalDependencyClosure(runtimeDir);
   return targetDir;
 }
 
@@ -100,7 +263,7 @@ async function main() {
   const anonKey = required("LOCAL_SUPABASE_ANON_KEY");
   const serviceRole = required("LOCAL_SUPABASE_SERVICE_ROLE_KEY");
   mkdirSync(evidenceDir, { recursive: true });
-  linkExactFunctions(runtimeDir);
+  stageExactFunctions(runtimeDir);
 
   const envPath = join(runtimeDir, "q2-edge.env");
   writeFileSync(
@@ -156,7 +319,9 @@ async function main() {
   if (!stopping && exitCode !== 0) throw new Error(`E_EDGE_RUNTIME_EXIT:${exitCode}`);
 }
 
-main().catch(error => {
-  process.stderr.write(`EDGE_RUNTIME_READY=FAIL\nEDGE_RUNTIME_ERROR=${String(error?.message || error).replace(/[\r\n]/g, " ")}\n`);
-  process.exitCode = 5;
-});
+if (resolve(process.argv[1] || "") === fileURLToPath(import.meta.url)) {
+  main().catch(error => {
+    process.stderr.write(`EDGE_RUNTIME_READY=FAIL\nEDGE_RUNTIME_ERROR=${String(error?.message || error).replace(/[\r\n]/g, " ")}\n`);
+    process.exitCode = 5;
+  });
+}
