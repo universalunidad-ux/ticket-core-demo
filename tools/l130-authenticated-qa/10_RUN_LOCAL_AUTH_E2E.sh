@@ -9,6 +9,7 @@ RUNTIME_DIR=""
 EVIDENCE_DIR=""
 STATE_FILE=""
 CREDENTIAL_FILE=""
+DB_CID=""
 EDGE_PID=""
 STACK_STARTED=NO
 AUTH_CREATED=NO
@@ -62,6 +63,74 @@ stop_edge() {
     wait "$EDGE_PID" 2>/dev/null || true
   fi
   [[ -z "$EDGE_PID" ]] || ! kill -0 "$EDGE_PID" 2>/dev/null
+}
+
+psql() {
+  local requested_url="${1:-}"
+  local sql_file=""
+  local args=()
+
+  [[ "$#" -ge 1 ]] ||
+    fail "E_PSQL_URL_MISSING"
+
+  shift
+
+  [[ -n "${LOCAL_DATABASE_URL:-}" ]] ||
+    fail "E_LOCAL_DATABASE_URL_MISSING"
+
+  [[ "$requested_url" == "$LOCAL_DATABASE_URL" ]] ||
+    fail "E_PSQL_URL_MISMATCH"
+
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      -f|--file)
+        [[ "$#" -ge 2 ]] ||
+          fail "E_PSQL_FILE_ARGUMENT"
+
+        [[ -z "$sql_file" ]] ||
+          fail "E_MULTIPLE_PSQL_FILES"
+
+        sql_file="$2"
+        shift 2
+        ;;
+
+      -f=*|--file=*)
+        [[ -z "$sql_file" ]] ||
+          fail "E_MULTIPLE_PSQL_FILES"
+
+        sql_file="${1#*=}"
+        shift
+        ;;
+
+      *)
+        args[${#args[@]}]="$1"
+        shift
+        ;;
+    esac
+  done
+
+  [[ "$DB_CID" =~ ^[A-Za-z0-9_.-]+$ ]] ||
+    fail "E_DB_CONTAINER_ID_INVALID"
+
+  [[ "$(
+    docker inspect \
+      -f '{{.State.Running}}' \
+      "$DB_CID" 2>/dev/null
+  )" == "true" ]] ||
+    fail "E_DB_CONTAINER_NOT_RUNNING"
+
+  if [[ -n "$sql_file" ]]; then
+    [[ -f "$sql_file" ]] ||
+      fail "E_PSQL_INPUT_FILE_MISSING"
+
+    docker exec -i "$DB_CID" \
+      psql -U postgres -d postgres \
+      "${args[@]}" < "$sql_file"
+  else
+    docker exec -i "$DB_CID" \
+      psql -U postgres -d postgres \
+      "${args[@]}"
+  fi
 }
 
 teardown() {
@@ -220,6 +289,19 @@ node "$REPO/tools/local-db/lib/bootstrap.mjs" \
   --runtime-dir "$RUNTIME_DIR" \
   --reset-runtime >"$BOOTSTRAP_FILE" 2>"$EVIDENCE_DIR/bootstrap.log"
 STACK_STARTED=YES
+
+DB_CID="$(
+  awk -F= '
+    $1 == "BOOTSTRAP_CID" {
+      print substr($0, index($0, "=") + 1)
+      exit
+    }
+  ' "$BOOTSTRAP_FILE"
+)"
+
+[[ "$DB_CID" =~ ^[A-Za-z0-9_.-]+$ ]] ||
+  fail "E_BOOTSTRAP_CID_INVALID"
+
 
 STATUS_FILE="$EVIDENCE_DIR/supabase-status.env"
 supabase status -o env --workdir "$RUNTIME_DIR" >"$STATUS_FILE" 2>"$EVIDENCE_DIR/supabase-status.log"
