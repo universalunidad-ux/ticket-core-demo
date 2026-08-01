@@ -123,12 +123,12 @@ render_markers() {
 }
 
 on_exit() {
-  local rc=$?
+  local original_rc=$?
   if [[ "$FINALIZED" != YES ]]; then
     teardown || true
     render_markers
   fi
-  exit "$rc"
+  exit "$original_rc"
 }
 trap on_exit EXIT
 
