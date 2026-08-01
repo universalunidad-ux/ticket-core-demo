@@ -137,7 +137,28 @@ EVIDENCE_DIR="$(mkdir -p "$2" && cd "$2" && pwd -P)"
 STATE_FILE="$EVIDENCE_DIR/m1-auth-state.json"
 
 [[ "$(git -C "$REPO" rev-parse --show-toplevel)" == "$REPO" ]] || fail "E_REPO_IDENTITY"
-[[ "$(git -C "$REPO" branch --show-current)" == "test/l130-authenticated-qa-prep-20260728" ]] || fail "E_BRANCH_IDENTITY"
+EXPECTED_BRANCH="${
+  TC_CANONICAL_BRANCH:-
+  test/l130-authenticated-qa-prep-20260728
+}"
+EXPECTED_BRANCH="$(
+  printf '%s' "$EXPECTED_BRANCH" |
+  tr -d '[:space:]'
+)"
+EXPECTED_HEAD="${TC_CANONICAL_HEAD:-}"
+
+ACTUAL_BRANCH="$(
+  git -C "$REPO" branch --show-current
+)"
+ACTUAL_HEAD="$(
+  git -C "$REPO" rev-parse HEAD
+)"
+
+[[ "$ACTUAL_BRANCH" == "$EXPECTED_BRANCH" ]] ||
+  fail "E_BRANCH_IDENTITY"
+
+[[ -z "$EXPECTED_HEAD" || "$ACTUAL_HEAD" == "$EXPECTED_HEAD" ]] ||
+  fail "E_HEAD_IDENTITY"
 [[ -z "$(find "$(git -C "$REPO" rev-parse --git-common-dir)" -type f -name '*.lock' -print -quit)" ]] || fail "E_GIT_LOCK"
 for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_PROJECT_REF STAGING_URL DATABASE_URL; do
   [[ -z "${!name:-}" ]] || fail "E_REMOTE_ENV_${name}"
