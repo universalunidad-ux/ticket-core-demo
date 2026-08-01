@@ -75,7 +75,8 @@
     "public.archivos_ticket": [
       "archivos_ticket_staff_select",
       "archivos_ticket_staff_insert",
-      "archivos_ticket_staff_delete"
+      "archivos_ticket_staff_delete",
+      "archivos_ticket_client_owner_select"
     ],
     "public.avisos_globales": [
       "avisos_globales_read",
@@ -104,7 +105,8 @@
       "clientes_support_select_assigned"
     ],
     "public.clientes_contactos": [
-      "clientes_contactos_select_scoped"
+      "clientes_contactos_select_scoped",
+      "contactos_client_self_select"
     ],
     "public.perfiles": [
       "perfiles_select_self",
@@ -125,11 +127,13 @@
     "public.ticket_archivos": [
       "ticket_archivos_staff_select",
       "ticket_archivos_staff_insert",
-      "ticket_archivos_staff_delete"
+      "ticket_archivos_staff_delete",
+      "ticket_archivos_client_owner_select"
     ],
     "public.ticket_eventos": [
       "ticket_eventos_staff_select",
-      "ticket_eventos_staff_insert"
+      "ticket_eventos_staff_insert",
+      "ticket_eventos_client_public_select"
     ],
     "public.ticket_respuestas_rapidas": [
       "quick_replies_staff_select",
@@ -139,7 +143,8 @@
       "tickets_manager_select",
       "tickets_support_select_assigned",
       "tickets_admin_update",
-      "tickets_manager_assign"
+      "tickets_manager_assign",
+      "tickets_client_owner_select"
     ],
     "storage.objects": [
       "soporte_adjuntos_staff_read",
