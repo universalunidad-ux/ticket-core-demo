@@ -369,6 +369,16 @@ const MUTANTS = [
     expect: "SURFACE_DIVERGENCE",
     apply: (_c, ev) => { ev.html["dashboard.html"].surface = "client"; },
   },
+  {
+    id: "M19",
+    label: "portal cliente autenticado sin guard",
+    expect: "INTERNAL_NO_GUARD",
+    apply: (_c, ev) => stripFrom(
+      ev,
+      "portal-cliente.js",
+      'guardSession("index.html?next=portal-cliente.html")',
+    ),
+  },
 ];
 
 /* ---------------------------------- runner ---------------------------------- */
@@ -385,14 +395,26 @@ if (base.length) {
 }
 
 // Cobertura estructural minima.
-assert.equal(contract.pages.length, 13, "se esperan 13 paginas reales");
+assert.equal(contract.pages.length, 14, "se esperan 14 paginas reales");
 assert.equal(evidence.files.has("seguimiento.html"), false, "seguimiento.html no debe existir");
 const classCount = contract.pages.reduce((a, p) => ((a[p.class] = (a[p.class] || 0) + 1), a), {});
 assert.ok(classCount.PUBLIC_NO_SESSION >= 3, "publicas sin sesion");
 assert.ok(classCount.LEGAL_PUBLIC === 2, "dos legales publicas");
 assert.ok(classCount.ADMIN_ONLY === 3, "tres admin-only");
 assert.ok(classCount.SUPPORT_AND_ADMIN === 2, "dos support+admin");
-assert.ok(classCount.AUTHENTICATED_SHARED === 3, "tres authenticated shared");
+assert.ok(classCount.AUTHENTICATED_SHARED === 4, "cuatro authenticated shared");
+const portalCliente = pageOf(contract, "portal-cliente.html");
+assert.ok(portalCliente, "portal-cliente declarado");
+assert.equal(portalCliente.class, "AUTHENTICATED_SHARED", "portal autenticado");
+assert.equal(portalCliente.surface, "client-portal", "surface del portal cliente");
+assert.equal(portalCliente.session.required, true, "portal requiere sesion");
+assert.equal(portalCliente.guard.kind, "guardSession", "portal usa guardSession");
+assert.equal(portalCliente.nav.linkable, false, "portal no aparece en nav interna");
+assert.ok(
+  contract.internalRouteAllowlist.routes.includes("portal-cliente.html"),
+  "portal cliente incluido en allowlist interna",
+);
+
 
 console.log(`PASS\tcontrato positivo (paginas=${contract.pages.length}, violaciones=0)`);
 

@@ -11,12 +11,35 @@
   ],
   "roles": {
     "anon": [],
-    "adminRoles": ["admin", "owner", "administrador"],
-    "internalNonAdmin": ["soporte", "supervisor"],
-    "internalAll": ["soporte", "supervisor", "admin", "owner", "administrador"],
-    "isAdminRoleSource": { "file": "shared/ticket-scope.js", "symbol": "ADMIN_ROLES" }
+    "adminRoles": [
+      "admin",
+      "owner",
+      "administrador"
+    ],
+    "internalNonAdmin": [
+      "soporte",
+      "supervisor"
+    ],
+    "internalAll": [
+      "soporte",
+      "supervisor",
+      "admin",
+      "owner",
+      "administrador"
+    ],
+    "isAdminRoleSource": {
+      "file": "shared/ticket-scope.js",
+      "symbol": "ADMIN_ROLES"
+    }
   },
-  "navSource": { "file": "global.js", "menuVar": "APP_MENU", "roleMenus": ["soporte", "admin"] },
+  "navSource": {
+    "file": "global.js",
+    "menuVar": "APP_MENU",
+    "roleMenus": [
+      "soporte",
+      "admin"
+    ]
+  },
   "internalRouteAllowlist": {
     "source": "index.js",
     "symbol": "INTERNAL_ROUTES",
@@ -26,6 +49,7 @@
       "clientes.html",
       "consolidacion-clientes.html",
       "dashboard.html",
+      "portal-cliente.html",
       "ticket.html",
       "tickets.html"
     ]
@@ -48,9 +72,20 @@
     "LEGAL_PUBLIC",
     "REDIRECT_OR_NONPAGE"
   ],
-  "internalClasses": ["AUTHENTICATED_SHARED", "ADMIN_ONLY", "SUPPORT_AND_ADMIN"],
-  "publicClasses": ["PUBLIC_NO_SESSION", "LEGAL_PUBLIC"],
-  "loadJs": ["global.js", "index.js", "shared/nav-interna.js"],
+  "internalClasses": [
+    "AUTHENTICATED_SHARED",
+    "ADMIN_ONLY",
+    "SUPPORT_AND_ADMIN"
+  ],
+  "publicClasses": [
+    "PUBLIC_NO_SESSION",
+    "LEGAL_PUBLIC"
+  ],
+  "loadJs": [
+    "global.js",
+    "index.js",
+    "shared/nav-interna.js"
+  ],
   "pages": [
     {
       "path": "app/index.html",
@@ -58,12 +93,39 @@
       "class": "PUBLIC_NO_SESSION",
       "surface": "login",
       "dataPage": null,
-      "entry": ["index.js"],
-      "guard": { "kind": "none" },
-      "session": { "required": false, "onNoSession": "render_login" },
-      "roles": { "allowed": ["anon", "soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "n/a_public" },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
-      "reachedBy": [{ "kind": "public-entry", "detail": "raiz de login" }],
+      "entry": [
+        "index.js"
+      ],
+      "guard": {
+        "kind": "none"
+      },
+      "session": {
+        "required": false,
+        "onNoSession": "render_login"
+      },
+      "roles": {
+        "allowed": [
+          "anon",
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "n/a_public"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
+      "reachedBy": [
+        {
+          "kind": "public-entry",
+          "detail": "raiz de login"
+        }
+      ],
       "featureFlag": null
     },
     {
@@ -72,12 +134,39 @@
       "class": "PUBLIC_NO_SESSION",
       "surface": "client",
       "dataPage": null,
-      "entry": ["soporte.js"],
-      "guard": { "kind": "none" },
-      "session": { "required": false, "onNoSession": "render_public" },
-      "roles": { "allowed": ["anon", "soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "n/a_public" },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
-      "reachedBy": [{ "kind": "public-entry", "detail": "portal publico / QR / correo" }],
+      "entry": [
+        "soporte.js"
+      ],
+      "guard": {
+        "kind": "none"
+      },
+      "session": {
+        "required": false,
+        "onNoSession": "render_public"
+      },
+      "roles": {
+        "allowed": [
+          "anon",
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "n/a_public"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
+      "reachedBy": [
+        {
+          "kind": "public-entry",
+          "detail": "portal publico / QR / correo"
+        }
+      ],
       "featureFlag": null,
       "pin": "PUBLIC_SUPPORT"
     },
@@ -87,12 +176,39 @@
       "class": "PUBLIC_NO_SESSION",
       "surface": "client",
       "dataPage": null,
-      "entry": ["estado.js"],
-      "guard": { "kind": "none" },
-      "session": { "required": false, "onNoSession": "render_public" },
-      "roles": { "allowed": ["anon", "soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "n/a_public" },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
-      "reachedBy": [{ "kind": "public-entry", "detail": "seguimiento publico por folio/token" }],
+      "entry": [
+        "estado.js"
+      ],
+      "guard": {
+        "kind": "none"
+      },
+      "session": {
+        "required": false,
+        "onNoSession": "render_public"
+      },
+      "roles": {
+        "allowed": [
+          "anon",
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "n/a_public"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
+      "reachedBy": [
+        {
+          "kind": "public-entry",
+          "detail": "seguimiento publico por folio/token"
+        }
+      ],
       "featureFlag": null,
       "pin": "PUBLIC_SUPPORT"
     },
@@ -102,12 +218,39 @@
       "class": "LEGAL_PUBLIC",
       "surface": "client",
       "dataPage": null,
-      "entry": ["theme.js"],
-      "guard": { "kind": "none" },
-      "session": { "required": false, "onNoSession": "render_public" },
-      "roles": { "allowed": ["anon", "soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "n/a_public" },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
-      "reachedBy": [{ "kind": "public-entry", "detail": "pie de pagina legal" }],
+      "entry": [
+        "theme.js"
+      ],
+      "guard": {
+        "kind": "none"
+      },
+      "session": {
+        "required": false,
+        "onNoSession": "render_public"
+      },
+      "roles": {
+        "allowed": [
+          "anon",
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "n/a_public"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
+      "reachedBy": [
+        {
+          "kind": "public-entry",
+          "detail": "pie de pagina legal"
+        }
+      ],
       "featureFlag": null,
       "pin": "LEGAL_PUBLIC"
     },
@@ -117,12 +260,39 @@
       "class": "LEGAL_PUBLIC",
       "surface": "client",
       "dataPage": null,
-      "entry": ["theme.js"],
-      "guard": { "kind": "none" },
-      "session": { "required": false, "onNoSession": "render_public" },
-      "roles": { "allowed": ["anon", "soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "n/a_public" },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
-      "reachedBy": [{ "kind": "public-entry", "detail": "pie de pagina legal" }],
+      "entry": [
+        "theme.js"
+      ],
+      "guard": {
+        "kind": "none"
+      },
+      "session": {
+        "required": false,
+        "onNoSession": "render_public"
+      },
+      "roles": {
+        "allowed": [
+          "anon",
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "n/a_public"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
+      "reachedBy": [
+        {
+          "kind": "public-entry",
+          "detail": "pie de pagina legal"
+        }
+      ],
       "featureFlag": null,
       "pin": "LEGAL_PUBLIC"
     },
@@ -132,17 +302,45 @@
       "class": "AUTHENTICATED_SHARED",
       "surface": "admin",
       "dataPage": "dashboard",
-      "entry": ["dashboard.js"],
+      "entry": [
+        "dashboard.js"
+      ],
       "guard": {
         "kind": "mountNav",
         "mount": "dashboard",
-        "evidence": ["mountNav(\"dashboard\")"],
+        "evidence": [
+          "mountNav(\"dashboard\")"
+        ],
         "earlyReturn": "if\\s*\\(!ctx\\)\\s*return"
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
-      "roles": { "allowed": ["soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "scoped_view" },
-      "nav": { "linkable": true, "navKey": "dashboard", "navRoles": ["soporte", "admin"] },
-      "reachedBy": [{ "kind": "nav" }],
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
+      "roles": {
+        "allowed": [
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "scoped_view"
+      },
+      "nav": {
+        "linkable": true,
+        "navKey": "dashboard",
+        "navRoles": [
+          "soporte",
+          "admin"
+        ]
+      },
+      "reachedBy": [
+        {
+          "kind": "nav"
+        }
+      ],
       "featureFlag": null
     },
     {
@@ -151,17 +349,46 @@
       "class": "SUPPORT_AND_ADMIN",
       "surface": "support",
       "dataPage": "tickets",
-      "entry": ["tickets.js"],
+      "entry": [
+        "tickets.js"
+      ],
       "guard": {
         "kind": "token-redirect",
-        "evidence": ["tkSessionToken(", "location.replace(\"index.html?next=tickets.html\")"],
+        "evidence": [
+          "tkSessionToken(",
+          "location.replace(\"index.html?next=tickets.html\")"
+        ],
         "importsButDefers": "guardSession",
         "devBypass": "DEV_READONLY (localhost, solo lectura demo)"
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
-      "roles": { "allowed": ["soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "scoped_mine" },
-      "nav": { "linkable": true, "navKey": "tickets", "navRoles": ["soporte", "admin"] },
-      "reachedBy": [{ "kind": "nav" }],
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
+      "roles": {
+        "allowed": [
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "scoped_mine"
+      },
+      "nav": {
+        "linkable": true,
+        "navKey": "tickets",
+        "navRoles": [
+          "soporte",
+          "admin"
+        ]
+      },
+      "reachedBy": [
+        {
+          "kind": "nav"
+        }
+      ],
       "featureFlag": null
     },
     {
@@ -170,17 +397,46 @@
       "class": "SUPPORT_AND_ADMIN",
       "surface": "support",
       "dataPage": "ticket",
-      "entry": ["ticket.js"],
+      "entry": [
+        "ticket.js"
+      ],
       "guard": {
         "kind": "guardSession",
-        "evidence": ["const auth=await guardSession();if(!auth)return"]
+        "evidence": [
+          "const auth=await guardSession();if(!auth)return"
+        ]
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
-      "roles": { "allowed": ["soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "scoped_mine" },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
+      "roles": {
+        "allowed": [
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "scoped_mine"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
       "reachedBy": [
-        { "kind": "linker", "file": "tickets.js", "token": "ticket.html" },
-        { "kind": "linker", "file": "shared/nav-interna.js", "token": "ticket.html" }
+        {
+          "kind": "linker",
+          "file": "tickets.js",
+          "token": "ticket.html"
+        },
+        {
+          "kind": "linker",
+          "file": "shared/nav-interna.js",
+          "token": "ticket.html"
+        }
       ],
       "featureFlag": null
     },
@@ -190,17 +446,45 @@
       "class": "AUTHENTICATED_SHARED",
       "surface": "admin",
       "dataPage": "clientes",
-      "entry": ["clientes.js"],
+      "entry": [
+        "clientes.js"
+      ],
       "guard": {
         "kind": "mountNav",
         "mount": "clientes",
-        "evidence": ["mountNav(\"clientes\")"],
+        "evidence": [
+          "mountNav(\"clientes\")"
+        ],
         "earlyReturn": "if\\s*\\(!ctx\\)\\s*return"
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
-      "roles": { "allowed": ["soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "scoped_assigned" },
-      "nav": { "linkable": true, "navKey": "clientes", "navRoles": ["soporte", "admin"] },
-      "reachedBy": [{ "kind": "nav" }],
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
+      "roles": {
+        "allowed": [
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "scoped_assigned"
+      },
+      "nav": {
+        "linkable": true,
+        "navKey": "clientes",
+        "navRoles": [
+          "soporte",
+          "admin"
+        ]
+      },
+      "reachedBy": [
+        {
+          "kind": "nav"
+        }
+      ],
       "featureFlag": null
     },
     {
@@ -209,21 +493,105 @@
       "class": "AUTHENTICATED_SHARED",
       "surface": "admin",
       "dataPage": "cliente",
-      "entry": ["cliente.js"],
+      "entry": [
+        "cliente.js"
+      ],
       "guard": {
         "kind": "mountNav",
         "mount": "cliente",
-        "evidence": ["mountNav(\"cliente\")"],
+        "evidence": [
+          "mountNav(\"cliente\")"
+        ],
         "earlyReturn": "if\\s*\\(!ctx\\)\\s*return"
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
-      "roles": { "allowed": ["soporte", "supervisor", "admin", "owner", "administrador"], "gate": null, "onUnauthorized": "scoped_assigned" },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
+      "roles": {
+        "allowed": [
+          "soporte",
+          "supervisor",
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": null,
+        "onUnauthorized": "scoped_assigned"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
       "reachedBy": [
-        { "kind": "linker", "file": "clientes.js", "token": "cliente.html" },
-        { "kind": "linker", "file": "shared/nav-interna.js", "token": "cliente.html" }
+        {
+          "kind": "linker",
+          "file": "clientes.js",
+          "token": "cliente.html"
+        },
+        {
+          "kind": "linker",
+          "file": "shared/nav-interna.js",
+          "token": "cliente.html"
+        }
       ],
       "featureFlag": null
+    },
+    {
+      "path": "app/portal-cliente.html",
+      "html": "portal-cliente.html",
+      "class": "AUTHENTICATED_SHARED",
+      "surface": "client-portal",
+      "dataPage": null,
+      "entry": [
+        "portal-cliente.js"
+      ],
+      "guard": {
+        "kind": "guardSession",
+        "evidence": [
+          "guardSession(\"index.html?next=portal-cliente.html\")"
+        ],
+        "earlyReturn": "if\\s*\\(!auth\\)\\s*return"
+      },
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
+      "roles": {
+        "allowed": [
+          "cliente_contacto"
+        ],
+        "gate": {
+          "kind": "activeClientContactOwnership",
+          "evidence": [
+            ".from(\"clientes_contactos\")",
+            ".eq(\"auth_user_id\", auth.user.id)",
+            ".eq(\"activo\", true)"
+          ]
+        },
+        "onUnauthorized": "render_denied"
+      },
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
+      "reachedBy": [
+        {
+          "kind": "linker",
+          "file": "index.js",
+          "token": "portal-cliente.html"
+        },
+        {
+          "kind": "linker",
+          "file": "shared/nav-interna.js",
+          "token": "portal-cliente.html"
+        }
+      ],
+      "featureFlag": null,
+      "noMutations": true,
+      "pin": "CLIENT_PORTAL_AUTHENTICATED"
     },
     {
       "path": "app/alta-cliente.html",
@@ -231,21 +599,49 @@
       "class": "ADMIN_ONLY",
       "surface": "admin",
       "dataPage": "alta-cliente",
-      "entry": ["alta-cliente.js"],
+      "entry": [
+        "alta-cliente.js"
+      ],
       "guard": {
         "kind": "mountNav",
         "mount": "alta-cliente",
-        "evidence": ["mountNav(\"alta-cliente\")"],
+        "evidence": [
+          "mountNav(\"alta-cliente\")"
+        ],
         "earlyReturn": "if\\s*\\(!ctx\\)\\s*return"
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
       "roles": {
-        "allowed": ["admin", "owner", "administrador"],
-        "gate": { "kind": "isAdminRole", "evidence": ["isAdminRole(", "!ST.isAdmin"] },
+        "allowed": [
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": {
+          "kind": "isAdminRole",
+          "evidence": [
+            "isAdminRole(",
+            "!ST.isAdmin"
+          ]
+        },
         "onUnauthorized": "blocked_gate_no_write"
       },
-      "nav": { "linkable": true, "navKey": "altas", "navRoles": ["soporte", "admin"] },
-      "reachedBy": [{ "kind": "nav" }],
+      "nav": {
+        "linkable": true,
+        "navKey": "altas",
+        "navRoles": [
+          "soporte",
+          "admin"
+        ]
+      },
+      "reachedBy": [
+        {
+          "kind": "nav"
+        }
+      ],
       "featureFlag": null,
       "noMutations": false,
       "navNote": "El link es visible a soporte (UX), pero el alta se bloquea para no-admin. La autorizacion real la impone el endpoint/RLS.",
@@ -257,26 +653,56 @@
       "class": "ADMIN_ONLY",
       "surface": "admin",
       "dataPage": "consolidacion",
-      "entry": ["consolidacion-clientes.js"],
+      "entry": [
+        "consolidacion-clientes.js"
+      ],
       "guard": {
         "kind": "mountNav",
         "mount": "consolidacion",
-        "evidence": ["mountNav(\"consolidacion\")"],
+        "evidence": [
+          "mountNav(\"consolidacion\")"
+        ],
         "earlyReturn": "if\\s*\\(!ctx\\)\\s*return"
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
       "roles": {
-        "allowed": ["admin", "owner", "administrador"],
-        "gate": { "kind": "isAdminRole", "evidence": ["isAdminRole(", "!ST.isAdmin"] },
+        "allowed": [
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": {
+          "kind": "isAdminRole",
+          "evidence": [
+            "isAdminRole(",
+            "!ST.isAdmin"
+          ]
+        },
         "onUnauthorized": "blocked_reserved"
       },
-      "nav": { "linkable": true, "navKey": "consolidacion", "navRoles": ["soporte", "admin"] },
-      "reachedBy": [{ "kind": "nav" }],
+      "nav": {
+        "linkable": true,
+        "navKey": "consolidacion",
+        "navRoles": [
+          "soporte",
+          "admin"
+        ]
+      },
+      "reachedBy": [
+        {
+          "kind": "nav"
+        }
+      ],
       "featureFlag": {
         "name": "CONSOLIDATION_EXECUTION_ENABLED",
         "value": false,
         "backendDecision": "BACKEND_NOT_PRESENT",
-        "evidence": ["CONSOLIDATION_EXECUTION_ENABLED = false"]
+        "evidence": [
+          "CONSOLIDATION_EXECUTION_ENABLED = false"
+        ]
       },
       "noMutations": true
     },
@@ -286,21 +712,47 @@
       "class": "ADMIN_ONLY",
       "surface": "admin",
       "dataPage": "bitacora-admin",
-      "entry": ["bitacora-admin.js"],
+      "entry": [
+        "bitacora-admin.js"
+      ],
       "guard": {
         "kind": "mountNav",
         "mount": "bitacora-admin",
-        "evidence": ["mountNav(\"bitacora-admin\")"],
+        "evidence": [
+          "mountNav(\"bitacora-admin\")"
+        ],
         "earlyReturn": "if\\s*\\(!ctx\\)\\s*return"
       },
-      "session": { "required": true, "onNoSession": "redirect_login" },
+      "session": {
+        "required": true,
+        "onNoSession": "redirect_login"
+      },
       "roles": {
-        "allowed": ["admin", "owner", "administrador"],
-        "gate": { "kind": "roleList", "evidence": ["[\"admin\",\"owner\",\"administrador\"]"] },
+        "allowed": [
+          "admin",
+          "owner",
+          "administrador"
+        ],
+        "gate": {
+          "kind": "roleList",
+          "evidence": [
+            "[\"admin\",\"owner\",\"administrador\"]"
+          ]
+        },
         "onUnauthorized": "blocked_reserved"
       },
-      "nav": { "linkable": false, "navKey": null, "navRoles": [] },
-      "reachedBy": [{ "kind": "linker", "file": "global.js", "token": "bitacora-admin.html" }],
+      "nav": {
+        "linkable": false,
+        "navKey": null,
+        "navRoles": []
+      },
+      "reachedBy": [
+        {
+          "kind": "linker",
+          "file": "global.js",
+          "token": "bitacora-admin.html"
+        }
+      ],
       "featureFlag": null,
       "noMutations": true
     }
