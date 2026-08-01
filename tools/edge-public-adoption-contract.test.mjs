@@ -12,10 +12,14 @@ const allowedChanges = new Set([
   workflowPath,
   "supabase/functions/estado-ticket-responder-ts/index.ts",
   "supabase/functions/estado-ticket-responder-ts/source-current.json",
+  "supabase/functions/_shared/public-reply.ts",
+  "supabase/functions/_shared/public-reply.test.ts",
   "supabase/functions/estado-ticket-ts/index.ts",
   "supabase/functions/estado-ticket-ts/source-current.json",
   "tools/canonical-source.json",
+  "tools/cap07-public-reply-contract.test.mjs",
   "tools/edge-public-adoption-contract.test.mjs",
+  "tools/run-contract-tests.mjs",
 ]);
 
 const specs = [
@@ -29,7 +33,8 @@ const specs = [
     slug: "estado-ticket-responder-ts",
     remoteVersion: 39,
     sourceSha256: "a91eb85f0910b9becd74f5203b5099e8c7d397832efd553f1d013e4f2991bac6",
-    localSourceSha256: "4b39404103e3ff300775bd740b5c58febf01c0febea6ce5ad6cc9f7318b843dc",
+    localSourceSha256: "465203e5313cab25d72e04b300a9ea1e84a18b0d0f0351e8c92ac80b1619b15b",
+    historicalLocalSourceSha256: "4b39404103e3ff300775bd740b5c58febf01c0febea6ce5ad6cc9f7318b843dc",
     hardeningCommit: "39ac85d36464367959816230cbee5620a2ba7fa3",
     recoveredAt: "2026-07-21T20:16:51-06:00",
   },
@@ -117,7 +122,7 @@ for (const spec of specs) {
     );
     assert.equal(
       sha256(hardenedSource),
-      spec.localSourceSha256,
+      spec.historicalLocalSourceSha256 ?? spec.localSourceSha256,
       `${spec.hardeningCommit} must produce the governed hardened source`,
     );
 

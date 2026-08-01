@@ -258,6 +258,15 @@ const antiabuse = spawnSync(process.execPath, ["--experimental-strip-types", joi
 if (antiabuse.stdout) process.stdout.write(antiabuse.stdout);
 if (antiabuse.stderr) process.stderr.write(antiabuse.stderr);
 assert.equal(antiabuse.status, 0, "edge public responder antiabuse gate");
+for (const [label, args] of [
+  ["CAP-07 public reply contract", [join(root, "tools/cap07-public-reply-contract.test.mjs"), root]],
+  ["CAP-07 public reply unit", ["--experimental-strip-types", "--test", join(root, "supabase/functions/_shared/public-reply.test.ts")]],
+]) {
+  const cap07 = spawnSync(process.execPath, args, { cwd: root, encoding: "utf8" });
+  if (cap07.stdout) process.stdout.write(cap07.stdout);
+  if (cap07.stderr) process.stderr.write(cap07.stderr);
+  assert.equal(cap07.status, 0, `${label} gate`);
+}
 console.log(`CONTRACT_TESTS: PASS (positive=${positive} negative=${negative} sensitivity=16)`);
 
 for (const script of [
