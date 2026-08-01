@@ -92,25 +92,94 @@ async function supportRequest(base, anonKey, payload, idemKey, expectedStatus) {
   );
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value
+      .map(item => canonicalJson(item))
+      .join(",")}]`;
+  }
+
+  if (
+    value !== null
+    && typeof value === "object"
+  ) {
+    const entries = Object.entries(value)
+      .sort(([left], [right]) => (
+        left < right ? -1 : left > right ? 1 : 0
+      ));
+
+    return `{${entries
+      .map(
+        ([key, item]) =>
+          `${JSON.stringify(key)}:${canonicalJson(item)}`,
+      )
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
 function psqlAcl(databaseUrl, sql) {
   const url = new URL(databaseUrl);
-  if (!LOCAL_HOSTS.has(url.hostname.replace(/^\[|\]$/g, ""))) throw new Error("E_REMOTE_DATABASE_DENIED");
-  const result = spawnSync(
-    "psql",
-    ["-v", "ON_ERROR_STOP=1", "-c", sql],
-    {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        PGHOST: url.hostname,
-        PGPORT: url.port,
-        PGUSER: decodeURIComponent(url.username),
-        PGPASSWORD: decodeURIComponent(url.password),
-        PGDATABASE: url.pathname.slice(1),
-      },
-    },
+
+  if (
+    !LOCAL_HOSTS.has(
+      url.hostname.replace(/^\[|\]$/g, ""),
+    )
+  ) {
+    throw new Error("E_REMOTE_DATABASE_DENIED");
+  }
+
+  const dbCid = required("TC_LOCAL_DB_CID");
+
+  if (!/^[A-Za-z0-9_.-]+$/u.test(dbCid)) {
+    throw new Error("E_LOCAL_DB_CID_INVALID");
+  }
+
+  const inspect = spawnSync(
+    "docker",
+    [
+      "inspect",
+      "-f",
+      "{{.State.Running}}",
+      dbCid,
+    ],
+    { encoding: "utf8" },
   );
-  if (result.status !== 0) throw new Error("E_LOCAL_ACL_PROBE_SQL");
+
+  if (
+    inspect.status !== 0
+    || String(inspect.stdout || "").trim() !== "true"
+  ) {
+    throw new Error(
+      "E_LOCAL_DB_CONTAINER_NOT_RUNNING",
+    );
+  }
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      dbCid,
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-X",
+      "-q",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      sql,
+    ],
+    { encoding: "utf8" },
+  );
+
+  if (result.status !== 0) {
+    throw new Error("E_LOCAL_ACL_PROBE_SQL");
+  }
 }
 
 async function main() {
@@ -134,7 +203,7 @@ async function main() {
     throw new Error("E_SUPPORT_PUBLIC_RESPONSE");
   }
   const replay = await supportRequest(base, anonKey, payload, idemKey, 200);
-  if (JSON.stringify(replay.body) !== JSON.stringify(first.body)) throw new Error("E_SUPPORT_REPLAY");
+  if (canonicalJson(replay.body) !== canonicalJson(first.body)) throw new Error("E_SUPPORT_REPLAY");
   const conflict = await supportRequest(base, anonKey, supportPayload("different"), idemKey, 409);
   if (conflict.body?.code !== "TC_IDEMPOTENCY_KEY_REUSED") throw new Error("E_SUPPORT_CONFLICT_CODE");
 

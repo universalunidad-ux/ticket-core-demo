@@ -163,6 +163,7 @@ teardown() {
   unset TC_L130_CLIENT_B_PASSWORD
   unset TC_L130_SUPPORT_PASSWORD
   unset TC_L130_ADMIN_PASSWORD
+  unset TC_LOCAL_DB_CID
 
   if [[ "$STACK_STARTED" == YES && -n "$RUNTIME_DIR" ]]; then
     node "$REPO/tools/local-db/lib/bootstrap.mjs" \
@@ -200,7 +201,7 @@ on_exit() {
       final_rc=1
     fi
 
-    teardown || final_rc=1
+    teardown || true
     render_markers
 
     if [[ -n "${EVIDENCE_DIR:-}" && -d "$EVIDENCE_DIR" ]]; then
@@ -301,6 +302,8 @@ DB_CID="$(
 
 [[ "$DB_CID" =~ ^[A-Za-z0-9_.-]+$ ]] ||
   fail "E_BOOTSTRAP_CID_INVALID"
+
+export TC_LOCAL_DB_CID="$DB_CID"
 
 
 STATUS_FILE="$EVIDENCE_DIR/supabase-status.env"

@@ -64,7 +64,7 @@ test(
 
     assert.match(
       block,
-      /exit "\$original_rc"/,
+      /exit "\$final_rc"/,
     );
 
     assert.doesNotMatch(
