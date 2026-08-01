@@ -163,7 +163,7 @@ select
   p.proname as function_name,
   pg_get_function_identity_arguments(p.oid) as identity_arguments,
   p.prosecdef as security_definer,
-  coalesce(p.proconfig @> array['search_path=public']::text[], false)
+  coalesce((p.proconfig @> array['search_path=public']::text[] or p.proconfig @> array['search_path=pg_catalog, public']::text[]), false)
     or coalesce(p.proconfig @> array['search_path=public, pg_temp']::text[], false)
     or coalesce(p.proconfig @> array['search_path=app_private, public']::text[], false)
     or coalesce(p.proconfig @> array['search_path=public, app_private']::text[], false)
@@ -192,7 +192,7 @@ join pg_namespace n on n.oid = p.pronamespace
 where n.nspname in ('public', 'app_private')
   and p.prosecdef
   and not (
-    coalesce(p.proconfig @> array['search_path=public']::text[], false)
+    coalesce((p.proconfig @> array['search_path=public']::text[] or p.proconfig @> array['search_path=pg_catalog, public']::text[]), false)
     or coalesce(p.proconfig @> array['search_path=public, pg_temp']::text[], false)
     or coalesce(p.proconfig @> array['search_path=app_private, public']::text[], false)
     or coalesce(p.proconfig @> array['search_path=public, app_private']::text[], false)
