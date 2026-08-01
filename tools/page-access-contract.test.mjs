@@ -437,4 +437,4 @@ for (const mut of MUTANTS) {
 // 3) No tautologico: el contrato real sin mutar sigue en verde tras el corpus.
 assert.equal(validate(contract, evidence).length, 0, "el contrato real debe permanecer valido");
 
-console.log(`PAGE_ACCESS_CONTRACT: PASS (paginas=13 positivo=1 mutantes=${killed}/${MUTANTS.length})`);
+console.log(`PAGE_ACCESS_CONTRACT: PASS (paginas=${contract.pages.length} positivo=1 mutantes=${killed}/${MUTANTS.length})`);
