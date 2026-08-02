@@ -88,9 +88,14 @@ test("runtime falla si la auditoría no existe", () => {
   );
 });
 
-test("runtime usa el contenedor local existente", () => {
+test("runtime resuelve y usa el contenedor local", () => {
   assert.match(
     edge,
-    /"docker"[\s\S]*"exec"[\s\S]*dbCid[\s\S]*"psql"/,
+    /const b131DbCid = required\("TC_LOCAL_DB_CID"\);/,
+  );
+
+  assert.match(
+    edge,
+    /"docker"[\s\S]*"exec"[\s\S]*b131DbCid[\s\S]*"psql"/,
   );
 });

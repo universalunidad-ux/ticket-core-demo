@@ -305,6 +305,8 @@ async function main() {
     execFileSync: b131ExecFileSync,
   } = await import("node:child_process");
 
+  const b131DbCid = required("TC_LOCAL_DB_CID");
+
   const b131BitacoraSql = [
     "select count(*)::text || '|' ||",
     "       (count(*) filter (where fecha is distinct from created_at))::text",
@@ -316,7 +318,7 @@ async function main() {
     "docker",
     [
       "exec",
-      dbCid,
+      b131DbCid,
       "psql",
       "-X",
       "-U",
