@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "releaseOwner": "app/sw.js",
+  "publicConfigOwner": "app/supabase.config.public.js",
+  "readonlyOwner": "app/tickets.js",
+  "entrypoints": [
+    "index.html",
+    "app/index.html",
+    "app/portal-cliente.html",
+    "app/dashboard.html",
+    "app/bitacora-admin.html",
+    "app/tickets.html",
+    "app/ticket.html",
+    "app/clientes.html",
+    "app/cliente.html",
+    "app/consolidacion-clientes.html",
+    "app/alta-cliente.html",
+    "app/soporte.html",
+    "app/estado.html",
+    "app/aviso-privacidad.html",
+    "app/terminos.html"
+  ],
+  "requiredPublicAssets": [
+    ".nojekyll",
+    "site.webmanifest",
+    "favicon.ico",
+    "favicon-16x16.png",
+    "favicon-32x32.png",
+    "apple-touch-icon.png",
+    "android-chrome-192x192.png",
+    "android-chrome-512x512.png"
+  ],
+  "sensitiveRoutePatterns": ["auth", "rest", "functions", "storage"],
+  "publicConfigKeys": ["supabaseUrl", "supabasePublishableKey"],
+  "forbiddenPublicConfigPatterns": ["service_role", "secretKey", "password", "access_token"],
+  "runtimeRoutes": ["/", "/app/index.html", "/app/tickets.html?readonly=1", "/app/sw.js", "/site.webmanifest"]
+}
