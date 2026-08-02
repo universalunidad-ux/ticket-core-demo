@@ -130,9 +130,9 @@ begin
   end if;
 
   v_job_type := case p_tipo when 'image' then 'procesar_imagen' when 'pdf' then 'procesar_pdf' else 'procesar_video' end;
-  insert into public.trabajos_adjuntos(adjunto_id, tipo, source_checksum_sha256)
+  insert into public.trabajos_adjuntos as queued_job(adjunto_id, tipo, source_checksum_sha256)
   values (v_id, v_job_type, p_checksum_sha256)
-  on conflict (adjunto_id, tipo, version, source_checksum_sha256) do nothing;
+  on conflict on constraint trabajos_adjuntos_adjunto_id_tipo_version_source_checksum_s_key do nothing;
 
   return query select v_id, p_storage_path, true;
 end

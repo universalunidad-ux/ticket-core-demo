@@ -42,6 +42,7 @@ DB_CID="$(field BOOTSTRAP_CID "${BOOTSTRAP}")"
 OWNED=1
 
 SUPABASE_TELEMETRY_DISABLED=1 supabase db reset --workdir "${RUNTIME_DIR}" >"${EVIDENCE_DIR}/migrations.log" 2>&1 || fail "MIGRATIONS_FAILED"
+docker exec -i "${DB_CID}" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f - <"${REPO_ROOT}/supabase/tests/media_claim_upload_targeted.sql" >"${EVIDENCE_DIR}/claim-targeted.log" 2>&1 || fail "CLAIM_TARGETED_FAILED"
 LOCAL_STATUS="$(SUPABASE_TELEMETRY_DISABLED=1 supabase status -o env --workdir "${RUNTIME_DIR}" 2>"${EVIDENCE_DIR}/status.err")" || fail "STATUS_FAILED"
 API_URL="$(field API_URL "${LOCAL_STATUS}")"
 SERVICE_ROLE_KEY="$(field SERVICE_ROLE_KEY "${LOCAL_STATUS}")"
