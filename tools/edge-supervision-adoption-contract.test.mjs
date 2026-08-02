@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 
@@ -8,8 +9,6 @@ const sourcePath =
 const metadataPath =
   "supabase/functions/ticket-escalar-admin/source-current.json";
 const callerPath = "app/ticket-composer-polish.js";
-const expectedHash =
-  "eb324b7b3f78b65d38d1d845e870a2b7724fd65a703e4e9fd4e6b71e421600c9";
 
 const source = fs.readFileSync(sourcePath);
 const metadata = JSON.parse(
@@ -32,12 +31,32 @@ const actualHash = crypto
   .createHash("sha256")
   .update(source)
   .digest("hex");
+const hash = (value) => crypto
+  .createHash("sha256")
+  .update(value)
+  .digest("hex");
+const derivativeSource = execFileSync(
+  "git",
+  ["show", `${metadata.local_derivative_commit}:${sourcePath}`],
+);
+const recoveredSource = execFileSync(
+  "git",
+  ["show", `${metadata.local_derivative_commit}^:${sourcePath}`],
+);
 
-assert.equal(actualHash, expectedHash);
+assert.match(metadata.source_sha256, /^[a-f0-9]{64}$/);
+assert.match(metadata.local_source_sha256, /^[a-f0-9]{64}$/);
+assert.match(metadata.local_derivative_commit, /^[a-f0-9]{40}$/);
+assert.equal(actualHash, metadata.local_source_sha256);
+assert.equal(hash(derivativeSource), metadata.local_source_sha256);
+assert.equal(hash(recoveredSource), metadata.source_sha256);
+execFileSync(
+  "git",
+  ["merge-base", "--is-ancestor", metadata.local_derivative_commit, "HEAD"],
+);
 assert.equal(metadata.slug, slug);
 assert.equal(metadata.remote_version, 5);
 assert.equal(metadata.verify_jwt, true);
-assert.equal(metadata.source_sha256, expectedHash);
 assert.equal(metadata.project_ref, "ovfmqqqwezfdtgrtkjhf");
 assert.equal(metadata.status, "ACTIVE");
 assert.equal(
