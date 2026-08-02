@@ -175,6 +175,32 @@ async function handleAuthenticatedMediaUpload(req:Request,origin:string):Promise
   return reply({ok:true,replayed:false,attachment_id:claim.attachmentId,storage_path:claim.storagePath,checksum_sha256:metadata.contentSha256,duration_seconds:policy.value.durationSeconds},201);
 }
 
+async function handleAuthenticatedMediaDelete(req:Request,origin:string):Promise<Response>{
+  const reply=(body:Record<string,unknown>,status=200)=>json(body,status,origin);
+  const bearer=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"").trim();
+  if(!bearer)return reply({message:"Autenticación requerida.",code:"MEDIA_AUTH_REQUIRED"},401);
+  const{data:{user},error:userError}=await sb.auth.getUser(bearer);
+  if(userError||!user)return reply({message:"Sesión inválida.",code:"MEDIA_AUTH_INVALID"},401);
+  const anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"";
+  if(!anonKey)return reply({message:"Configuración no disponible.",code:"MEDIA_AUTH_CONFIG_MISSING"},503);
+  let body:Record<string,unknown>={};
+  try{body=await req.json()}catch{return reply({message:"Solicitud inválida.",code:"MEDIA_DELETE_INVALID"},400)}
+  const attachmentId=String(body.attachment_id||"").trim();
+  if(!/^[0-9a-f-]{36}$/i.test(attachmentId))return reply({message:"Solicitud inválida.",code:"MEDIA_DELETE_INVALID"},400);
+  const userClient=createClient(SUPABASE_URL,anonKey,{global:{headers:{Authorization:`Bearer ${bearer}`}},auth:{persistSession:false,autoRefreshToken:false}});
+  const access=await userClient.from("adjuntos_ticket").select("id").eq("id",attachmentId).maybeSingle();
+  if(access.error||!access.data)return reply({message:"Adjunto no disponible.",code:"MEDIA_ATTACHMENT_FORBIDDEN"},403);
+  const prepared=await sb.rpc("tc_prepare_media_delete",{p_adjunto_id:attachmentId});
+  if(prepared.error){const message=String(prepared.error.message||"");const code=message.includes("LEGAL_HOLD")?"MEDIA_DELETE_LEGAL_HOLD":message.includes("RETENTION_ACTIVE")?"MEDIA_DELETE_RETENTION_ACTIVE":"MEDIA_DELETE_REJECTED";return reply({message:"El adjunto no puede eliminarse.",code},409)}
+  const row=Array.isArray(prepared.data)?prepared.data[0]:prepared.data;
+  if(!row?.storage_path||!row?.delete_token)return reply({message:"No se pudo preparar la eliminación.",code:"MEDIA_DELETE_PREPARE_FAILED"},500);
+  const removed=await sb.storage.from("soporte_adjuntos").remove([String(row.storage_path)]);
+  if(removed.error){await sb.rpc("tc_abort_media_delete",{p_adjunto_id:attachmentId,p_delete_token:row.delete_token});return reply({message:"No se pudo eliminar el objeto.",code:"MEDIA_DELETE_STORAGE_FAILED"},503)}
+  const finalized=await sb.rpc("tc_finalize_media_delete",{p_adjunto_id:attachmentId,p_delete_token:row.delete_token});
+  if(finalized.error)return reply({message:"La metadata no pudo finalizarse.",code:"MEDIA_DELETE_FINALIZE_FAILED"},500);
+  return reply({ok:true,attachment_id:attachmentId,deleted:true},200);
+}
+
 async function matchCliente(empresa:string,correo:string,telefono:string):Promise<MatchResult>{
   const empresaNorm=norm(empresa),mail=String(correo||"").trim().toLowerCase(),phone=digits(telefono||""),mailDomain=domainOf(mail);
   const [clientesRes,aliasesRes]=await Promise.all([sb.from("clientes").select("id,nombre,correo,telefono").limit(250),sb.from("cliente_aliases").select("cliente_id,alias,alias_norm,activo").eq("activo",true).limit(800)]);
@@ -221,6 +247,7 @@ export const handler=async(req:Request):Promise<Response>=>{
   }
   if(req.method!=="POST")return json({message:"Method not allowed",code:"METHOD_NOT_ALLOWED"},405);
   if(req.headers.get("x-media-operation")==="upload")return handleAuthenticatedMediaUpload(req,reqOrigin);
+  if(req.headers.get("x-media-operation")==="delete")return handleAuthenticatedMediaDelete(req,reqOrigin);
 
   const headerResult=inspectSupportRequestHeaders(req.headers,ALLOWED_ORIGINS,MAX_BODY_BYTES);
   if(!headerResult.ok)return json({message:requestErrorMessage(headerResult.code),code:headerResult.code},requestErrorStatus(headerResult.code));
