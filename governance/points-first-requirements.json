@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "unit": "TC-8166E-POINTS-FIRST-LOCAL-SUPERMEGATRAIN-01",
+  "base": "8166e376ea249dff238149464e056294acf395b2",
+  "pointsBefore": 150.6,
+  "totalWeight": 317,
+  "sourceSnapshots": [
+    {
+      "name": "TC-302-POINTS-FIRST-EXECUTION-MAP-01.md",
+      "sha256": "ec26b021c77101bfeb6d34643488d1c41e0408c1f5ec4f62bbd0c43803b24bab"
+    },
+    {
+      "name": "06_LEDGER_CANDIDATE_ROWS.tsv",
+      "sha256": "431196467a6001a0aaf99237e15c83fb501645d090ed3b76b6b7fb63a02e88f3"
+    },
+    {
+      "name": "01_MASTER_REQUIREMENTS_LEDGER.csv",
+      "sha256": "8d2aea84ed850407b2046f66eddeae7f727c3162d1396bda6881dbcb4c6b49d0"
+    }
+  ],
+  "rows": [
+    {"id":"GOV-G0-003","phase":"A","owner":"Owner repo","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/traceability.json","currentCredit":0.30,"localCeiling":1.95,"decision":"PROMOTABLE_LOCAL","creditKey":"GOV-G0-003"},
+    {"id":"GOV-TRACE-001","phase":"A","owner":"Product+Engineering","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/traceability.json","currentCredit":1.05,"localCeiling":1.05,"decision":"HUMAN_ADJUDICATION_REQUIRED","creditKey":"GOV-TRACE-001"},
+    {"id":"U0-A","phase":"A","owner":"Product+Engineering","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/double-credit.json","currentCredit":0.70,"localCeiling":0.70,"decision":"DUPLICATE_OR_DOUBLE_COUNT_RISK","creditKey":"U0-HISTORICAL-SCOPE"},
+    {"id":"U0-B","phase":"A","owner":"Product+Engineering","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/double-credit.json","currentCredit":0.70,"localCeiling":0.70,"decision":"DUPLICATE_OR_DOUBLE_COUNT_RISK","creditKey":"U0-HISTORICAL-SCOPE"},
+    {"id":"U0-C","phase":"A","owner":"Product+Engineering","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/double-credit.json","currentCredit":0.70,"localCeiling":0.70,"decision":"DUPLICATE_OR_DOUBLE_COUNT_RISK","creditKey":"U0-HISTORICAL-SCOPE"},
+    {"id":"U0-D","phase":"A","owner":"Product+Engineering","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/double-credit.json","currentCredit":0.70,"localCeiling":0.70,"decision":"DUPLICATE_OR_DOUBLE_COUNT_RISK","creditKey":"U0-HISTORICAL-SCOPE"},
+    {"id":"PROD170-002","phase":"A","owner":"Product+Operations","test":"tools/operations-contract.test.mjs","evidence":"operations/runbook-contract.json","currentCredit":0.30,"localCeiling":1.95,"decision":"PROMOTABLE_LOCAL","creditKey":"PROD170-002"},
+    {"id":"OPS-RUN-001","phase":"A","owner":"Operations","test":"tools/operations-contract.test.mjs","evidence":"operations/runbook-contract.json","currentCredit":1.30,"localCeiling":1.80,"decision":"PROMOTABLE_LOCAL","creditKey":"OPS-RUN-001"},
+    {"id":"OPS-LOG-001","phase":"A","owner":"Engineering","test":"tools/operations-contract.test.mjs","evidence":"operations/logging-contract.json","currentCredit":2.25,"localCeiling":2.25,"decision":"INTEGRATION_REQUIRED","creditKey":"OPS-LOG-001"},
+    {"id":"TC-U043","phase":"A","owner":"HUMAN+CODEX","test":"REFERENCE_ONLY","evidence":"REFERENCE_ALREADY_CREDITED","currentCredit":0.90,"localCeiling":0.90,"decision":"ALREADY_CREDITED_REFERENCE_ONLY","creditKey":"TC-U043"},
+    {"id":"DIST-001","phase":"A","owner":"Owner repo","test":"tools/distribution-contract.test.mjs","evidence":"distribution/distribution-contract.json","currentCredit":1.50,"localCeiling":1.80,"decision":"PROMOTABLE_LOCAL","creditKey":"DIST-001"},
+    {"id":"DIST-003","phase":"A","owner":"Frontend","test":"tools/distribution-contract.test.mjs","evidence":"distribution/distribution-contract.json","currentCredit":1.95,"localCeiling":2.25,"decision":"PROMOTABLE_LOCAL","creditKey":"DIST-003"},
+    {"id":"DIST-004","phase":"A","owner":"Engineering","test":"tools/distribution-contract.test.mjs","evidence":"distribution/distribution-contract.json","currentCredit":1.60,"localCeiling":1.80,"decision":"PROMOTABLE_LOCAL","creditKey":"DIST-004"},
+    {"id":"TC-U005","phase":"A","owner":"GPT_WORK_SUPABASE","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/traceability.json","currentCredit":0.35,"localCeiling":0.35,"decision":"HUMAN_ADJUDICATION_REQUIRED","creditKey":"TC-U005"},
+    {"id":"TC-U053","phase":"A","owner":"CODEX+HUMAN","test":"REFERENCE_ONLY","evidence":"HOSTED_OR_STAGING_REQUIRED","currentCredit":1.30,"localCeiling":1.30,"decision":"HOSTED_OR_STAGING_REQUIRED","creditKey":"TC-U053"},
+    {"id":"TC-U078","phase":"A","owner":"CODEX","test":"tools/requirement-traceability-contract.test.mjs","evidence":"traceability/traceability.json","currentCredit":0.65,"localCeiling":0.90,"decision":"PROMOTABLE_LOCAL","creditKey":"TC-U078"}
+  ]
+}
