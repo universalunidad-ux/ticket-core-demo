@@ -301,6 +301,47 @@ async function main() {
   );
   if (escalation.body?.ok !== true) throw new Error("E_ESCALATION_POSITIVE");
 
+  const {
+    execFileSync: b131ExecFileSync,
+  } = await import("node:child_process");
+
+  const b131BitacoraSql = [
+    "select count(*)::text || '|' ||",
+    "       (count(*) filter (where fecha is distinct from created_at))::text",
+    "from public.bitacora",
+    "where accion = 'ticket_supervision_escalada';",
+  ].join("\n");
+
+  const b131BitacoraProbe = b131ExecFileSync(
+    "docker",
+    [
+      "exec",
+      dbCid,
+      "psql",
+      "-X",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-Atqc",
+      b131BitacoraSql,
+    ],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  ).trim();
+
+  if (b131BitacoraProbe !== "1|0") {
+    throw new Error(
+      `E_ESCALATION_BITACORA_NOT_WRITTEN:${b131BitacoraProbe || "EMPTY"}`,
+    );
+  }
+
+  process.stdout.write(
+    "ESCALATION_BITACORA_WRITTEN=PASS\n",
+  );
+
   process.stdout.write(
     "SUPPORT_RATE_LIMIT=PASS\n"
       + "SUPPORT_IDEMPOTENCY_REPLAY=PASS\n"

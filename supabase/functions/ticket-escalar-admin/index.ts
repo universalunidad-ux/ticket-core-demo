@@ -169,9 +169,8 @@ async function bitacoraSafe(accion: string, cliente_id: unknown, detalle: JsonOb
       accion,
       cliente_id: cliente_id || null,
       detalle,
-      fecha: new Date().toISOString(),
       visibilidad: "interna",
-      tipo: "sistema",
+      tipo: "nota_interna",
     });
     if (error) console.error("BITACORA_ERROR", error.message);
   } catch (e) {
