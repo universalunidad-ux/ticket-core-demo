@@ -1,7 +1,14 @@
 -- TC-8166E-MT1-MEDIA-PIPELINE-LOCAL-01 · exact-head local runtime phases.
 \set ON_ERROR_STOP on
 
-\if :'phase' = 'setup'
+select
+  :'phase' = 'setup' as phase_setup,
+  :'phase' = 'worker_complete' as phase_worker_complete,
+  :'phase' = 'retention' as phase_retention,
+  :'phase' = 'teardown' as phase_teardown
+\gset
+
+\if :phase_setup
 select set_config('tc.media.image_bytes', :'image_bytes', false);
 select set_config('tc.media.image_sha', :'image_sha', false);
 select set_config('tc.media.video_bytes', :'video_bytes', false);
@@ -114,7 +121,7 @@ select public.tc_finalize_media_upload(
 \echo MEDIA_RUNTIME_SETUP=PASS
 \endif
 
-\if :'phase' = 'worker_complete'
+\if :phase_worker_complete
 insert into public.derivados_adjuntos(
  adjunto_id,tipo,storage_path,mime_type,tamano_bytes,checksum_sha256,source_checksum_sha256,ancho,alto
 ) values
@@ -126,7 +133,7 @@ update public.adjuntos_ticket set estado='listo',actualizado_en=now()
 \echo MEDIA_WORKER_DB_COMPLETE=PASS
 \endif
 
-\if :'phase' = 'retention'
+\if :phase_retention
 insert into public.politicas_retencion_adjuntos(
  id,nombre,intervalo_retencion,referencia_aprobacion,aprobada_por
 ) values (
@@ -153,7 +160,7 @@ $retention_checks$;
 \echo MEDIA_RETENTION_RUNTIME=PASS
 \endif
 
-\if :'phase' = 'teardown'
+\if :phase_teardown
 delete from public.tickets where id in ('8166e222-0000-0000-0000-000000000001','8166e222-0000-0000-0000-000000000002');
 delete from public.politicas_retencion_adjuntos where id='8166e444-0000-0000-0000-000000000001';
 delete from public.clientes where id='8166e111-1111-1111-1111-111111111111';
