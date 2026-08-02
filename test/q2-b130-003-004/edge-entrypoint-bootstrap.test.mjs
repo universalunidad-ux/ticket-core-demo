@@ -3,13 +3,16 @@ import assert from "node:assert/strict";
 import {
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
   readdirSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,8 +23,8 @@ import {
   stageExactFunctions,
 } from "../../tools/l130-authenticated-qa/edge-runtime-serve.mjs";
 import {
-  RUNTIME_ROOT_PREFIX,
-  scaffoldRuntime,
+  derivePorts,
+  renderConfigToml,
 } from "../../tools/local-db/lib/bootstrap.mjs";
 
 const REPO = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -82,16 +85,28 @@ test("external local dependency closure is minimal and includes the janome catal
 });
 
 test("temporary Edge runtime has four self-contained conventional entrypoints", () => {
-  const runtimeDir = mkdtempSync(join(RUNTIME_ROOT_PREFIX, "edge-entrypoint-contract."));
+  const tempRoot = realpathSync(tmpdir());
+  const runtimeDir = mkdtempSync(join(tempRoot, "tc-edge-entrypoint-contract."));
+  let runtimeRemoved = false;
   try {
-    const scaffold = scaffoldRuntime({
-      runtimeDir,
-      projectId: "tc_edge_entrypoint_contract",
-      dbPort: 57300,
-      resetRuntime: true,
-    });
+    assert.equal(
+      runtimeDir.startsWith(`${tempRoot}/`),
+      true,
+      "contract runtime must be created under the controlled system temp root",
+    );
+    assert.equal(lstatSync(runtimeDir).isSymbolicLink(), false, "contract runtime must be real");
+    assert.equal(realpathSync(runtimeDir), runtimeDir, "contract runtime must not escape temp root");
+
+    const runtimeSupabase = join(runtimeDir, "supabase");
+    const ports = derivePorts(57300);
+    mkdirSync(runtimeSupabase, { recursive: true });
+    writeFileSync(
+      join(runtimeSupabase, "config.toml"),
+      renderConfigToml({ projectId: "tc_edge_entrypoint_contract", ...ports }),
+      { mode: 0o600 },
+    );
     const functionsDir = stageExactFunctions(runtimeDir);
-    const configPath = join(scaffold.runtimeSupabase, "config.toml");
+    const configPath = join(runtimeSupabase, "config.toml");
     const config = readFileSync(configPath, "utf8");
 
     assert.equal(realpathSync(configPath), configPath, "runtime config must be consumed locally");
@@ -200,7 +215,9 @@ test("temporary Edge runtime has four self-contained conventional entrypoints", 
     );
   } finally {
     rmSync(runtimeDir, { recursive: true, force: true });
+    runtimeRemoved = !existsSync(runtimeDir);
   }
+  assert.equal(runtimeRemoved, true, "contract runtime must be removed after validation");
 });
 
 function relativeToRuntime(runtimeDir, path) {
