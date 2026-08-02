@@ -5,6 +5,7 @@ import {
   type PublicSupportDto,
 } from "../_shared/support-contract.ts";
 import { validateAttachmentBatch, type AttachmentInput, type ValidatedAttachment } from "../_shared/upload-contract.ts";
+import { validateAuthoritativeMedia } from "../_shared/media-policy.ts";
 import { escapeHtml, sanitizeEmailSubject } from "../_shared/security-primitives.ts";
 import {
   SUPPORT_TURNSTILE_ACTION,
@@ -36,7 +37,7 @@ const MAX_BODY_BYTES=Number(Deno.env.get("MAX_BODY_BYTES")||(64*1024*1024));
 const HANDLER_CONFIGURATION_VALID=Number.isSafeInteger(MAX_BODY_BYTES)&&MAX_BODY_BYTES>0;
 const DEFAULT_ORIGINS=[PUBLIC_APP_URL,"https://universalunidad-ux.github.io"].filter(Boolean);
 const ALLOWED_ORIGINS=new Set((Deno.env.get("CORS_ALLOWED_ORIGINS")||DEFAULT_ORIGINS.join(",")).split(",").map(o=>o.trim().replace(/\/+$/,"")).filter(Boolean));
-const corsBase={"Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, idempotency-key","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"};
+const corsBase={"Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, idempotency-key, x-media-operation, x-content-sha256","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"};
 const corsFor=(origin:string)=>({...corsBase,...(origin?{"Access-Control-Allow-Origin":origin}:{})});
 const resolveOrigin=(req:Request)=>{const o=(req.headers.get("origin")||"").replace(/\/+$/,"");return o&&ALLOWED_ORIGINS.has(o)?o:"";};
 const json=(body:Record<string,unknown>,status=200,origin="")=>new Response(JSON.stringify(body),{status,headers:{...corsFor(origin),"Content-Type":"application/json"}});
@@ -78,10 +79,9 @@ const LOG_BLOCK=new Set(["correo","email","telefono","phone","token","token_publ
 async function logSecurity(accion:string,cliente_id:string|null,detalle:Record<string,unknown>){try{const safe:Record<string,unknown>={};for(const [k,v] of Object.entries(detalle||{})){const kl=k.toLowerCase();if(LOG_BLOCK.has(kl))continue;if(kl==="ip"){safe.ip_hash=await ipHashOf(String(v||""));continue;}safe[k]=v;}const {error}=await sb.from("bitacora").insert({accion,cliente_id,detalle:safe,visibilidad:"interna",tipo:"nota_interna"});if(error)console.error("LOG_SECURITY_DB_ERROR")}catch(_e){console.error("LOG_SECURITY_ERROR")}}
 async function sendMail({to,subject,html}:{to:string;subject:string;html:string}){if(!RESEND_API_KEY||!to)return;const r=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${RESEND_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({from:MAIL_FROM,to:[to],subject,html})});if(!r.ok)throw new Error(`MAIL_ERROR_${r.status}`)}
 async function addTicketEvento(ticket_id:string,autor_tipo:"cliente"|"soporte"|"sistema",visibilidad:"publica"|"interna",kind:"mensaje"|"estado"|"nota"|"archivo"|"sistema"|"asignacion"|"sla",texto:string,meta:Record<string,unknown>={}){const {error}=await sb.from("ticket_eventos").insert({ticket_id,autor_tipo,visibilidad,kind,texto,meta});if(error)throw new Error(`TICKET_EVENTO_ERROR: ${error.message}`)}
-async function addArchivoTicket({ticket_id,solicitud_id,origen,visibilidad,nombre_archivo,storage_path,url_firma,mime_type,tamano_bytes,subido_por=null,meta={}}:{ticket_id:string;solicitud_id?:string|null;origen:"solicitud"|"ticket"|"portal"|"interno";visibilidad:"publica"|"interna";nombre_archivo:string;storage_path:string;url_firma?:string|null;mime_type?:string|null;tamano_bytes?:number|null;subido_por?:string|null;meta?:Record<string,unknown>}){const {error}=await sb.from("archivos_ticket").insert({ticket_id,solicitud_id:solicitud_id||null,origen,visibilidad,nombre_archivo,storage_path,url_firma:url_firma||null,mime_type:mime_type||null,tamano_bytes:tamano_bytes||null,subido_por,meta});if(error)throw new Error(`ARCHIVO_TICKET_ERROR: ${error.message}`)}
 
 type MatchResult={level:string;score:number;cliente_id:string|null;contacto_id:string|null;cliente_nombre:string|null;contacto_nombre:string|null;reasons:string[]};
-type ValidatedUpload=Readonly<{metadata:ValidatedAttachment;bytes:Uint8Array}>;
+type ValidatedUpload=Readonly<{metadata:ValidatedAttachment;bytes:Uint8Array;durationSeconds:number|null}>;
 type PublicSuccessResponse=Readonly<{ok:true;folio:string;token_publico:string;status:"ticket_creado"}>;
 
 const publicSuccessKeys=["folio","ok","status","token_publico"] as const;
@@ -113,6 +113,67 @@ const requestErrorMessage=(code:SupportRequestErrorCode):string=>{
   if(code.startsWith("TURNSTILE_"))return code==="TURNSTILE_UNAVAILABLE"?"Validación de seguridad no disponible.":"No se pudo validar la solicitud.";
   return"Solicitud inválida.";
 };
+
+async function claimCanonicalAttachment(input:{
+  ticketId:string;solicitudId:string|null;storagePath:string;metadata:ValidatedAttachment;
+  durationSeconds:number|null;visibility:"publica"|"interna";idempotencyKey:string;
+  origin:"solicitud"|"ticket"|"portal"|"interno";uploadedBy:string|null;
+}){
+  const requestHash=await sha256hex(JSON.stringify({
+    ticketId:input.ticketId,solicitudId:input.solicitudId,storagePath:input.storagePath,
+    name:input.metadata.normalizedName,mime:input.metadata.mimeType,type:input.metadata.category,
+    size:input.metadata.size,checksum:input.metadata.contentSha256,duration:input.durationSeconds,
+    visibility:input.visibility,origin:input.origin,
+  }));
+  const {data,error}=await sb.rpc("tc_claim_media_upload",{
+    p_ticket_id:input.ticketId,p_solicitud_id:input.solicitudId,p_storage_path:input.storagePath,
+    p_nombre_original:input.metadata.normalizedName,p_mime_declarado:input.metadata.mimeType,
+    p_mime_detectado:input.metadata.mimeType,p_tipo:input.metadata.category,
+    p_tamano_bytes:input.metadata.size,p_checksum_sha256:input.metadata.contentSha256,
+    p_duracion_segundos:input.durationSeconds,p_visibilidad:input.visibility,
+    p_idempotency_key:input.idempotencyKey,p_request_hash:requestHash,
+    p_origen:input.origin,p_subido_por:input.uploadedBy,
+  });
+  if(error)throw new Error(String(error.message||"MEDIA_UPLOAD_CLAIM_FAILED"));
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row?.adjunto_id||!row?.canonical_storage_path||typeof row?.created!=="boolean")throw new Error("MEDIA_UPLOAD_CLAIM_MALFORMED");
+  return{attachmentId:String(row.adjunto_id),storagePath:String(row.canonical_storage_path),created:row.created,requestHash};
+}
+
+async function handleAuthenticatedMediaUpload(req:Request,origin:string):Promise<Response>{
+  const reply=(body:Record<string,unknown>,status=200)=>json(body,status,origin);
+  const bearer=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"").trim();
+  const idemKey=(req.headers.get("idempotency-key")||"").trim();
+  const declaredChecksum=(req.headers.get("x-content-sha256")||"").trim().toLowerCase();
+  if(!bearer)return reply({message:"Autenticación requerida.",code:"MEDIA_AUTH_REQUIRED"},401);
+  if(idemKey.length<16||idemKey.length>200)return reply({message:"Idempotency-Key requerida.",code:"MEDIA_IDEMPOTENCY_REQUIRED"},400);
+  const{data:{user},error:userError}=await sb.auth.getUser(bearer);
+  if(userError||!user)return reply({message:"Sesión inválida.",code:"MEDIA_AUTH_INVALID"},401);
+  const anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"";
+  if(!anonKey)return reply({message:"Configuración no disponible.",code:"MEDIA_AUTH_CONFIG_MISSING"},503);
+  const userClient=createClient(SUPABASE_URL,anonKey,{global:{headers:{Authorization:`Bearer ${bearer}`}},auth:{persistSession:false,autoRefreshToken:false}});
+  const form=await req.formData();
+  const ticketId=String(form.get("ticket_id")||"").trim();
+  const visibility=String(form.get("visibilidad")||"interna")==="publica"?"publica":"interna";
+  const file=form.get("file");
+  if(!/^[0-9a-f-]{36}$/i.test(ticketId)||!(file instanceof File))return reply({message:"Upload inválido.",code:"MEDIA_UPLOAD_INVALID"},400);
+  const ticketAccess=await userClient.from("tickets").select("id").eq("id",ticketId).maybeSingle();
+  if(ticketAccess.error||!ticketAccess.data)return reply({message:"Ticket no disponible.",code:"MEDIA_TICKET_FORBIDDEN"},403);
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  const policy=await validateAuthoritativeMedia({name:file.name,mimeType:file.type,bytes},declaredChecksum);
+  if(!policy.ok){const status=policy.code.includes("CHECKSUM")?422:policy.code.includes("DURATION")?422:415;return reply({message:"Adjunto rechazado.",code:policy.code},status)}
+  const metadata=policy.value.metadata;
+  const storagePath=`${ticketId}/media_${crypto.randomUUID()}_${metadata.normalizedName}`;
+  let claim;
+  try{claim=await claimCanonicalAttachment({ticketId,solicitudId:null,storagePath,metadata,durationSeconds:policy.value.durationSeconds,visibility,idempotencyKey:idemKey,origin:"interno",uploadedBy:user.id})}
+  catch(error){const message=error instanceof Error?error.message:"MEDIA_UPLOAD_CLAIM_FAILED";return reply({message:"Adjunto rechazado.",code:message.includes("TC_IDEMPOTENCY_KEY_REUSED")?"TC_IDEMPOTENCY_KEY_REUSED":message.includes("AUTHORIZATION")?"MEDIA_VIDEO_AUTHORIZATION_REQUIRED":"MEDIA_UPLOAD_CLAIM_FAILED"},message.includes("TC_IDEMPOTENCY_KEY_REUSED")?409:422)}
+  if(!claim.created)return reply({ok:true,replayed:true,attachment_id:claim.attachmentId,storage_path:claim.storagePath},200);
+  const uploaded=await sb.storage.from("soporte_adjuntos").upload(claim.storagePath,bytes,{contentType:metadata.mimeType,upsert:false});
+  if(uploaded.error){await sb.rpc("tc_abort_media_upload",{p_adjunto_id:claim.attachmentId,p_request_hash:claim.requestHash});return reply({message:"No se pudo almacenar el adjunto.",code:"MEDIA_STORAGE_FAILED"},503)}
+  const finalized=await sb.rpc("tc_finalize_media_upload",{p_adjunto_id:claim.attachmentId,p_request_hash:claim.requestHash});
+  if(finalized.error){await sb.storage.from("soporte_adjuntos").remove([claim.storagePath]);await sb.rpc("tc_abort_media_upload",{p_adjunto_id:claim.attachmentId,p_request_hash:claim.requestHash});return reply({message:"No se pudo finalizar el adjunto.",code:"MEDIA_FINALIZE_FAILED"},500)}
+  return reply({ok:true,replayed:false,attachment_id:claim.attachmentId,storage_path:claim.storagePath,checksum_sha256:metadata.contentSha256,duration_seconds:policy.value.durationSeconds},201);
+}
 
 async function matchCliente(empresa:string,correo:string,telefono:string):Promise<MatchResult>{
   const empresaNorm=norm(empresa),mail=String(correo||"").trim().toLowerCase(),phone=digits(telefono||""),mailDomain=domainOf(mail);
@@ -159,6 +220,7 @@ export const handler=async(req:Request):Promise<Response>=>{
     return json({ok:true},200);
   }
   if(req.method!=="POST")return json({message:"Method not allowed",code:"METHOD_NOT_ALLOWED"},405);
+  if(req.headers.get("x-media-operation")==="upload")return handleAuthenticatedMediaUpload(req,reqOrigin);
 
   const headerResult=inspectSupportRequestHeaders(req.headers,ALLOWED_ORIGINS,MAX_BODY_BYTES);
   if(!headerResult.ok)return json({message:requestErrorMessage(headerResult.code),code:headerResult.code},requestErrorStatus(headerResult.code));
@@ -188,7 +250,14 @@ export const handler=async(req:Request):Promise<Response>=>{
       [...codes].some(code=>code.includes("MIME")||code.includes("MAGIC")||code.includes("EXTENSION"))?415:400;
     return json({message:"Uno o más adjuntos no son válidos.",code:"UPLOAD_INVALID",issues:attachmentResult.issues},status);
   }
-  const validatedUploads:readonly ValidatedUpload[]=Object.freeze(attachmentResult.value.map((metadata,index)=>Object.freeze({metadata,bytes:attachmentInputs[index].bytes})));
+  const authoritativeUploads:ValidatedUpload[]=[];
+  for(let index=0;index<attachmentResult.value.length;index++){
+    const metadata=attachmentResult.value[index],bytes=attachmentInputs[index].bytes;
+    const policy=await validateAuthoritativeMedia({name:attachmentInputs[index].name,mimeType:attachmentInputs[index].mimeType,bytes},metadata.contentSha256);
+    if(!policy.ok)return json({message:"Uno o más adjuntos no cumplen la política de medios.",code:policy.code},422);
+    authoritativeUploads.push(Object.freeze({metadata,bytes,durationSeconds:policy.value.durationSeconds}));
+  }
+  const validatedUploads:readonly ValidatedUpload[]=Object.freeze(authoritativeUploads);
 
   const ip=getIp(req);
   if(REQUIRE_TURNSTILE_EFFECTIVE){
@@ -271,17 +340,18 @@ export const handler=async(req:Request):Promise<Response>=>{
 
     const adjuntos:Array<Record<string,unknown>>=[];
     for(const upload of validatedUploads){
-      const {metadata,bytes}=upload;
+      const {metadata,bytes,durationSeconds}=upload;
       const path=`${ticket.id}/${Date.now()}_${crypto.randomUUID()}_${metadata.normalizedName}`;
-      const up=await sb.storage.from("soporte_adjuntos").upload(path,bytes,{contentType:metadata.mimeType,upsert:false});
-      if(up.error)throw new Error(`Error subiendo ${metadata.normalizedName}: ${up.error.message}`);
-      uploadedPaths.push(path);
-      const arch=await sb.from("solicitud_archivos").insert({solicitud_id:solicitud.id,nombre_archivo:metadata.normalizedName,storage_path:path,mime_type:metadata.mimeType,tamano_bytes:metadata.size,tipo_detectado:metadata.detectedType});
-      if(arch.error)throw new Error(`Error guardando metadata de solicitud para ${metadata.normalizedName}: ${arch.error.message}`);
-      const archTicket=await sb.from("ticket_archivos").insert({ticket_id:ticket.id,nombre_archivo:metadata.normalizedName,url_archivo:path,mime_type:metadata.mimeType,tamano_bytes:metadata.size});
-      if(archTicket.error)console.error("LEGACY_TICKET_ARCHIVOS_ERROR",archTicket.error.message);
-      await addArchivoTicket({ticket_id:ticket.id,solicitud_id:solicitud.id,origen:"solicitud",visibilidad:"publica",nombre_archivo:metadata.normalizedName,storage_path:path,url_firma:null,mime_type:metadata.mimeType,tamano_bytes:metadata.size,meta:{canal:"soporte_publico",detectedType:metadata.detectedType,contentSha256:metadata.contentSha256}});
-      adjuntos.push({nombre:metadata.normalizedName,tipo:metadata.mimeType,peso:metadata.size,storage_path:path,url:null,origen:"soporte_publico"});
+      const mediaKey=`${idemKey||crypto.randomUUID()}:${metadata.contentSha256.slice(0,16)}`.slice(0,200);
+      const claim=await claimCanonicalAttachment({ticketId:ticket.id,solicitudId:solicitud.id,storagePath:path,metadata,durationSeconds,visibility:"publica",idempotencyKey:mediaKey,origin:"solicitud",uploadedBy:null});
+      if(claim.created){
+        const up=await sb.storage.from("soporte_adjuntos").upload(claim.storagePath,bytes,{contentType:metadata.mimeType,upsert:false});
+        if(up.error){await sb.rpc("tc_abort_media_upload",{p_adjunto_id:claim.attachmentId,p_request_hash:claim.requestHash});throw new Error(`Error subiendo ${metadata.normalizedName}: ${up.error.message}`)}
+        uploadedPaths.push(claim.storagePath);
+        const finalized=await sb.rpc("tc_finalize_media_upload",{p_adjunto_id:claim.attachmentId,p_request_hash:claim.requestHash});
+        if(finalized.error)throw new Error(`Error finalizando ${metadata.normalizedName}: ${finalized.error.message}`);
+      }
+      adjuntos.push({id:claim.attachmentId,nombre:metadata.normalizedName,tipo:metadata.mimeType,peso:metadata.size,storage_path:claim.storagePath,url:null,origen:"soporte_publico"});
     }
 
     if(adjuntos.length)await addTicketEvento(ticket.id,"sistema","publica","archivo",`Se recibieron ${adjuntos.length} archivo(s) junto con la solicitud.`,{archivos_count:adjuntos.length,adjuntos});
