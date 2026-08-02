@@ -99,14 +99,13 @@ begin
     json_build_object('sub', uid::text, 'role', 'authenticated')::text, true);
 end $$;
 
-select pg_temp.act('95555555-1111-4111-8111-555555555501');
-
 -- ---- C1: dos llamadas IDÉNTICAS (misma key, mismo payload) -----------------
 -- Invariante I-C1: una sola operación efectiva; el que llega segundo hace
 -- replay. A retrasa su commit con pg_sleep para forzar que B bloquee en el
 -- INSERT/FOR UPDATE y observe el estado ya resuelto por A.
 \if :case_c1
   begin;
+  select pg_temp.act('95555555-1111-4111-8111-555555555501');
   \if :session_a
     select pg_sleep(0.2);
   \else
@@ -131,6 +130,7 @@ select pg_temp.act('95555555-1111-4111-8111-555555555501');
 -- IDEMPOTENCY_PAYLOAD_MISMATCH sin escribir, gane o no la carrera del INSERT.
 \if :case_c2
   begin;
+  select pg_temp.act('95555555-1111-4111-8111-555555555501');
   \if :session_a
     select pg_sleep(0.2);
     select public.tc_consolidar_cliente_ticket(
@@ -160,6 +160,7 @@ select pg_temp.act('95555555-1111-4111-8111-555555555501');
 -- con STALE_EXPECTED_VERSION (ambos piden expected_version=0).
 \if :case_c3
   begin;
+  select pg_temp.act('95555555-1111-4111-8111-555555555501');
   \if :session_a
     select pg_sleep(0.2);
     select public.tc_consolidar_cliente_ticket(
@@ -191,6 +192,7 @@ select pg_temp.act('95555555-1111-4111-8111-555555555501');
 -- deben poder COMMITear sin deadlock.
 \if :case_c4
   begin;
+  select pg_temp.act('95555555-1111-4111-8111-555555555501');
   \if :session_a
     select pg_sleep(0.2);
     select public.tc_consolidar_cliente_ticket(
@@ -221,6 +223,7 @@ select pg_temp.act('95555555-1111-4111-8111-555555555501');
 \if :case_c5
   \if :session_a
     begin;
+    select pg_temp.act('95555555-1111-4111-8111-555555555501');
     select public.tc_consolidar_cliente_ticket(
       '95555555-3333-4333-8333-555555555515'::uuid,
       'associate_existing', 0,
@@ -234,6 +237,7 @@ select pg_temp.act('95555555-1111-4111-8111-555555555501');
   \else
     select pg_sleep(1.0);
     begin;
+    select pg_temp.act('95555555-1111-4111-8111-555555555501');
     select public.tc_consolidar_cliente_ticket(
       '95555555-3333-4333-8333-555555555515'::uuid,
       'associate_existing', 0,

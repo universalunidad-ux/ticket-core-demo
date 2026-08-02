@@ -96,6 +96,17 @@ const validateExactlyOneWinner = (sql) => {
   assert.match(sql, /and status = 'completed'\) = 1/);
 };
 
+const validateSameTransactionAuth = (sql) => {
+  const activations = sql.match(
+    /begin;\s+select pg_temp\.act\('95555555-1111-4111-8111-555555555501'\);/g,
+  ) || [];
+  assert.equal(
+    activations.length,
+    6,
+    "cada transacción C1-C5 debe instalar su contexto Auth dentro de la misma transacción",
+  );
+};
+
 // ---------------------------------------------------------------------------
 // D1 · Idempotencia reutiliza edge_idempotency con una acción YA válida en
 // el CHECK canónico ('consolidar_cliente'), sin crear un cuarto mecanismo.
@@ -319,6 +330,10 @@ test("matriz: C3 exige exactamente un ganador persistido", () => {
   validateExactlyOneWinner(concurrencyMatrix);
 });
 
+test("matriz: las dos sesiones conservan Auth dentro de cada transacción", () => {
+  validateSameTransactionAuth(concurrencyMatrix);
+});
+
 test("mutante sin lock: el contrato falla cerrado", () => {
   const mutant = migration.replaceAll("for update;", ";");
   assert.throws(() => validateRowLocks(mutant));
@@ -340,6 +355,14 @@ test("mutante de dos ganadores: el contrato falla cerrado", () => {
     "and status = 'completed') = 2",
   );
   assert.throws(() => validateExactlyOneWinner(mutant));
+});
+
+test("mutante Auth fuera de transacción: el contrato falla cerrado", () => {
+  const mutant = concurrencyMatrix.replace(
+    "begin;\n  select pg_temp.act",
+    "select pg_temp.act",
+  );
+  assert.throws(() => validateSameTransactionAuth(mutant));
 });
 
 test("seguridad: ACL de edge_idempotency no se toca en esta migración (contrato cerrado en su propia migración)", () => {
