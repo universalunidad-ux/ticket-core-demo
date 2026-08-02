@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "runbooks": [
+    {
+      "id": "OPS-LOCAL-DB-MIGRATION",
+      "title": "Local migration failure",
+      "evidence": [
+        "runtime/migrations.log",
+        "runtime/sql-contracts.log",
+        "teardown/teardown.log",
+        "residues/residual-scan.json"
+      ]
+    },
+    {
+      "id": "OPS-LOCAL-EVIDENCE-FAILURE",
+      "title": "Evidence or gate failure",
+      "evidence": [
+        "targeted/targeted.log",
+        "preflight/preflight.log",
+        "residues/worktree-status.txt"
+      ]
+    },
+    {
+      "id": "OPS-LOCAL-DISTRIBUTION",
+      "title": "Local distribution contract failure",
+      "evidence": [
+        "distribution/distribution-contract.json",
+        "targeted/distribution.log",
+        "teardown/teardown.log"
+      ]
+    }
+  ]
+}
