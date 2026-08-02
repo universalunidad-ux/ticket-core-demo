@@ -107,20 +107,22 @@ async function loadAgentSummary(){
   const token=agentSeq.next();
   if(!AGENT_STATE.value)box.innerHTML='<div class="dash-skel"></div><div class="dash-skel"></div>';
   perfCountRequest();
-  /* 1) Perfiles: superficie propia. Su falla NO destruye datos previos válidos. */
-  const prof=await supabase.from("perfiles").select("id,nombre,rol").eq("rol","soporte").order("nombre",{ascending:true})
+  /* 1) Owner SQL canónico: vista invoker-secured, admin-only y acotada. Su
+     falla NO destruye datos previos válidos ni se sustituye por una lectura
+     directa más amplia de perfiles. */
+  const prof=await supabase.from("v_janome_dashboard_agentes").select("agente_id,nombre,rol").order("nombre",{ascending:true}).limit(200)
     .then(r=>r.error?{ok:false,error:r.error}:{ok:true,value:r.data||[]}).catch(error=>({ok:false,error}));
   if(!agentSeq.isCurrent(token))return; /* llegó una carga posterior: descartar */
   if(!prof.ok){AGENT_STATE=keepLastValid(AGENT_STATE,{ok:false,error:prof.error});renderAgents(box,{profilesFailed:true});console.error("AGENT_PROFILES_LOAD_ERROR",AGENT_STATE.error);return;}
   /* 2) Tickets: superficie separada. Una falla parcial conserva los perfiles y sólo
      deja las métricas en "—" (sin inventar ceros). */
-  const ids=prof.value.map(x=>x.id);let ticketsOk=true,ticketsKind=null,tickets=[];
+  const ids=prof.value.map(x=>x.agente_id);let ticketsOk=true,ticketsKind=null,tickets=[];
   if(ids.length){
     try{for(let from=0;;from+=500){const result=await supabase.from("tickets").select("id,folio,titulo,estado,prioridad,asignado_a,cliente_id,empresa_capturada,fecha_creacion,fecha_actualizacion,sla_breached_first_response,sla_breached_resolution,requiere_supervision,clientes(nombre)").in("asignado_a",ids).order("fecha_actualizacion",{ascending:false}).range(from,from+499);if(result.error)throw result.error;tickets.push(...(result.data||[]));if((result.data||[]).length<500)break}}
     catch(error){ticketsOk=false;ticketsKind=classifyLoadError(error);console.error("AGENT_TICKETS_LOAD_ERROR",ticketsKind);}
   }
   if(!agentSeq.isCurrent(token))return;
-  const rows=prof.value.map(p=>({agente_id:p.id,agente_nombre:p.nombre||"Agente",agente_rol:p.rol||"soporte",tickets:ticketsOk?tickets.filter(t=>String(t.asignado_a)===String(p.id)):null}));
+  const rows=prof.value.map(p=>({agente_id:p.agente_id,agente_nombre:p.nombre||"Agente",agente_rol:p.rol||"soporte",tickets:ticketsOk?tickets.filter(t=>String(t.asignado_a)===String(p.agente_id)):null}));
   AGENT_STATE=keepLastValid(AGENT_STATE,{ok:true,value:{rows,ticketsOk}});
   renderAgents(box,{ticketsKind});
 }
