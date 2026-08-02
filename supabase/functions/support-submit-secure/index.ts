@@ -194,7 +194,10 @@ async function handleAuthenticatedMediaDelete(req:Request,origin:string):Promise
   if(prepared.error){const message=String(prepared.error.message||"");const code=message.includes("LEGAL_HOLD")?"MEDIA_DELETE_LEGAL_HOLD":message.includes("RETENTION_ACTIVE")?"MEDIA_DELETE_RETENTION_ACTIVE":"MEDIA_DELETE_REJECTED";return reply({message:"El adjunto no puede eliminarse.",code},409)}
   const row=Array.isArray(prepared.data)?prepared.data[0]:prepared.data;
   if(!row?.storage_path||!row?.delete_token)return reply({message:"No se pudo preparar la eliminación.",code:"MEDIA_DELETE_PREPARE_FAILED"},500);
-  const removed=await sb.storage.from("soporte_adjuntos").remove([String(row.storage_path)]);
+  const derived=await sb.from("derivados_adjuntos").select("storage_path").eq("adjunto_id",attachmentId);
+  if(derived.error){await sb.rpc("tc_abort_media_delete",{p_adjunto_id:attachmentId,p_delete_token:row.delete_token});return reply({message:"No se pudo resolver derivados.",code:"MEDIA_DELETE_DERIVATIVES_FAILED"},500)}
+  const paths=[String(row.storage_path),...(derived.data||[]).map(item=>String(item.storage_path||"")).filter(Boolean)];
+  const removed=await sb.storage.from("soporte_adjuntos").remove(paths);
   if(removed.error){await sb.rpc("tc_abort_media_delete",{p_adjunto_id:attachmentId,p_delete_token:row.delete_token});return reply({message:"No se pudo eliminar el objeto.",code:"MEDIA_DELETE_STORAGE_FAILED"},503)}
   const finalized=await sb.rpc("tc_finalize_media_delete",{p_adjunto_id:attachmentId,p_delete_token:row.delete_token});
   if(finalized.error)return reply({message:"La metadata no pudo finalizarse.",code:"MEDIA_DELETE_FINALIZE_FAILED"},500);
