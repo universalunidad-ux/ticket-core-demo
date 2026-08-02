@@ -71,8 +71,21 @@ test("accesorios y refacciones quedan excluidos", () => {
   );
 });
 
-test("paginación queda fijada en diez", () => {
-  assert.ok(js.includes("const PAGE_SIZE = 10;"));
+test("paginación usa el tamaño canónico de doce", () => {
+  assert.match(
+    js,
+    /const PAGE_SIZE = 12;/,
+  );
+
+  assert.match(
+    js,
+    /page:\s*1,\s*size:\s*PAGE_SIZE/,
+  );
+
+  assert.match(
+    js,
+    /Math\.ceil\(rows\.length\s*\/\s*ST\.size\)/,
+  );
   assert.ok(js.includes("size: PAGE_SIZE"));
   assert.ok(js.includes("ST.size = PAGE_SIZE"));
   const fixedPageSizeControl = html.match(
@@ -98,7 +111,7 @@ test("paginación queda fijada en diez", () => {
     [...fixedPageSizeControl.matchAll(
       /<option value="(\d+)"[^>]*>/g,
     )].map(match => match[1]),
-    ["10"],
+    ["12"],
   );
 
   assert.doesNotMatch(js, /PAGE_SIZES/);

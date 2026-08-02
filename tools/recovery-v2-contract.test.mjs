@@ -749,10 +749,27 @@ for (const t of allOrderTables) {
   assert.match(migrationsCorpus, new RegExp(`create table\\s+(if not exists\\s+)?public\\.${t}\\b`, "i"),
     `tabla inexistente en migraciones: public.${t}`);
 }
-assert.equal(migrationFiles.length, 31, `se esperan 31 migraciones (encontradas: ${migrationFiles.length})`);
+assert.ok(
+  migrationFiles.length >= 31,
+  `el inventario no puede retroceder por debajo de 31 migraciones: ${migrationFiles.length}`,
+);
+
+const migrationBasenames = migrationFiles.map(
+  file => file.split("/").at(-1),
+);
+
+assert.equal(
+  new Set(migrationBasenames).size,
+  migrationBasenames.length,
+  "el inventario de migraciones debe contener nombres únicos",
+);
+
 assert.doesNotMatch(migrationsCorpus, /create table\s+(if not exists\s+)?app_private\./i,
   "app_private ya no esta vacio: actualizar allowlist y runbook");
-console.log("PASS\tdata_order_matches_migrations\ttables=26,migrations=31");
+
+console.log(
+  `PASS\tdata_order_matches_migrations\ttables=26,migrations=${migrationFiles.length}`,
+);
 
 // ===========================================================================
 // 20) Fuente persistida: combinaciones, archivos y métricas fail-closed

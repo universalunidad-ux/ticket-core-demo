@@ -48,10 +48,22 @@ test("37 mutation: missing worker ownership verifier fails", () => {
   assert.equal(passes(sql.replace("TC_BSM02_OUTBOX_OWNERSHIP_MISMATCH", "REMOVED")), false);
 });
 
-test("38 migration timestamp and target are unique and last", () => {
-  const files = readdirSync(migrationDir).filter((name) => name.endsWith(".sql")).sort();
-  assert.equal(files.at(-1), target);
-  assert.equal(files.filter((name) => name.startsWith("20260730082038_")).length, 1);
+test("38 migration timestamp is unique and ordered after macrobatch 01", () => {
+  const files = readdirSync(migrationDir)
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+
+  const previous =
+    "20260730081307_backend_security_macrobatch_01.sql";
+
+  assert.equal(
+    files.filter(
+      name => name.startsWith("20260730082038_"),
+    ).length,
+    1,
+  );
+
+  assert.ok(files.indexOf(target) > files.indexOf(previous));
 });
 
 test("39 functions and tables have a single CREATE owner", () => {

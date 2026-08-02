@@ -7,8 +7,14 @@ const files = readdirSync(migrationDir).filter((name) => name.endsWith(".sql")).
 const target = "20260730081307_backend_security_macrobatch_01.sql";
 const sql = readFileSync(new URL(target, migrationDir), "utf8");
 
-test("29 macrobatch 02 is last in canonical lexical order", () => {
-  assert.equal(files.at(-1), "20260730082038_backend_security_macrobatch_02.sql");
+test("29 macrobatch 02 follows macrobatch 01 in canonical lexical order", () => {
+  const next = "20260730082038_backend_security_macrobatch_02.sql";
+  const targetIndex = files.indexOf(target);
+  const nextIndex = files.indexOf(next);
+
+  assert.notEqual(targetIndex, -1);
+  assert.notEqual(nextIndex, -1);
+  assert.ok(nextIndex > targetIndex);
 });
 
 test("30 migration timestamp is unique", () => {

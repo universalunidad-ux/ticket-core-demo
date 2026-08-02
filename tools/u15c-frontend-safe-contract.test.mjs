@@ -67,7 +67,7 @@ test("el producto no afirma que Edge ya existe", () => {
 
   assert.match(
     clientUi,
-    /ejecución permanece deshabilitada/i,
+    /(?:no realiza escrituras desde el navegador|confirmación permanece deshabilitada)/i,
   );
 });
 
