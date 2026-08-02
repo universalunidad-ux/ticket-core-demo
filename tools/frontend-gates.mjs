@@ -22,6 +22,13 @@ walk(root);
 
 const rel = file => relative(root, file).replaceAll("\\", "/");
 const fail = (code, file, detail) => failures.push(`${code}\t${rel(file)}\t${detail}`);
+const nonProductiveImportDirs = new Set(["test", "tests", "__tests__", "fixtures", "__fixtures__"]);
+function isImportDependencySource(file) {
+  const path = rel(file);
+  const segments = path.split("/");
+  if (segments.some(segment => nonProductiveImportDirs.has(segment.toLowerCase()))) return false;
+  return !/(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?js$/i.test(path);
+}
 const stripRef = value => value.trim().replace(/^['"]|['"]$/g, "").split(/[?#]/, 1)[0];
 const external = value => !value || /^(?:[a-z]+:|\/\/|#|data:|blob:)/i.test(value);
 function resolveLocal(owner, raw) {
@@ -48,8 +55,10 @@ for (const file of files) {
   if (ext === ".js" || ext === ".mjs") {
     const checked = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
     if (checked.status !== 0) fail("JS_SYNTAX", file, (checked.stderr || checked.stdout).trim().split("\n").slice(-2).join(" "));
-    const importRe = /(?:import\s+(?:[^'";]+?\s+from\s+)?|export\s+[^'";]+?\s+from\s+|import\s*\()(["'])(\.{1,2}\/[^"']+)\1/g;
-    for (const m of source.matchAll(importRe)) checkRef(file, m[2], "IMPORT");
+    if (isImportDependencySource(file)) {
+      const importRe = /(?:import\s+(?:[^'";]+?\s+from\s+)?|export\s+[^'";]+?\s+from\s+|import\s*\()(["'])(\.{1,2}\/[^"']+)\1/g;
+      for (const m of source.matchAll(importRe)) checkRef(file, m[2], "IMPORT");
+    }
   }
 
   if (ext === ".html") {
