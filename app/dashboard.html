@@ -97,10 +97,38 @@
     </div>
   </div>
 
+  <section class="panel dash-admin-only hidden" id="dashAgents" style="margin-top:12px">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Administración</div>
+        <h2>Resumen por agente</h2>
+        <p class="mut" id="dashSupervisionHelp">Las métricas globales permiten revisar la carga y los casos que requieren supervisión.</p>
+      </div>
+    </div>
+    <div class="dash-agent-grid" id="dashAgentGrid" aria-live="polite"><div class="dash-skel"></div><div class="dash-skel"></div></div>
+  </section>
+
+  <div class="overlay" id="dashAgentModal" role="dialog" aria-modal="true" aria-labelledby="dashAgentTitle" tabindex="-1" hidden>
+    <div class="modal dash-agent-modal">
+      <div class="section-head">
+        <div><div class="section-kicker">Detalle de métrica</div><h3 id="dashAgentTitle">Agente</h3><span class="tag" id="dashAgentRole">Soporte</span></div>
+        <button class="icon-btn" id="dashAgentClose" type="button" aria-label="Cerrar detalle del agente">✕</button>
+      </div>
+      <h4 id="dashAgentMetricTitle">Tickets de la métrica</h4>
+      <div class="dash-agent-detail" id="dashAgentDetail" aria-live="polite"></div>
+      <div class="dash-agent-pager">
+        <button class="mini btn-ghost" id="dashAgentPrev" type="button" disabled>Anterior</button>
+        <span class="mut" id="dashAgentPage" aria-live="polite">Página 1 de 1</span>
+        <button class="mini btn-ghost" id="dashAgentNext" type="button" disabled>Siguiente</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Administración: solo admin; tabs con estado en hash y contenido lazy. -->
   <section class="panel dash-admin-only hidden" id="dashAdmin" style="margin-top:12px">
     <div class="section-head">
       <div><div class="section-kicker">Administración</div><h2>Configuración de la mesa</h2></div>
+      <div class="actions" id="dashAdminActions"></div>
     </div>
     <nav class="adm-tabs" id="admTabs" role="tablist" aria-label="Secciones de administración">
       <button class="adm-tab" data-adm="avisos" id="admTabAvisos" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Avisos del sitio</button>

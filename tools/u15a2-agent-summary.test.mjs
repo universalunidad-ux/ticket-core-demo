@@ -168,6 +168,8 @@ test("diálogo: el modal de agentes conserva semántica accesible", () => {
   assert.match(modal, /role="dialog"/);
   assert.match(modal, /aria-modal="true"/);
   assert.match(modal, /aria-labelledby="[^"]+"/);
+  const labelledBy = modal.match(/aria-labelledby="([^"]+)"/)?.[1];
+  assert.match(dashboardHtml, new RegExp(`id="${labelledBy}"`), "aria-labelledby no resuelve a un título existente");
 
   assert.match(dashboardHtml, /id="dashAgentClose"/);
   assert.match(dashboardHtml, /id="dashAgentPrev"/);

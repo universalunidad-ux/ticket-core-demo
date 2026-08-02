@@ -68,6 +68,16 @@ function openAgentMetric(row,metricKey,trigger){
   AGENT_MODAL_STATE={agent:row,metric,page:0,trigger};renderAgentModal();
   openDialog("#dashAgentModal",{trigger,initialFocus:"#dashAgentClose",fallbackFocus:trigger,onCloseRequest:()=>closeDialog("#dashAgentModal")});
 }
+function bindAgentSummary(){
+  if(!CTX.isAdmin)return;
+  const grid=$("#dashAgentGrid"),modal=$("#dashAgentModal");if(!grid||!modal||grid.dataset.bound)return;
+  grid.dataset.bound="1";
+  grid.addEventListener("click",e=>{const metric=e.target.closest("[data-agent-metric]");if(!metric||metric.disabled)return;const index=Number(metric.closest("[data-agent-row]")?.dataset.agentRow);const row=AGENT_ROWS[index];if(row)openAgentMetric(row,metric.dataset.agentMetric,metric)});
+  $("#dashAgentClose")?.addEventListener("click",()=>closeDialog(modal));
+  modal.addEventListener("click",e=>{if(e.target===modal)closeDialog(modal)});
+  $("#dashAgentPrev")?.addEventListener("click",()=>{if(AGENT_MODAL_STATE.page>0){AGENT_MODAL_STATE.page--;renderAgentModal()}});
+  $("#dashAgentNext")?.addEventListener("click",()=>{const {agent,metric,page}=AGENT_MODAL_STATE,rows=agentMetricRows(agent,metric),pages=Math.max(1,Math.ceil(rows.length/AGENT_PAGE_SIZE));if(page<pages-1){AGENT_MODAL_STATE.page++;renderAgentModal()}});
+}
 
 /* Nota administrativa discreta (nunca visible para soporte: la sección es admin-only).
    Clasifica la causa, muestra un mensaje honesto y ofrece reintentar sin duplicar
@@ -593,6 +603,7 @@ function bindAdmin() {
   if (!admSurfaceReady()) return; /* OBS-17: sin módulo administrativo no se enlaza ni se consulta */
   if (document.documentElement.dataset.adminTabsBound === "1") return; /* singleton: sin listeners duplicados */
   document.documentElement.dataset.adminTabsBound = "1";
+  $("#dashAdminActions")?.insertAdjacentHTML("beforeend",'<a class="btn btn-ghost" data-admin-audit-link href="bitacora-admin.html">Bitácora administrativa</a>');
   $("#admTabs")?.addEventListener("click", e => {
     const b = e.target.closest(".adm-tab");
     if (b) { openAdmin(b.dataset.adm); b.focus({ preventScroll: true }); } /* conserva foco y scroll */
@@ -1400,6 +1411,8 @@ async function init() {
     setLead("Prioriza casos, vigila compromisos de servicio y coordina la atención de tu equipo.", "Administrador");
     $("#dashAdmin")?.classList.remove("hidden");
     $("#dashSupervision")?.classList.remove("hidden");
+    $("#dashAgents")?.classList.remove("hidden");
+    bindAgentSummary();
     $("#dashSupClose")?.addEventListener("click",()=>closeDialog("#dashSupervisionModal"));
     $("#dashSupervisionModal")?.addEventListener("click",e=>{if(e.target.id==="dashSupervisionModal")closeDialog("#dashSupervisionModal")});
     $("#dashSupCopy")?.addEventListener("click",()=>{const f=SUP_MODAL_STATE.row?.folio;if(f&&f!=="—")copyTxt(f,`Folio ${f} copiado`)});
@@ -1411,6 +1424,7 @@ async function init() {
     loadMetrics(),
     loadActividad(),
     CTX.isAdmin?loadSupervision():Promise.resolve(),
+    CTX.isAdmin?loadAgentSummary():Promise.resolve(),
   ]);
   mountOperationsJourney({
     page:"dashboard",
@@ -1419,7 +1433,7 @@ async function init() {
   });
   await loadMetrics();
   perfPageReady();
-  Promise.allSettled([loadActividad(), CTX.isAdmin?loadSupervision():Promise.resolve()]).then(perfSecondaryDone);
+  Promise.allSettled([loadActividad(), CTX.isAdmin?loadSupervision():Promise.resolve(), CTX.isAdmin?loadAgentSummary():Promise.resolve()]).then(perfSecondaryDone);
 }
 
 if(document.body?.dataset.page==="dashboard")document.addEventListener("DOMContentLoaded", init);
