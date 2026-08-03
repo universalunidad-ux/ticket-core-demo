@@ -2950,3 +2950,48 @@ body[data-page="ticket"] .ticket-side{height:calc(100dvh - 66px)!important;max-h
   body[data-page="ticket"] .ticket-page,body[data-page="ticket"] .ticket-main,body[data-page="ticket"] .ticket-thread{height:calc(100dvh - 58px)!important}
   body[data-page="ticket"] .ticket-side{top:58px!important;bottom:0!important;height:calc(100dvh - 58px)!important;max-height:calc(100dvh - 58px)!important;padding-bottom:calc(20px + env(safe-area-inset-bottom))!important}
 }
+
+/* TC-E04D555-A11Y360-TICKET-REFLOW: exact-head 320 px and target-size closure. */
+body[data-page="ticket"] #tkWorkspaceReturn{
+  min-height:24px!important;
+  padding-block:3px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+}
+body[data-page="ticket"] .composer-input-wrap{
+  min-height:48px!important;
+}
+body[data-page="ticket"] .composer-input-wrap #saveLogBtn{
+  right:3px!important;
+  width:44px!important;
+  min-width:44px!important;
+  height:44px!important;
+  min-height:44px!important;
+}
+@media(max-width:340px){
+  body[data-page="ticket"] .ticket-thread > *{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  body[data-page="ticket"] .thread-topbar{
+    grid-template-columns:34px minmax(0,1fr) minmax(0,213px)!important;
+    gap:4px!important;
+    padding-inline:4px!important;
+  }
+  body[data-page="ticket"] .thread-actions{
+    min-width:0!important;
+    gap:4px!important;
+  }
+  body[data-page="ticket"] .resolution-launch{
+    min-width:0!important;
+    max-width:108px!important;
+    padding-inline:7px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  body[data-page="ticket"] .tk-resolve-head{
+    min-width:0!important;
+    padding-inline:8px!important;
+  }
+}
