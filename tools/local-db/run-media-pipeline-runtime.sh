@@ -31,7 +31,7 @@ cleanup(){
 [[ -n "${EVIDENCE_DIR}" && "${EVIDENCE_DIR}" = /* ]] || fail "EVIDENCE_DIR_ABSOLUTE_REQUIRED"
 mkdir -p "${EVIDENCE_DIR}/fixtures" "${EVIDENCE_DIR}/derived"
 cd "${REPO_ROOT}"
-[[ "$(git rev-parse --abbrev-ref HEAD)" == "feat/mt1-media-pipeline-8166e-20260802" ]] || fail "BRANCH_MISMATCH"
+[[ "$(git rev-parse --abbrev-ref HEAD)" == "${MEDIA_RUNTIME_EXPECTED_BRANCH:-feat/mt1-media-pipeline-8166e-20260802}" ]] || fail "BRANCH_MISMATCH"
 [[ -z "$(docker ps --filter 'name=^supabase_' --format '{{.Names}}')" ]] || fail "SUPABASE_STACK_ALREADY_ACTIVE"
 for name in DATABASE_URL SUPABASE_DB_URL POSTGRES_URL SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF; do [[ -z "${!name:-}" ]] || fail "REMOTE_ENV_PRESENT_${name}"; done
 trap cleanup EXIT INT TERM
