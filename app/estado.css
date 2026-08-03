@@ -5,7 +5,8 @@ body[data-surface="client"]{overflow-x:clip}
 .estado-hero{display:flex;align-items:center;gap:14px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--st-rad);background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 92%,transparent),color-mix(in srgb,var(--panel-2) 96%,transparent));backdrop-filter:blur(var(--st-blur));box-shadow:var(--st-shadow-soft);overflow:hidden}
 .estado-hero-left{display:flex;align-items:center;gap:10px;min-width:0}
 .estado-hero-title{color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.08em;line-height:1.2;text-transform:uppercase;white-space:nowrap}
-.estado-status-pill{display:inline-flex;align-items:center;min-height:30px;padding:5px 11px;border:1px solid color-mix(in srgb,var(--ok,#16a34a) 38%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--ok,#16a34a) 10%,var(--panel));color:var(--ok,#15803d);font-size:12px;font-weight:900;line-height:1;white-space:nowrap}
+.estado-status-pill{display:inline-flex;align-items:center;min-height:30px;padding:5px 11px;border:1px solid color-mix(in srgb,var(--ok,#16a34a) 38%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--ok,#16a34a) 10%,var(--panel));color:#166534;font-size:12px;font-weight:900;line-height:1;white-space:nowrap}
+html[data-theme=dark] .estado-status-pill{color:#86efac}
 .estado-status-pill.info{border-color:color-mix(in srgb,var(--info) 38%,var(--line));background:color-mix(in srgb,var(--info) 10%,var(--panel));color:var(--info)}
 .estado-status-pill.warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 12%,var(--panel));color:var(--warn)}
 .estado-status-pill.neutral{border-color:var(--line);background:color-mix(in srgb,var(--panel-2) 90%,transparent);color:var(--muted)}
