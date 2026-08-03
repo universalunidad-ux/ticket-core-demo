@@ -2,6 +2,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildArtifacts, loadSource, validateSource } from "./generate-requirement-traceability.mjs";
+import {
+  buildGovernanceEvidence,
+  loadGovernanceContract,
+  loadGovernanceEvidence,
+  validateGovernanceContract,
+  verifyRepositoryProvenance
+} from "./generate-governance-trace-evidence.mjs";
 
 test("canonical points-first source is complete and deterministic", () => {
   const source = loadSource();
@@ -35,4 +42,16 @@ test("mutant with a credit regression is rejected", () => {
   const source = structuredClone(loadSource());
   source.rows[0].localCeiling = source.rows[0].currentCredit - 0.01;
   assert.match(validateSource(source).failures.join("\n"), /ROW_CREDIT_REGRESSION/);
+});
+
+test("governance closure evidence ties the exact five rows to files, tests, and a reachable commit", () => {
+  const contract = loadGovernanceContract();
+  const evidence = loadGovernanceEvidence();
+  assert.deepEqual(validateGovernanceContract(contract).failures, []);
+  assert.deepEqual(evidence, buildGovernanceEvidence(contract, evidence.closureCommit));
+  assert.deepEqual(verifyRepositoryProvenance(contract, evidence).failures, []);
+  assert.deepEqual(evidence.rows.map((row) => row.requirement), ["GOV-G0-003", "GOV-TRACE-001", "PROD170-002", "TC-U005", "TC-U078"]);
+  assert.deepEqual(evidence.rows.filter((row) => row.disposition === "PROMOTABLE_LOCAL").map((row) => row.requirement), ["GOV-G0-003", "PROD170-002", "TC-U078"]);
+  assert.equal(evidence.rows.some((row) => /^U0-[A-D]$/.test(row.requirement)), false);
+  assert.equal(evidence.logicalDelta, "PENDING_LEDGER_RECONCILIATION");
 });
