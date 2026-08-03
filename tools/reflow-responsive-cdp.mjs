@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { mkdtemp, readFile, rm, stat, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const UNIT = "TC-Q1-A11Y-REFLOW-RESPONSIVE-L100-01";
-const BASE_COMMIT = "f06698cbebc6971176b940f58ab2a13586d2275e";
+const UNIT = "TC-A11Y-REFLOW-RESPONSIVE-EXACT-HEAD-01";
 const EDGE = "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const EXACT_HEAD = execFileSync("git", ["-C", ROOT, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+assert.match(EXACT_HEAD, /^[0-9a-f]{40}$/, "exact Git HEAD is required for reflow provenance");
 const CANONICAL_PAGES = [
   "app/alta-cliente.html",
   "app/aviso-privacidad.html",
@@ -424,7 +425,7 @@ async function main() {
   await mkdir(OUT, { recursive: true });
   log(`UNIT=${UNIT}`);
   log(`ROOT=${ROOT}`);
-  log(`BASE_COMMIT=${BASE_COMMIT}`);
+  log(`EXACT_HEAD=${EXACT_HEAD}`);
   log(`OUTPUT=${OUT}`);
   log(`NETWORK_POLICY=LOCALHOST_ONLY_CDP_FETCH_ABORT`);
   log(`EXECUTION_MODE=${targeted ? "TARGETED_POST_FIX" : "FULL_BASELINE"}`);
@@ -605,7 +606,7 @@ async function main() {
     "",
     "## Ejecución",
     "",
-    `- Base exacta: \`${BASE_COMMIT}\``,
+    `- HEAD exacto: \`${EXACT_HEAD}\``,
     `- Páginas: ${PAGES.length}`,
     `- Viewports CSS: ${VIEWPORTS.map(x => x.width).join(", ")} px`,
     `- Corridas completas: ${ok.length}/${PAGES.length * VIEWPORTS.length}`,
@@ -626,7 +627,7 @@ async function main() {
 
   const provenance = [
     `UNIT=${UNIT}`,
-    `BASE_COMMIT=${BASE_COMMIT}`,
+    `EXACT_HEAD=${EXACT_HEAD}`,
     `ROOT=${ROOT}`,
     `EDGE_EXECUTABLE=${EDGE}`,
     `EDGE_BROWSER=${terminal.find(line => line.includes("\tBROWSER="))?.split("\tBROWSER=")[1] || "UNKNOWN"}`,
