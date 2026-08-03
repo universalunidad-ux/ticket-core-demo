@@ -36,6 +36,9 @@ test("contract: reflow signals and adjudication classes remain explicit", () => 
 });
 
 test("contract: local-only CDP, deterministic cleanup, and required artifacts", () => {
+  assert.match(source, /execFileSync\("git", \["-C", ROOT, "rev-parse", "HEAD"\]/);
+  assert.match(source, /EXACT_HEAD=/);
+  assert.doesNotMatch(source, /BASE_COMMIT\s*=\s*"[0-9a-f]{40}"/);
   assert.match(source, /LOCALHOST_ONLY_CDP_FETCH_ABORT/);
   assert.match(source, /Fetch\.failRequest/);
   assert.match(source, /await stopChild\(edge\)/);

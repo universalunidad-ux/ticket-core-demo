@@ -12,7 +12,7 @@
 .tk-workspace-main,
 .tk-workspace-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tk-workspace-title { font-weight: 750; }
-.tk-workspace-status { color: var(--muted, #64748b); font-size: .86rem; }
+.tk-workspace-status { color: color-mix(in srgb, var(--text, #0f172a) 72%, var(--muted, #64748b)); font-size: .86rem; }
 .tk-workspace select { min-height: 36px; }
 body[data-ticket-density="compact"] .k-card { padding-block: 8px; }
 body[data-ticket-density="compact"] .k-card .k-desc { -webkit-line-clamp: 1; }
