@@ -36,6 +36,7 @@ EXPECTED_CID="supabase_db_tc_local_db_harness"
 CID=""
 DB_PORT=""
 FIXTURE_TICKET_ID=""
+FIXTURE_ACTOR_ID=""
 TEARDOWN_RESULT="NOT_RUN"
 TEARDOWN_DONE="NO"
 
@@ -59,6 +60,7 @@ cleanup() {
       -d postgres \
       -v ON_ERROR_STOP=1 \
       -v ticket_id="$FIXTURE_TICKET_ID" \
+  -v actor_id="$FIXTURE_ACTOR_ID" \
   <supabase/tests/media_video_concurrency_teardown.sql \
       >"$TEARDOWN_LOG" 2>&1
 
@@ -222,61 +224,28 @@ docker exec "$CID" \
     "CONTAINER_PSQL_NOT_AVAILABLE" \
     "$CID"
 
-TICKETS_TOTAL="$(
-  docker exec "$CID" \
-    psql \
-    -X \
-    -U postgres \
-    -d postgres \
-    -Atq \
-    -v ON_ERROR_STOP=1 \
-    -c "
-      select count(*)
-      from public.tickets
-    " |
-  tr -d '\r\n'
-)"
+FIXTURE_TICKET_ID="10000000-0000-0000-0000-0000000000aa"
+FIXTURE_ACTOR_ID="00000000-0000-0000-0000-000000000001"
 
-FIXTURE_TICKET_ID="$(
-  docker exec "$CID" \
-    psql \
-    -X \
-    -U postgres \
-    -d postgres \
-    -Atq \
-    -v ON_ERROR_STOP=1 \
-    -c "
-      select t.id::text
-      from public.tickets t
-      order by
-        (
-          select count(*)
-          from public.media_video_registro m
-          where m.ticket_id = t.id
-        ) +
-        (
-          select count(*)
-          from public.autorizaciones_video a
-          where a.ticket_id = t.id
-        ),
-        t.id
-      limit 1
-    " |
-  tr -d '\r\n'
-)"
-
-printf '%s\n' "$FIXTURE_TICKET_ID" |
-grep -Eq \
-  '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' ||
+docker exec -i "$CID" \
+  psql \
+  -X \
+  -U postgres \
+  -d postgres \
+  -v ON_ERROR_STOP=1 \
+  -v ticket_id="$FIXTURE_TICKET_ID" \
+  -v actor_id="$FIXTURE_ACTOR_ID" \
+  <supabase/tests/media_video_local_fixture_seed.sql \
+  >"$OUT/01B_MEDIA_FIXTURE_SEED.log" 2>&1 ||
   fail \
-    "MEDIA_FIXTURE_TICKET_NOT_FOUND" \
-    "No existe ningún ticket en la base local del harness."
+    "MEDIA_LOCAL_FIXTURE_SEED_FAILED" \
+    "$OUT/01B_MEDIA_FIXTURE_SEED.log"
 
 {
-  echo "TICKETS_TOTAL=$TICKETS_TOTAL"
-  echo "FIXTURE_SELECTION=LEAST_MEDIA_ACTIVITY"
+  echo "FIXTURE_MODE=SYNTHETIC_LOCAL_ONLY"
   echo "FIXTURE_TICKET_ID=$FIXTURE_TICKET_ID"
-} >"$OUT/01B_MEDIA_FIXTURE.txt"
+  echo "FIXTURE_ACTOR_ID=$FIXTURE_ACTOR_ID"
+} >"$OUT/01C_MEDIA_FIXTURE.txt"
 
 
 docker exec -i "$CID" \
@@ -413,6 +382,7 @@ docker exec -i "$CID" \
   -d postgres \
   -v ON_ERROR_STOP=1 \
   -v ticket_id="$FIXTURE_TICKET_ID" \
+  -v actor_id="$FIXTURE_ACTOR_ID" \
   <supabase/tests/media_video_concurrency_teardown.sql \
   >"$TEARDOWN_LOG" 2>&1 ||
   fail \
