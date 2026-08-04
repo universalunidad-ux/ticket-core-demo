@@ -3,6 +3,7 @@
 import { normalizeFileName, sha256Hex } from "./security-primitives.ts";
 
 export const MAX_FILES = 5, MAX_IMG = 3, MAX_VID = 1, MAX_PDF = 1;
+export const MAX_VID_SECONDS = 15;
 const MB = 1024 * 1024;
 export const CAP_IMG = 5 * MB, CAP_PDF = 5 * MB, CAP_VID = 40 * MB, MAX_TOTAL_BYTES = 60 * MB;
 

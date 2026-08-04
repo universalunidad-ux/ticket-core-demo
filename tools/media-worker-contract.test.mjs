@@ -19,5 +19,27 @@ assert.match(worker, /pdf_poster_webp/);
 assert.match(worker, /video_proxy_720p/);
 assert.match(worker, /video_contact_sheet_webp/);
 assert.match(worker, /MEDIA_VIDEO_TOOLCHAIN_UNAVAILABLE/);
+assert.match(worker, /def probe_video_duration_ms/);
+assert.match(worker, /shutil\.which\("ffprobe"\)/);
+assert.match(worker, /format=duration/);
+assert.match(worker, /max_duration_ms: int = 15000/);
+assert.match(worker, /max_duration_ms not in \(15000, 30000\)/);
+assert.match(worker, /MEDIA_VIDEO_QUARANTINE_REQUIRED/);
+assert.match(worker, /E_MEDIA_DURACION_EXCEDIDA/);
+assert.match(worker, /stderr_tail/);
+assert.match(worker, /MEDIA_VIDEO_PROXY_FAILED/);
+assert.match(worker, /MEDIA_VIDEO_POSTER_EXTRACTION_FAILED/);
+assert.match(worker, /MEDIA_VIDEO_CONTACT_FRAMES_FAILED/);
+assert.match(worker, /^from PIL import[^\n]*\bImage\b/m);
+assert.match(worker, /TemporaryDirectory/);
+assert.match(worker, /contact-%02d\.png/);
+assert.match(worker, /frame_directory\.glob/);
+assert.match(worker, /Image\.new/);
+assert.match(worker, /contact_canvas\.paste/);
+assert.match(worker, /video_contact_sheet_webp/);
+
+
+
+
 console.log("MEDIA_JOB_IDEMPOTENCY_CONTRACT=PASS");
 console.log("MEDIA_DERIVATIVE_CONTRACT=PASS");

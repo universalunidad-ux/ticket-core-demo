@@ -15,6 +15,8 @@ import tempfile
 WORKER_VERSION = "media-worker/v1"
 
 
+from PIL import Image
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -82,27 +84,267 @@ def process_pdf(source: Path, output: Path, stem: str) -> list[dict]:
             ]
 
 
-def process_video(source: Path, output: Path, stem: str) -> list[dict]:
+def probe_video_duration_ms(source: Path) -> int:
+    ffprobe = (
+        os.environ.get("TC_MEDIA_FFPROBE")
+        or shutil.which("ffprobe")
+    )
+
+    if not ffprobe:
+        raise RuntimeError(
+            "MEDIA_VIDEO_PROBE_UNAVAILABLE"
+        )
+
+    completed = subprocess.run(
+        [
+            ffprobe,
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(source),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "MEDIA_VIDEO_PROBE_FAILED"
+        )
+
+    try:
+        duration_ms = int(
+            round(float(completed.stdout.strip()) * 1000)
+        )
+    except (TypeError, ValueError):
+        raise RuntimeError(
+            "MEDIA_VIDEO_DURATION_INVALID"
+        )
+
+    if duration_ms <= 0:
+        raise RuntimeError(
+            "MEDIA_VIDEO_DURATION_INVALID"
+        )
+
+    return duration_ms
+
+
+def process_video(
+    source: Path,
+    output: Path,
+    stem: str,
+    max_duration_ms: int = 15000,
+) -> list[dict]:
+    if max_duration_ms not in (15000, 30000):
+        raise RuntimeError(
+            "MEDIA_VIDEO_DURATION_POLICY_INVALID"
+        )
+
+    # Autoridad obligatoria antes de crear cualquier derivado.
+    duration_ms = probe_video_duration_ms(source)
+
+    if duration_ms > max_duration_ms:
+        raise RuntimeError(
+            "MEDIA_VIDEO_QUARANTINE_REQUIRED:"
+            "E_MEDIA_DURACION_EXCEDIDA"
+        )
+
     ffmpeg = os.environ.get("TC_MEDIA_FFMPEG") or shutil.which("ffmpeg")
+
     if not ffmpeg:
         raise RuntimeError("MEDIA_VIDEO_TOOLCHAIN_UNAVAILABLE")
     proxy = output / f"{stem}.proxy.mp4"
     poster = output / f"{stem}.poster.webp"
     contact = output / f"{stem}.contact.webp"
-    commands = [
-        [ffmpeg, "-y", "-i", str(source), "-vf", "scale=-2:min(720,ih)", "-c:v", "libx264", "-movflags", "+faststart", "-an", str(proxy)],
-        [ffmpeg, "-y", "-ss", "0", "-i", str(source), "-frames:v", "1", "-vf", "scale=960:-2", str(poster)],
-        [ffmpeg, "-y", "-i", str(source), "-vf", "fps=1/5,scale=320:-2,tile=3x2", "-frames:v", "1", str(contact)],
-    ]
+
     output.mkdir(parents=True, exist_ok=True)
-    for command in commands:
-        completed = subprocess.run(command, check=False, capture_output=True, timeout=120)
+
+    def run_ffmpeg(
+        command: list[str],
+        failure_code: str,
+    ) -> None:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
         if completed.returncode != 0:
-            raise RuntimeError("MEDIA_VIDEO_DERIVATIVE_FAILED")
+            stderr_tail = (
+                completed.stderr or ""
+            ).strip()[-3000:]
+
+            raise RuntimeError(
+                failure_code
+                + ":"
+                + stderr_tail
+            )
+
+    run_ffmpeg(
+        [
+            ffmpeg,
+            "-y",
+            "-i",
+            str(source),
+            "-vf",
+            "scale=-2:min(720\\,ih)",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            "-an",
+            str(proxy),
+        ],
+        "MEDIA_VIDEO_PROXY_FAILED",
+    )
+
+    with tempfile.TemporaryDirectory(
+        prefix="tc-media-video-frames-",
+    ) as directory:
+        frame_directory = Path(directory)
+        poster_png = frame_directory / "poster.png"
+        frame_pattern = (
+            frame_directory
+            / "contact-%02d.png"
+        )
+
+        run_ffmpeg(
+            [
+                ffmpeg,
+                "-y",
+                "-ss",
+                "0",
+                "-i",
+                str(source),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=960:-2",
+                "-c:v",
+                "png",
+                str(poster_png),
+            ],
+            "MEDIA_VIDEO_POSTER_EXTRACTION_FAILED",
+        )
+
+        run_ffmpeg(
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(source),
+                "-vf",
+                "fps=1/5,scale=320:-2",
+                "-frames:v",
+                "6",
+                "-c:v",
+                "png",
+                str(frame_pattern),
+            ],
+            "MEDIA_VIDEO_CONTACT_FRAMES_FAILED",
+        )
+
+        if not poster_png.is_file():
+            raise RuntimeError(
+                "MEDIA_VIDEO_POSTER_FRAME_MISSING"
+            )
+
+        frame_paths = sorted(
+            frame_directory.glob(
+                "contact-*.png"
+            )
+        )
+
+        if not frame_paths:
+            raise RuntimeError(
+                "MEDIA_VIDEO_CONTACT_FRAMES_MISSING"
+            )
+
+        with Image.open(poster_png) as image:
+            poster_source = image.convert("RGB")
+
+            poster_artifact = webp_artifact(
+                poster_source,
+                poster,
+                (960, 960),
+                "video_poster_webp",
+            )
+
+        cell_width = 320
+        cell_height = 180
+        columns = 3
+        rows = 2
+
+        contact_canvas = Image.new(
+            "RGB",
+            (
+                cell_width * columns,
+                cell_height * rows,
+            ),
+            (0, 0, 0),
+        )
+
+        try:
+            for index, frame_path in enumerate(
+                frame_paths[:6]
+            ):
+                with Image.open(frame_path) as frame:
+                    tile = frame.convert("RGB")
+                    tile.thumbnail(
+                        (
+                            cell_width,
+                            cell_height,
+                        )
+                    )
+
+                    column = index % columns
+                    row = index // columns
+
+                    x = (
+                        column * cell_width
+                        + (cell_width - tile.width) // 2
+                    )
+                    y = (
+                        row * cell_height
+                        + (cell_height - tile.height) // 2
+                    )
+
+                    contact_canvas.paste(
+                        tile,
+                        (x, y),
+                    )
+
+            contact_artifact = webp_artifact(
+                contact_canvas,
+                contact,
+                (
+                    cell_width * columns,
+                    cell_height * rows,
+                ),
+                "video_contact_sheet_webp",
+            )
+        finally:
+            contact_canvas.close()
+
     return [
-        {"type": "video_proxy_720p", "path": str(proxy), "mimeType": "video/mp4", "bytes": proxy.stat().st_size, "sha256": sha256(proxy)},
-        {"type": "video_poster_webp", "path": str(poster), "mimeType": "image/webp", "bytes": poster.stat().st_size, "sha256": sha256(poster)},
-        {"type": "video_contact_sheet_webp", "path": str(contact), "mimeType": "image/webp", "bytes": contact.stat().st_size, "sha256": sha256(contact)},
+        {
+            "type": "video_proxy_720p",
+            "path": str(proxy),
+            "mimeType": "video/mp4",
+            "bytes": proxy.stat().st_size,
+            "sha256": sha256(proxy),
+        },
+        poster_artifact,
+        contact_artifact,
     ]
 
 
