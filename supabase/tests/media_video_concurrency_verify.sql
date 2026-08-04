@@ -1,3 +1,9 @@
+select set_config(
+  'tc.fixture_ticket_id',
+  :'ticket_id',
+  false
+);
+
 \set ON_ERROR_STOP on
 
 do $$
@@ -6,7 +12,7 @@ begin
     select count(*)
     from public.autorizaciones_video
     where ticket_id =
-      '10000000-0000-0000-0000-0000000000aa'
+      current_setting('tc.fixture_ticket_id')::uuid
       and tipo = 'segundo_video_15s'
   ) <> 1 then
     raise exception 'FAIL MEDIA-011 concurrency total';
@@ -16,7 +22,7 @@ begin
     select count(*)
     from public.autorizaciones_video
     where ticket_id =
-      '10000000-0000-0000-0000-0000000000aa'
+      current_setting('tc.fixture_ticket_id')::uuid
       and tipo = 'segundo_video_15s'
       and consumida_en is not null
       and consumida_por_adjunto_id in (

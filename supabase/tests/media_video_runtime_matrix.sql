@@ -1,6 +1,12 @@
 \set ON_ERROR_STOP on
 
 select set_config(
+  'tc.fixture_ticket_id',
+  :'ticket_id',
+  false
+);
+
+select set_config(
   'request.jwt.claims',
   '{"role":"service_role","app_role":"service_role","sub":"00000000-0000-0000-0000-000000000001"}',
   false
@@ -49,13 +55,15 @@ begin
 end;
 $$;
 
+
+
 delete from public.media_video_registro
-where ticket_id::text like
-  '10000000-0000-0000-0000-0000000000%';
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
 
 delete from public.autorizaciones_video
-where ticket_id::text like
-  '10000000-0000-0000-0000-0000000000%';
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
 
 -- 1. Primer video de 10 segundos.
 do $$
@@ -63,7 +71,7 @@ declare
   v_result jsonb;
 begin
   select public.tc_media_validar_duracion(
-    '10000000-0000-0000-0000-000000000001',
+    current_setting('tc.fixture_ticket_id')::uuid,
     '20000000-0000-0000-0000-000000000001',
     10000
   )
@@ -83,11 +91,19 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 2. Primer video de 20 segundos sin excepción.
 select pg_temp.expect_error(
   $command$
     select public.tc_media_validar_duracion(
-      '10000000-0000-0000-0000-000000000002',
+      current_setting('tc.fixture_ticket_id')::uuid,
       '20000000-0000-0000-0000-000000000002',
       20000
     )
@@ -102,7 +118,7 @@ begin
       select 1
       from public.media_video_registro
       where ticket_id =
-        '10000000-0000-0000-0000-000000000002'
+        current_setting('tc.fixture_ticket_id')::uuid
     ),
     'MEDIA-012 case 2 registry residue'
   );
@@ -111,11 +127,19 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 3. Más de 30 segundos siempre se rechaza.
 select pg_temp.expect_error(
   $command$
     select public.tc_media_validar_duracion(
-      '10000000-0000-0000-0000-000000000003',
+      current_setting('tc.fixture_ticket_id')::uuid,
       '20000000-0000-0000-0000-000000000003',
       31000
     )
@@ -129,9 +153,17 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 4. Segundo video sin autorización.
 select public.tc_media_validar_duracion(
-  '10000000-0000-0000-0000-000000000004',
+  current_setting('tc.fixture_ticket_id')::uuid,
   '20000000-0000-0000-0000-000000000004',
   10000
 );
@@ -139,7 +171,7 @@ select public.tc_media_validar_duracion(
 select pg_temp.expect_error(
   $command$
     select public.tc_media_validar_duracion(
-      '10000000-0000-0000-0000-000000000004',
+      current_setting('tc.fixture_ticket_id')::uuid,
       '20000000-0000-0000-0000-000000000104',
       10000
     )
@@ -154,7 +186,7 @@ begin
       select count(*)
       from public.media_video_registro
       where ticket_id =
-        '10000000-0000-0000-0000-000000000004'
+        current_setting('tc.fixture_ticket_id')::uuid
     ) = 1,
     'MEDIA-011 case 4 registry count'
   );
@@ -163,22 +195,30 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 5. Segundo video con autorización de 15 segundos.
 select public.tc_media_validar_duracion(
-  '10000000-0000-0000-0000-000000000005',
+  current_setting('tc.fixture_ticket_id')::uuid,
   '20000000-0000-0000-0000-000000000005',
   10000
 );
 
 select public.tc_media_otorgar_autorizacion(
-  '10000000-0000-0000-0000-000000000005',
+  current_setting('tc.fixture_ticket_id')::uuid,
   'segundo_video_15s',
   clock_timestamp() + interval '1 hour',
   'runtime second video'
 );
 
 select public.tc_media_validar_duracion(
-  '10000000-0000-0000-0000-000000000005',
+  current_setting('tc.fixture_ticket_id')::uuid,
   '20000000-0000-0000-0000-000000000105',
   10000
 );
@@ -190,7 +230,7 @@ begin
       select count(*)
       from public.media_video_registro
       where ticket_id =
-        '10000000-0000-0000-0000-000000000005'
+        current_setting('tc.fixture_ticket_id')::uuid
     ) = 2,
     'MEDIA-011 case 5 registry count'
   );
@@ -200,7 +240,7 @@ begin
       select count(*)
       from public.autorizaciones_video
       where ticket_id =
-        '10000000-0000-0000-0000-000000000005'
+        current_setting('tc.fixture_ticket_id')::uuid
         and tipo = 'segundo_video_15s'
         and consumida_en is not null
         and consumida_por_adjunto_id =
@@ -213,9 +253,17 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 6. Primer video de 20 segundos con excepción de 30.
 select public.tc_media_otorgar_autorizacion(
-  '10000000-0000-0000-0000-000000000006',
+  current_setting('tc.fixture_ticket_id')::uuid,
   'excepcion_30s',
   clock_timestamp() + interval '1 hour',
   'runtime duration exception'
@@ -226,7 +274,7 @@ declare
   v_result jsonb;
 begin
   select public.tc_media_validar_duracion(
-    '10000000-0000-0000-0000-000000000006',
+    current_setting('tc.fixture_ticket_id')::uuid,
     '20000000-0000-0000-0000-000000000006',
     20000
   )
@@ -241,16 +289,24 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 7. Segundo video de 20 segundos con sólo autorización de segundo video.
 -- La excepción debe revertir el consumo parcial.
 select public.tc_media_validar_duracion(
-  '10000000-0000-0000-0000-000000000007',
+  current_setting('tc.fixture_ticket_id')::uuid,
   '20000000-0000-0000-0000-000000000007',
   10000
 );
 
 select public.tc_media_otorgar_autorizacion(
-  '10000000-0000-0000-0000-000000000007',
+  current_setting('tc.fixture_ticket_id')::uuid,
   'segundo_video_15s',
   clock_timestamp() + interval '1 hour',
   'runtime rollback'
@@ -259,7 +315,7 @@ select public.tc_media_otorgar_autorizacion(
 select pg_temp.expect_error(
   $command$
     select public.tc_media_validar_duracion(
-      '10000000-0000-0000-0000-000000000007',
+      current_setting('tc.fixture_ticket_id')::uuid,
       '20000000-0000-0000-0000-000000000107',
       20000
     )
@@ -274,7 +330,7 @@ begin
       select count(*)
       from public.autorizaciones_video
       where ticket_id =
-        '10000000-0000-0000-0000-000000000007'
+        current_setting('tc.fixture_ticket_id')::uuid
         and tipo = 'segundo_video_15s'
         and consumida_en is null
     ) = 1,
@@ -286,7 +342,7 @@ begin
       select count(*)
       from public.media_video_registro
       where ticket_id =
-        '10000000-0000-0000-0000-000000000007'
+        current_setting('tc.fixture_ticket_id')::uuid
     ) = 1,
     'MEDIA-012 case 7 rollback registry'
   );
@@ -295,29 +351,37 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 8. Segundo video de 20 segundos con ambas autorizaciones.
 select public.tc_media_validar_duracion(
-  '10000000-0000-0000-0000-000000000008',
+  current_setting('tc.fixture_ticket_id')::uuid,
   '20000000-0000-0000-0000-000000000008',
   10000
 );
 
 select public.tc_media_otorgar_autorizacion(
-  '10000000-0000-0000-0000-000000000008',
+  current_setting('tc.fixture_ticket_id')::uuid,
   'segundo_video_15s',
   clock_timestamp() + interval '1 hour',
   'runtime second video'
 );
 
 select public.tc_media_otorgar_autorizacion(
-  '10000000-0000-0000-0000-000000000008',
+  current_setting('tc.fixture_ticket_id')::uuid,
   'excepcion_30s',
   clock_timestamp() + interval '1 hour',
   'runtime duration exception'
 );
 
 select public.tc_media_validar_duracion(
-  '10000000-0000-0000-0000-000000000008',
+  current_setting('tc.fixture_ticket_id')::uuid,
   '20000000-0000-0000-0000-000000000108',
   20000
 );
@@ -329,7 +393,7 @@ begin
       select count(*)
       from public.autorizaciones_video
       where ticket_id =
-        '10000000-0000-0000-0000-000000000008'
+        current_setting('tc.fixture_ticket_id')::uuid
         and consumida_en is not null
         and consumida_por_adjunto_id =
           '20000000-0000-0000-0000-000000000108'
@@ -342,7 +406,7 @@ begin
       select count(*)
       from public.media_video_registro
       where ticket_id =
-        '10000000-0000-0000-0000-000000000008'
+        current_setting('tc.fixture_ticket_id')::uuid
     ) = 2,
     'MEDIA-011/012 case 8 registry'
   );
@@ -351,23 +415,31 @@ begin
 end
 $$;
 
+delete from public.media_video_registro
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
+delete from public.autorizaciones_video
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
+
 -- 9. Segundo video de 31 segundos con ambas autorizaciones.
 -- Debe rechazarse antes de consumirlas.
 select public.tc_media_validar_duracion(
-  '10000000-0000-0000-0000-000000000009',
+  current_setting('tc.fixture_ticket_id')::uuid,
   '20000000-0000-0000-0000-000000000009',
   10000
 );
 
 select public.tc_media_otorgar_autorizacion(
-  '10000000-0000-0000-0000-000000000009',
+  current_setting('tc.fixture_ticket_id')::uuid,
   'segundo_video_15s',
   clock_timestamp() + interval '1 hour',
   'runtime 31 second rejection'
 );
 
 select public.tc_media_otorgar_autorizacion(
-  '10000000-0000-0000-0000-000000000009',
+  current_setting('tc.fixture_ticket_id')::uuid,
   'excepcion_30s',
   clock_timestamp() + interval '1 hour',
   'runtime 31 second rejection'
@@ -376,7 +448,7 @@ select public.tc_media_otorgar_autorizacion(
 select pg_temp.expect_error(
   $command$
     select public.tc_media_validar_duracion(
-      '10000000-0000-0000-0000-000000000009',
+      current_setting('tc.fixture_ticket_id')::uuid,
       '20000000-0000-0000-0000-000000000109',
       31000
     )
@@ -391,7 +463,7 @@ begin
       select count(*)
       from public.autorizaciones_video
       where ticket_id =
-        '10000000-0000-0000-0000-000000000009'
+        current_setting('tc.fixture_ticket_id')::uuid
         and consumida_en is null
     ) = 2,
     'MEDIA-012 case 9 authorization residue'
@@ -402,7 +474,7 @@ begin
       select count(*)
       from public.media_video_registro
       where ticket_id =
-        '10000000-0000-0000-0000-000000000009'
+        current_setting('tc.fixture_ticket_id')::uuid
     ) = 1,
     'MEDIA-012 case 9 registry residue'
   );
@@ -412,9 +484,9 @@ end
 $$;
 
 delete from public.media_video_registro
-where ticket_id::text like
-  '10000000-0000-0000-0000-0000000000%';
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
 
 delete from public.autorizaciones_video
-where ticket_id::text like
-  '10000000-0000-0000-0000-0000000000%';
+where ticket_id =
+  current_setting('tc.fixture_ticket_id')::uuid;
