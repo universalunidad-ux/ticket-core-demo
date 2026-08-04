@@ -222,6 +222,21 @@ docker exec "$CID" \
     "CONTAINER_PSQL_NOT_AVAILABLE" \
     "$CID"
 
+TICKETS_TOTAL="$(
+  docker exec "$CID" \
+    psql \
+    -X \
+    -U postgres \
+    -d postgres \
+    -Atq \
+    -v ON_ERROR_STOP=1 \
+    -c "
+      select count(*)
+      from public.tickets
+    " |
+  tr -d '\r\n'
+)"
+
 FIXTURE_TICKET_ID="$(
   docker exec "$CID" \
     psql \
@@ -233,17 +248,18 @@ FIXTURE_TICKET_ID="$(
     -c "
       select t.id::text
       from public.tickets t
-      where not exists (
-        select 1
-        from public.media_video_registro m
-        where m.ticket_id = t.id
-      )
-      and not exists (
-        select 1
-        from public.autorizaciones_video a
-        where a.ticket_id = t.id
-      )
-      order by t.id
+      order by
+        (
+          select count(*)
+          from public.media_video_registro m
+          where m.ticket_id = t.id
+        ) +
+        (
+          select count(*)
+          from public.autorizaciones_video a
+          where a.ticket_id = t.id
+        ),
+        t.id
       limit 1
     " |
   tr -d '\r\n'
@@ -254,11 +270,13 @@ grep -Eq \
   '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' ||
   fail \
     "MEDIA_FIXTURE_TICKET_NOT_FOUND" \
-    "No existe un ticket local libre de actividad MEDIA."
+    "No existe ningún ticket en la base local del harness."
 
-echo \
-  "FIXTURE_TICKET_ID=$FIXTURE_TICKET_ID" \
-  >"$OUT/01B_MEDIA_FIXTURE.txt"
+{
+  echo "TICKETS_TOTAL=$TICKETS_TOTAL"
+  echo "FIXTURE_SELECTION=LEAST_MEDIA_ACTIVITY"
+  echo "FIXTURE_TICKET_ID=$FIXTURE_TICKET_ID"
+} >"$OUT/01B_MEDIA_FIXTURE.txt"
 
 
 docker exec -i "$CID" \
