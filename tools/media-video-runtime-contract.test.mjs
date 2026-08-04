@@ -131,10 +131,52 @@ for (const forbidden of [
   );
 }
 
+
+for (const marker of [
+  "SESSION_COUNT=10",
+  "CONCURRENCY_SESSION_COUNT=$SESSION_COUNT",
+  "CONCURRENCY_FAILURE_COUNT=$FAILURE_COUNT",
+  "CONCURRENCY_LOSER_REASON_COUNT=$LOSER_REASON_COUNT",
+  "CONCURRENCY_START_AT=$START_AT",
+  "04_CONCURRENCY_SLOT_${SLOT}.log",
+  "-v start_at=\"$START_AT\"",
+]) {
+  assert.ok(
+    runner.includes(marker),
+    `exact10 runner marker missing: ${marker}`,
+  );
+}
+
+assert.match(
+  consume,
+  /pg_sleep[\s\S]*?:'start_at'::timestamptz/i,
+  "consume SQL must use the shared start barrier",
+);
+
+for (let suffix = 0xa1; suffix <= 0xaa; suffix += 1) {
+  const adjuntoId =
+    `20000000-0000-0000-0000-0000000000${suffix.toString(16)}`;
+
+  assert.ok(
+    verify.includes(adjuntoId),
+    `verify consumer missing: ${adjuntoId}`,
+  );
+}
+
+assert.equal(
+  (
+    verify.match(
+      /20000000-0000-0000-0000-0000000000a[1-9a]/g,
+    ) ?? []
+  ).length,
+  10,
+  "verify must enumerate exactly 10 consumer IDs",
+);
+
 console.log(JSON.stringify({
   rows: ["MEDIA-010", "MEDIA-011", "MEDIA-012"],
   matrixCases: 9,
-  concurrencySessions: 2,
+  concurrencySessions: 10,
   hostPsqlRequired: false,
   dockerPsql: true,
   files,

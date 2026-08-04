@@ -288,72 +288,120 @@ docker exec -i "$CID" \
 
 set +e
 
-docker exec -i "$CID" \
-  psql \
-  -X \
-  -U postgres \
-  -d postgres \
-  -v ON_ERROR_STOP=1 \
-  -v adjunto_id='20000000-0000-0000-0000-0000000000a1' \
-  -v ticket_id="$FIXTURE_TICKET_ID" \
-  <supabase/tests/media_video_concurrency_consume.sql \
-  >"$RACE_A_LOG" 2>&1 &
-PID_A="$!"
+SESSION_COUNT=10
+SUCCESS_COUNT=0
+FAILURE_COUNT=0
+LOSER_REASON_COUNT=0
+PIDS=""
+SLOT=1
 
-docker exec -i "$CID" \
-  psql \
-  -X \
-  -U postgres \
-  -d postgres \
-  -v ON_ERROR_STOP=1 \
-  -v adjunto_id='20000000-0000-0000-0000-0000000000a2' \
-  -v ticket_id="$FIXTURE_TICKET_ID" \
-  <supabase/tests/media_video_concurrency_consume.sql \
-  >"$RACE_B_LOG" 2>&1 &
-PID_B="$!"
+CONCURRENCY_SUMMARY_LOG="$OUT/04_CONCURRENCY_SUMMARY.log"
 
-wait "$PID_A"
-RC_A="$?"
+: >"$CONCURRENCY_SUMMARY_LOG"
 
-wait "$PID_B"
-RC_B="$?"
+START_AT="$(
+  docker exec "$CID" \
+    psql \
+    -X \
+    -U postgres \
+    -d postgres \
+    -Atq \
+    -v ON_ERROR_STOP=1 \
+    -c "
+      select (
+        clock_timestamp()
+        + interval '4 seconds'
+      )::text
+    " |
+  tr -d '\r\n'
+)"
+
+test -n "$START_AT" ||
+  fail \
+    "CONCURRENCY_START_AT_NOT_RESOLVED" \
+    "$CONCURRENCY_SUMMARY_LOG"
+
+while test "$SLOT" -le "$SESSION_COUNT"
+do
+  SUFFIX="$(
+    printf '%x' "$((160 + SLOT))"
+  )"
+
+  ADJUNTO_ID="20000000-0000-0000-0000-0000000000${SUFFIX}"
+  SLOT_LOG="$OUT/04_CONCURRENCY_SLOT_${SLOT}.log"
+
+  docker exec -i "$CID" \
+    psql \
+    -X \
+    -U postgres \
+    -d postgres \
+    -v ON_ERROR_STOP=1 \
+    -v start_at="$START_AT" \
+    -v adjunto_id="$ADJUNTO_ID" \
+    -v ticket_id="$FIXTURE_TICKET_ID" \
+    <supabase/tests/media_video_concurrency_consume.sql \
+    >"$SLOT_LOG" 2>&1 &
+
+  PIDS="$PIDS $!"
+  SLOT="$((SLOT + 1))"
+done
+
+SLOT=1
+
+for PID in $PIDS
+do
+  wait "$PID"
+  RC="$?"
+
+  SLOT_LOG="$OUT/04_CONCURRENCY_SLOT_${SLOT}.log"
+
+  echo \
+    "SLOT=$SLOT RC=$RC LOG=$SLOT_LOG" \
+    >>"$CONCURRENCY_SUMMARY_LOG"
+
+  if test "$RC" -eq 0; then
+    SUCCESS_COUNT="$((SUCCESS_COUNT + 1))"
+  else
+    FAILURE_COUNT="$((FAILURE_COUNT + 1))"
+
+    if grep -q \
+      'E_MEDIA_AUTORIZACION_NO_DISPONIBLE' \
+      "$SLOT_LOG"
+    then
+      LOSER_REASON_COUNT="$((LOSER_REASON_COUNT + 1))"
+    else
+      {
+        echo "INVALID_LOSER_SLOT=$SLOT"
+        echo "INVALID_LOSER_LOG=$SLOT_LOG"
+        tail -n 80 "$SLOT_LOG"
+      } >>"$CONCURRENCY_SUMMARY_LOG"
+    fi
+  fi
+
+  SLOT="$((SLOT + 1))"
+done
 
 set -e
 
-SUCCESS_COUNT=0
-FAILURE_COUNT=0
-LOSER_LOG=""
-
-if test "$RC_A" -eq 0; then
-  SUCCESS_COUNT="$((SUCCESS_COUNT + 1))"
-else
-  FAILURE_COUNT="$((FAILURE_COUNT + 1))"
-  LOSER_LOG="$RACE_A_LOG"
-fi
-
-if test "$RC_B" -eq 0; then
-  SUCCESS_COUNT="$((SUCCESS_COUNT + 1))"
-else
-  FAILURE_COUNT="$((FAILURE_COUNT + 1))"
-  LOSER_LOG="$RACE_B_LOG"
-fi
+test "$SLOT" -eq 11 ||
+  fail \
+    "CONCURRENCY_SESSION_ACCOUNTING_INVALID" \
+    "next_slot=$SLOT expected=11"
 
 test "$SUCCESS_COUNT" -eq 1 ||
   fail \
     "CONCURRENCY_SUCCESS_COUNT_INVALID" \
-    "A=$RC_A B=$RC_B successes=$SUCCESS_COUNT"
+    "sessions=$SESSION_COUNT successes=$SUCCESS_COUNT summary=$CONCURRENCY_SUMMARY_LOG"
 
-test "$FAILURE_COUNT" -eq 1 ||
+test "$FAILURE_COUNT" -eq 9 ||
   fail \
     "CONCURRENCY_FAILURE_COUNT_INVALID" \
-    "A=$RC_A B=$RC_B failures=$FAILURE_COUNT"
+    "sessions=$SESSION_COUNT failures=$FAILURE_COUNT summary=$CONCURRENCY_SUMMARY_LOG"
 
-grep -q \
-  'E_MEDIA_AUTORIZACION_NO_DISPONIBLE' \
-  "$LOSER_LOG" ||
+test "$LOSER_REASON_COUNT" -eq 9 ||
   fail \
-    "CONCURRENCY_LOSER_REASON_INVALID" \
-    "$LOSER_LOG"
+    "CONCURRENCY_LOSER_REASON_COUNT_INVALID" \
+    "expected=9 actual=$LOSER_REASON_COUNT summary=$CONCURRENCY_SUMMARY_LOG"
 
 docker exec -i "$CID" \
   psql \
@@ -398,8 +446,11 @@ TEARDOWN_DONE="YES"
   echo "MEDIA_VIDEO_MATRIX=PASS"
   echo "MEDIA_VIDEO_MATRIX_CASES=9"
   echo "MEDIA_VIDEO_CONCURRENCY=PASS"
+  echo "CONCURRENCY_SESSION_COUNT=$SESSION_COUNT"
   echo "CONCURRENCY_SUCCESS_COUNT=$SUCCESS_COUNT"
   echo "CONCURRENCY_FAILURE_COUNT=$FAILURE_COUNT"
+  echo "CONCURRENCY_LOSER_REASON_COUNT=$LOSER_REASON_COUNT"
+  echo "CONCURRENCY_START_AT=$START_AT"
   echo "DB_PORT=$DB_PORT"
   echo "CONTAINER=$CID"
   echo "TEARDOWN=$TEARDOWN_RESULT"
