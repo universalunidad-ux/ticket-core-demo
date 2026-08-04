@@ -286,14 +286,12 @@ docker exec -i "$CID" \
     "MEDIA_VIDEO_CONCURRENCY_SETUP_FAILED" \
     "$SETUP_LOG"
 
-set +e
-
 SESSION_COUNT=10
 SUCCESS_COUNT=0
 FAILURE_COUNT=0
 LOSER_REASON_COUNT=0
-PIDS=""
-SLOT=1
+LAUNCHED_COUNT=0
+WAITED_COUNT=0
 
 CONCURRENCY_SUMMARY_LOG="$OUT/04_CONCURRENCY_SUMMARY.log"
 
@@ -310,7 +308,7 @@ START_AT="$(
     -c "
       select (
         clock_timestamp()
-        + interval '4 seconds'
+        + interval '8 seconds'
       )::text
     " |
   tr -d '\r\n'
@@ -321,6 +319,8 @@ test -n "$START_AT" ||
     "CONCURRENCY_START_AT_NOT_RESOLVED" \
     "$CONCURRENCY_SUMMARY_LOG"
 
+SLOT=1
+
 while test "$SLOT" -le "$SESSION_COUNT"
 do
   SUFFIX="$(
@@ -329,38 +329,111 @@ do
 
   ADJUNTO_ID="20000000-0000-0000-0000-0000000000${SUFFIX}"
   SLOT_LOG="$OUT/04_CONCURRENCY_SLOT_${SLOT}.log"
+  STATUS_LOG="$OUT/04_CONCURRENCY_SLOT_${SLOT}.status"
 
-  docker exec -i "$CID" \
-    psql \
-    -X \
-    -U postgres \
-    -d postgres \
-    -v ON_ERROR_STOP=1 \
-    -v start_at="$START_AT" \
-    -v adjunto_id="$ADJUNTO_ID" \
-    -v ticket_id="$FIXTURE_TICKET_ID" \
-    <supabase/tests/media_video_concurrency_consume.sql \
-    >"$SLOT_LOG" 2>&1 &
+  rm -f "$SLOT_LOG" "$STATUS_LOG"
 
-  PIDS="$PIDS $!"
+  (
+    set +e
+
+    docker exec -i "$CID" \
+      psql \
+      -X \
+      -U postgres \
+      -d postgres \
+      -v ON_ERROR_STOP=1 \
+      -v start_at="$START_AT" \
+      -v adjunto_id="$ADJUNTO_ID" \
+      -v ticket_id="$FIXTURE_TICKET_ID" \
+      <supabase/tests/media_video_concurrency_consume.sql \
+      >"$SLOT_LOG" 2>&1
+
+    SESSION_RC="$?"
+
+    printf '%s\n' \
+      "$SESSION_RC" \
+      >"$STATUS_LOG"
+
+    exit 0
+  ) &
+
+  eval "PID_${SLOT}=$!"
+
+  LAUNCHED_COUNT="$((LAUNCHED_COUNT + 1))"
   SLOT="$((SLOT + 1))"
 done
 
+test "$LAUNCHED_COUNT" -eq 10 ||
+  fail \
+    "CONCURRENCY_LAUNCHED_COUNT_INVALID" \
+    "expected=10 actual=$LAUNCHED_COUNT"
+
 SLOT=1
 
-for PID in $PIDS
+while test "$SLOT" -le "$SESSION_COUNT"
 do
-  wait "$PID"
-  RC="$?"
+  eval "PID=\${PID_${SLOT}:-}"
 
+  test -n "$PID" ||
+    fail \
+      "CONCURRENCY_PID_MISSING" \
+      "slot=$SLOT"
+
+  wait "$PID" ||
+    fail \
+      "CONCURRENCY_WRAPPER_WAIT_FAILED" \
+      "slot=$SLOT pid=$PID"
+
+  WAITED_COUNT="$((WAITED_COUNT + 1))"
+  SLOT="$((SLOT + 1))"
+done
+
+test "$WAITED_COUNT" -eq 10 ||
+  fail \
+    "CONCURRENCY_WAITED_COUNT_INVALID" \
+    "expected=10 actual=$WAITED_COUNT"
+
+SLOT=1
+
+while test "$SLOT" -le "$SESSION_COUNT"
+do
   SLOT_LOG="$OUT/04_CONCURRENCY_SLOT_${SLOT}.log"
+  STATUS_LOG="$OUT/04_CONCURRENCY_SLOT_${SLOT}.status"
+
+  test -f "$SLOT_LOG" ||
+    fail \
+      "CONCURRENCY_SLOT_LOG_MISSING" \
+      "$SLOT_LOG"
+
+  test -f "$STATUS_LOG" ||
+    fail \
+      "CONCURRENCY_STATUS_LOG_MISSING" \
+      "$STATUS_LOG"
+
+  RC="$(
+    tr -d '[:space:]' \
+      <"$STATUS_LOG"
+  )"
+
+  printf '%s\n' "$RC" |
+    grep -Eq '^[0-9]+$' ||
+    fail \
+      "CONCURRENCY_STATUS_INVALID" \
+      "slot=$SLOT value=$RC file=$STATUS_LOG"
 
   echo \
-    "SLOT=$SLOT RC=$RC LOG=$SLOT_LOG" \
+    "SLOT=$SLOT RC=$RC LOG=$SLOT_LOG STATUS=$STATUS_LOG" \
     >>"$CONCURRENCY_SUMMARY_LOG"
 
   if test "$RC" -eq 0; then
     SUCCESS_COUNT="$((SUCCESS_COUNT + 1))"
+
+    grep -Eq \
+      '(^|[[:space:]])15([[:space:]]|$)' \
+      "$SLOT_LOG" ||
+      fail \
+        "CONCURRENCY_WINNER_OUTPUT_INVALID" \
+        "$SLOT_LOG"
   else
     FAILURE_COUNT="$((FAILURE_COUNT + 1))"
 
@@ -373,15 +446,13 @@ do
       {
         echo "INVALID_LOSER_SLOT=$SLOT"
         echo "INVALID_LOSER_LOG=$SLOT_LOG"
-        tail -n 80 "$SLOT_LOG"
+        tail -n 100 "$SLOT_LOG"
       } >>"$CONCURRENCY_SUMMARY_LOG"
     fi
   fi
 
   SLOT="$((SLOT + 1))"
 done
-
-set -e
 
 test "$SLOT" -eq 11 ||
   fail \
