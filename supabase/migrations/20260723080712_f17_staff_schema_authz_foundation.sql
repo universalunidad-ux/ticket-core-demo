@@ -20,6 +20,10 @@ begin;
 -- ============================================================================
 -- GUARDS fail-closed (abortar antes de crear cualquier objeto F17)
 -- ============================================================================
+-- F17 prerequisite: btree_gist is required by the overlapping-announcement exclusion constraint.
+create schema if not exists extensions;
+create extension if not exists btree_gist with schema extensions;
+
 do $guard$
 declare
   v_missing text;
