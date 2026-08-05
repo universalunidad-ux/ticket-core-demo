@@ -149,6 +149,42 @@
     "storage.objects": [
       "soporte_adjuntos_staff_read",
       "certificados_staff_read"
+    ],
+    "public.staff_teams": [
+      "staff_teams_admin_select",
+      "staff_teams_support_select"
+    ],
+    "public.staff_team_memberships": [
+      "staff_team_memberships_admin_select",
+      "staff_team_memberships_self_select"
+    ],
+    "public.staff_conversations": [
+      "staff_conversations_admin_select",
+      "staff_conversations_support_select"
+    ],
+    "public.staff_messages": [
+      "staff_messages_admin_select",
+      "staff_messages_support_select"
+    ],
+    "public.staff_message_revisions": [
+      "staff_message_revisions_admin_select",
+      "staff_message_revisions_support_select"
+    ],
+    "public.staff_announcements": [
+      "staff_announcements_admin_select",
+      "staff_announcements_support_select"
+    ],
+    "public.staff_announcement_targets": [
+      "staff_announcement_targets_admin_select",
+      "staff_announcement_targets_self_select"
+    ],
+    "public.staff_message_receipts": [
+      "staff_message_receipts_admin_select",
+      "staff_message_receipts_self_select"
+    ],
+    "public.support_agent_scopes": [
+      "support_agent_scopes_admin_select",
+      "support_agent_scopes_self_select"
     ]
   }
 }
