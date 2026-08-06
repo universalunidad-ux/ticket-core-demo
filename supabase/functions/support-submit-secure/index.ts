@@ -22,7 +22,17 @@ import {
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TURNSTILE_SECRET=Deno.env.get("TURNSTILE_SECRET")||"";
-const getTurnstileExpectedAction=()=>(Deno.env.get("TURNSTILE_EXPECTED_ACTION")||SUPPORT_TURNSTILE_ACTION).trim();
+const TURNSTILE_MISSING_ACTION_TEST_SENTINEL="__CLOUDFLARE_DUMMY_MISSING_ACTION__";
+
+const getTurnstileExpectedAction=()=>{
+  const configured=Deno.env.get("TURNSTILE_EXPECTED_ACTION");
+
+  if(configured===TURNSTILE_MISSING_ACTION_TEST_SENTINEL){
+    return "";
+  }
+
+  return(configured||SUPPORT_TURNSTILE_ACTION).trim();
+};
 const PUBLIC_APP_URL=(Deno.env.get("PUBLIC_APP_URL")||"").replace(/\/+$/,"");
 const RESEND_API_KEY=Deno.env.get("RESEND_API_KEY")||"";
 const MAIL_FROM=Deno.env.get("MAIL_FROM")||"Expiriti <soporte@expiriti.com.mx>";

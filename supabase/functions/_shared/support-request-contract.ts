@@ -190,7 +190,13 @@ export function validateTurnstileSiteverify(
   if (typeof response.hostname !== "string" || response.hostname !== expected.hostname) {
     return fail("TURNSTILE_HOSTNAME_MISMATCH");
   }
-  if (typeof response.action !== "string" || response.action !== expected.action) {
+  if (
+    expected.action !== ""
+    && (
+      typeof response.action !== "string"
+      || response.action !== expected.action
+    )
+  ) {
     return fail("TURNSTILE_ACTION_MISMATCH");
   }
   if (typeof response.challenge_ts !== "string"
