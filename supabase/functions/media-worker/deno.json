@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.35"
+  },
+  "tasks": {
+    "check": "deno check index.ts index_test.ts",
+    "test": "deno test --allow-read --allow-net=registry.npmjs.org index_test.ts"
+  }
+}

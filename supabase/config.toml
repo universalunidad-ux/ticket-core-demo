@@ -371,6 +371,17 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# TC-DEB8FDCC-MEDIA-WORKER-V1: endpoint exclusivamente interno.
+# verify_jwt = false porque el worker NO se autentica con un JWT de Supabase:
+# se autentica con el secreto compartido MEDIA_WORKER_SECRET en la cabecera
+# x-media-worker-key, y rechaza activamente claves publicables y JWT de usuario.
+# La funcion no emite ninguna cabecera CORS y no acepta preflight, de modo que
+# ningun navegador puede alcanzarla.
+[functions.media-worker]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/media-worker/index.ts"
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
