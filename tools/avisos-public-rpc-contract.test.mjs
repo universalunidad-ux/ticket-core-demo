@@ -58,19 +58,25 @@ test(
 
     assert.ok(
       compact.includes(
-        "pg_catalog.least",
+        "when p_limit is null then 5",
       ),
     );
 
     assert.ok(
       compact.includes(
-        "pg_catalog.greatest",
+        "when p_limit < 1 then 1",
       ),
     );
 
     assert.ok(
       compact.includes(
-        "pg_catalog.coalesce(p_limit, 5)",
+        "when p_limit > 20 then 20",
+      ),
+    );
+
+    assert.ok(
+      compact.includes(
+        "else p_limit end",
       ),
     );
   },

@@ -96,12 +96,13 @@ as $function$
     aviso.prioridad asc,
     aviso.created_at desc,
     aviso.id asc
-  limit pg_catalog.least(
-    pg_catalog.greatest(
-      pg_catalog.coalesce(p_limit, 5),
-      1
-    ),
-    20
+  limit (
+    case
+      when p_limit is null then 5
+      when p_limit < 1 then 1
+      when p_limit > 20 then 20
+      else p_limit
+    end
   );
 $function$;
 
