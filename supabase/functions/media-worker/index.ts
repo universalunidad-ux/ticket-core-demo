@@ -457,3 +457,5 @@ export function defaultDeps(): WorkerDeps {
 if (import.meta.main) {
   Deno.serve(buildHandler(defaultDeps()));
 }
+
+// PREPARED_NOT_APPLIED: local runtime implementation; not deployed.

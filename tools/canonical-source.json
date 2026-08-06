@@ -190,6 +190,18 @@
       "runtime_status": "REMOTE_ACTIVE",
       "remote_version": 15,
       "verify_jwt": true
+    },
+    {
+      "name": "media-worker",
+      "classification": "REQUIRED_LOCAL_RUNTIME",
+      "path": "supabase/functions/media-worker/index.ts",
+      "source_sha256": "ce2cde83eefc2dd447e8e2f0a13c90fe5b04c487a22c4192fe6aad668f30f5e5",
+      "evidence": {
+        "kind": "TRACKED_SOURCE_MARKER",
+        "path": "supabase/functions/media-worker/index.ts",
+        "marker": "PREPARED_NOT_APPLIED"
+      },
+      "runtime_status": "LOCAL_ONLY_NOT_DEPLOYED"
     }
   ],
   "externalized_owners": [
