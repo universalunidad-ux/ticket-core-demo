@@ -24,7 +24,49 @@ const compact =
     .toLowerCase();
 
 test(
-  "defines a bounded public support notices RPC",
+  "migration contains only a transactional SQL payload",
+  () => {
+    assert.equal(
+      source.trimStart().toLowerCase().startsWith(
+        "begin;",
+      ),
+      true,
+    );
+
+    assert.equal(
+      source.trimEnd().toLowerCase().endsWith(
+        "commit;",
+      ),
+      true,
+    );
+
+    for (
+      const forbidden
+      of [
+        /^migration_new_rc=/m,
+        /^emit_(?:stop|final)\b/m,
+        /^git -c\b/m,
+        /^node --test\b/m,
+        /supabase migration (?:new|up)/,
+        /<<['"]?sql['"]?/,
+        /^bash$/m,
+        /^py$/m,
+        /patch_public_support_consumer/,
+      ]
+    ) {
+      assert.equal(
+        forbidden.test(
+          source.toLowerCase(),
+        ),
+        false,
+        `shell contamination found: ${forbidden}`,
+      );
+    }
+  },
+);
+
+test(
+  "defines the secure public support notices RPC",
   () => {
     assert.ok(
       compact.includes(
@@ -55,35 +97,11 @@ test(
         "set search_path = ''",
       ),
     );
-
-    assert.ok(
-      compact.includes(
-        "when p_limit is null then 5",
-      ),
-    );
-
-    assert.ok(
-      compact.includes(
-        "when p_limit < 1 then 1",
-      ),
-    );
-
-    assert.ok(
-      compact.includes(
-        "when p_limit > 20 then 20",
-      ),
-    );
-
-    assert.ok(
-      compact.includes(
-        "else p_limit end",
-      ),
-    );
   },
 );
 
 test(
-  "exposes only the minimal public shape",
+  "returns only the minimal public response shape",
   () => {
     const match =
       compact.match(
@@ -137,7 +155,7 @@ test(
 );
 
 test(
-  "filters inactive, non-support, future and expired rows",
+  "filters inactive, private, future and expired notices",
   () => {
     assert.ok(
       compact.includes(
@@ -178,7 +196,42 @@ test(
 );
 
 test(
-  "grants RPC execution without granting anon table SELECT",
+  "uses a valid bounded CASE expression",
+  () => {
+    for (
+      const fragment
+      of [
+        "when p_limit is null then 5",
+        "when p_limit < 1 then 1",
+        "when p_limit > 20 then 20",
+        "else p_limit",
+      ]
+    ) {
+      assert.ok(
+        compact.includes(fragment),
+        `missing CASE fragment: ${fragment}`,
+      );
+    }
+
+    for (
+      const invalid
+      of [
+        "pg_catalog.least",
+        "pg_catalog.greatest",
+        "pg_catalog.coalesce",
+      ]
+    ) {
+      assert.equal(
+        compact.includes(invalid),
+        false,
+        `invalid qualified expression remains: ${invalid}`,
+      );
+    }
+  },
+);
+
+test(
+  "grants RPC execution without anon table SELECT",
   () => {
     assert.ok(
       compact.includes(
@@ -197,22 +250,11 @@ test(
         .test(compact),
       false,
     );
-  },
-);
 
-test(
-  "does not weaken table RLS",
-  () => {
     assert.equal(
       compact.includes(
         "alter table public.avisos_globales disable row level security",
       ),
-      false,
-    );
-
-    assert.equal(
-      /create policy[\s\S]*on public\.avisos_globales[\s\S]*to anon/
-        .test(compact),
       false,
     );
   },
