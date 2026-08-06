@@ -22,7 +22,7 @@ import {
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TURNSTILE_SECRET=Deno.env.get("TURNSTILE_SECRET")||"";
-const TURNSTILE_EXPECTED_ACTION=(Deno.env.get("TURNSTILE_EXPECTED_ACTION")||SUPPORT_TURNSTILE_ACTION).trim();
+const getTurnstileExpectedAction=()=>(Deno.env.get("TURNSTILE_EXPECTED_ACTION")||SUPPORT_TURNSTILE_ACTION).trim();
 const PUBLIC_APP_URL=(Deno.env.get("PUBLIC_APP_URL")||"").replace(/\/+$/,"");
 const RESEND_API_KEY=Deno.env.get("RESEND_API_KEY")||"";
 const MAIL_FROM=Deno.env.get("MAIL_FROM")||"Expiriti <soporte@expiriti.com.mx>";
@@ -295,7 +295,7 @@ export const handler=async(req:Request):Promise<Response>=>{
     if(!TURNSTILE_SECRET)return json({message:"Validación de seguridad no disponible.",code:"TURNSTILE_UNCONFIGURED"},503);
     const turnstileResult=await verifyTurnstile(multipartResult.value.turnstileToken,ip,{
       hostname:headerResult.value.hostname,
-      action:TURNSTILE_EXPECTED_ACTION,
+      action:getTurnstileExpectedAction(),
       nowMs:Date.now(),
     });
     if(!turnstileResult.ok)return json({message:requestErrorMessage(turnstileResult.code),code:turnstileResult.code},requestErrorStatus(turnstileResult.code));
