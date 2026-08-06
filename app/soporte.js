@@ -191,7 +191,7 @@ const isPublishableNotice=n=>{
   if(!Number.isNaN(e)&&e<now)return false;
   return true;
 };
-const loadGlobalNotice=async()=>{try{const now=new Date().toISOString();const {data,error}=await supabase.from("avisos_globales").select("id,titulo,contenido,tipo,activo,mostrar_en_soporte,starts_at,ends_at,prioridad").eq("activo",true).eq("mostrar_en_soporte",true).or(`starts_at.is.null,starts_at.lte.${now}`).or(`ends_at.is.null,ends_at.gte.${now}`).order("prioridad",{ascending:true}).limit(1).maybeSingle();if(error)throw error;renderNotice(isPublishableNotice(data)?data:null)}catch(err){console.warn("SUPPORT_NOTICE_LOAD_ERROR",err);renderNotice(null)}};
+const loadGlobalNotice=async()=>{try{const {data,error}=await supabase.rpc("tc_public_support_notices",{p_limit:1});if(error)throw error;const notice=Array.isArray(data)?data[0]||null:data||null;renderNotice(isPublishableNotice(notice)?notice:null)}catch(err){console.warn("SUPPORT_NOTICE_LOAD_ERROR",err);renderNotice(null)}};
 
 const send=async e=>{
   e.preventDefault();
