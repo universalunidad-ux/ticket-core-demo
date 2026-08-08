@@ -149,9 +149,103 @@ assert_output 'SECRET_GATE: FAIL scanner error (scanner=python3 status=70)' scan
 assert_no_pass scanner-failure
 ((passed += 1))
 
+# --- Excepcion acotada del config publico (JWT legacy con role=anon) ---------
+# Los JWT sinteticos se construyen en tiempo de ejecucion: este archivo nunca
+# contiene un token literal. La firma es un relleno sin valor criptografico.
+synthetic_jwt() {
+  python3 - "$1" "$2" <<'PY'
+import base64, json, sys
+def seg(obj):
+    raw = json.dumps(obj, separators=(",", ":")).encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+role, ref = sys.argv[1], sys.argv[2]
+header = seg({"alg": "HS256", "typ": "JWT"})
+payload = seg({"iss": "supabase", "ref": ref, "role": role, "iat": 1, "exp": 2})
+print(f"{header}.{payload}.SYNTHETIC0123456789SIGNATURE")
+PY
+}
+
+write_public_config() {
+  local root="$1" ref="$2" token="$3" rel="${4:-app/supabase.config.public.js}"
+  mkdir -p "$root/${rel%/*}"
+  {
+    printf '%s\n' '// Public browser configuration. This file must contain only the project URL and publishable key.'
+    printf '%s\n' 'window.TICKET_CORE_CONFIG = {'
+    printf '  supabaseUrl: "https://%s.supabase.co",\n' "$ref"
+    printf '  supabasePublishableKey: "%s"\n' "$token"
+    printf '%s\n' '};'
+  } >"$root/$rel"
+}
+
+canonical_ref='nskamjidlcgcftgewyuc'
+foreign_ref='ovfmqqqwezfdtgrtkjhf'
+anon_token="$(synthetic_jwt anon "$canonical_ref")"
+service_token="$(synthetic_jwt service_role "$canonical_ref")"
+authenticated_token="$(synthetic_jwt authenticated "$canonical_ref")"
+
+# A. Config publico con JWT anon coherente: permitido.
+anon_ok_root="$tmp/public-anon-ok"
+new_repo "$anon_ok_root"
+write_public_config "$anon_ok_root" "$canonical_ref" "$anon_token"
+run_gate /bin/bash "$gate" "$anon_ok_root"
+assert_status 0 public-anon-allowed
+assert_output 'public anon config allowlisted' public-anon-allowed
+assert_output 'SECRET_GATE: PASS' public-anon-allowed
+((passed += 1))
+
+# B. NEGATIVO: service_role en la misma ruta debe seguir bloqueado.
+service_root="$tmp/public-anon-service-role"
+new_repo "$service_root"
+write_public_config "$service_root" "$canonical_ref" "$service_token"
+run_gate /bin/bash "$gate" "$service_root"
+assert_status 1 public-anon-service-role-blocked
+assert_output 'SECRET_GATE: FAIL secret-shaped value detected' public-anon-service-role-blocked
+assert_no_pass public-anon-service-role-blocked
+((passed += 1))
+
+# C. NEGATIVO: cualquier rol distinto de anon queda bloqueado.
+authenticated_root="$tmp/public-anon-other-role"
+new_repo "$authenticated_root"
+write_public_config "$authenticated_root" "$canonical_ref" "$authenticated_token"
+run_gate /bin/bash "$gate" "$authenticated_root"
+assert_status 1 public-anon-other-role-blocked
+assert_no_pass public-anon-other-role-blocked
+((passed += 1))
+
+# D. NEGATIVO: la excepcion no aplica fuera de app/supabase.config.public.js.
+offpath_root="$tmp/public-anon-offpath"
+new_repo "$offpath_root"
+write_public_config "$offpath_root" "$canonical_ref" "$anon_token" 'app/supabase.config.other.js'
+run_gate /bin/bash "$gate" "$offpath_root"
+assert_status 1 public-anon-path-scoped
+assert_no_pass public-anon-path-scoped
+((passed += 1))
+
+# E. NEGATIVO: el ref del token debe concordar con la URL declarada.
+mismatch_root="$tmp/public-anon-ref-mismatch"
+new_repo "$mismatch_root"
+write_public_config "$mismatch_root" "$foreign_ref" "$anon_token"
+run_gate /bin/bash "$gate" "$mismatch_root"
+assert_status 1 public-anon-ref-mismatch
+assert_no_pass public-anon-ref-mismatch
+((passed += 1))
+
+# F. NEGATIVO: un secreto adicional en el mismo archivo invalida la excepcion.
+contaminated_root="$tmp/public-anon-contaminated"
+new_repo "$contaminated_root"
+write_public_config "$contaminated_root" "$canonical_ref" "$anon_token"
+printf '// %s\n' "$secret_value" >>"$contaminated_root/app/supabase.config.public.js"
+run_gate /bin/bash "$gate" "$contaminated_root"
+assert_status 1 public-anon-contaminated
+assert_no_pass public-anon-contaminated
+((passed += 1))
+
 echo "SECRET_GATE_TESTS: PASS ($passed cases)"
 echo 'UNTRACKED_SECRET_TEST: PASS'
 echo 'TRACKED_SECRET_TEST: PASS'
 echo 'PUBLISHABLE_KEY_TEST: PASS'
 echo 'NO_RG_FALLBACK_TEST: PASS'
 echo 'SCANNER_FAILURE_TEST: PASS'
+echo 'PUBLIC_ANON_ALLOWLIST_TEST: PASS'
+echo 'PUBLIC_ANON_SERVICE_ROLE_BLOCKED_TEST: PASS'
+echo 'PUBLIC_ANON_SCOPE_TEST: PASS'

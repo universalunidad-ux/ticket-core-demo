@@ -20,6 +20,7 @@ EXCLUDED_FILES = {
     "tools/secret-gate.sh",
     "tools/secret-gate-scanner.py",
     "tools/secret-gate-patterns.txt",
+    "tools/secret-gate-public-anon.py",
 }
 
 

@@ -14,6 +14,7 @@ esac
 gate_dir="${gate_source%/*}"
 patterns_file="$gate_dir/secret-gate-patterns.txt"
 fallback_scanner="$gate_dir/secret-gate-scanner.py"
+public_anon_validator="$gate_dir/secret-gate-public-anon.py"
 
 fail() {
   echo "SECRET_GATE: FAIL $*" >&2
@@ -69,6 +70,7 @@ run_rg_scan() {
     --glob '!tools/secret-gate.sh'
     --glob '!tools/secret-gate-scanner.py'
     --glob '!tools/secret-gate-patterns.txt'
+    --glob '!tools/secret-gate-public-anon.py'
   )
   if [[ "$mode" == "secrets" ]]; then
     rg "${common[@]}" -f "$patterns_file" .
@@ -93,6 +95,42 @@ run_scan() {
   set -e
 }
 
+# Excepcion unica y acotada: el config publico del navegador puede portar la
+# clave publicable en formato legacy (JWT HS256 con role=anon), que Supabase
+# publica por diseno igual que sb_publishable_*. Solo se descarta el hallazgo si
+# tools/secret-gate-public-anon.py lo autoriza tras decodificar los claims. Sin
+# validador o sin python3 el hallazgo se conserva: el gate falla cerrado.
+public_anon_allowed=0
+residual_findings=""
+# Publica en las globales public_anon_allowed y residual_findings; no debe
+# invocarse en una substitucion de comando (perderia el resultado).
+filter_public_anon_findings() {
+  local raw="$1"
+  local line candidate verdict
+  local kept=""
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    candidate="${line%: secret-shaped value detected}"
+    if [[ "$candidate" =~ ^(.*):[0-9]+$ ]]; then
+      candidate="${BASH_REMATCH[1]}"
+    fi
+    candidate="${candidate#./}"
+    if command -v python3 >/dev/null 2>&1 && [[ -r "$public_anon_validator" ]]; then
+      set +e
+      python3 "$public_anon_validator" \
+        --patterns "$patterns_file" --root . "$candidate" >/dev/null 2>&1
+      verdict=$?
+      set -e
+      if (( verdict == 0 )); then
+        public_anon_allowed=1
+        continue
+      fi
+    fi
+    kept+="$line"$'\n'
+  done <<<"$raw"
+  residual_findings="$kept"
+}
+
 echo "SECRET_GATE: scanner=$scanner"
 
 # Los scanners usan semántica grep: 0=hallazgo, 1=sin hallazgos, >1=error.
@@ -100,8 +138,14 @@ echo "SECRET_GATE: scanner=$scanner"
 run_scan secrets
 case "$scan_status" in
   0)
-    [[ -n "$scan_output" ]] && printf '%s\n' "$scan_output" >&2
-    fail "secret-shaped value detected"
+    filter_public_anon_findings "$scan_output"
+    if [[ -n "$residual_findings" ]]; then
+      printf '%s' "$residual_findings" >&2
+      fail "secret-shaped value detected"
+    fi
+    if (( public_anon_allowed == 1 )); then
+      echo 'SECRET_GATE: note public anon config allowlisted (app/supabase.config.public.js; role=anon, public by design; OK)'
+    fi
     ;;
   1) ;;
   *)
