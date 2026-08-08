@@ -21,7 +21,7 @@ with function_inventory as (
     pg_get_userbyid(p.proowner) as owner,
     p.proconfig,
     coalesce(
-      p.proconfig @> array['search_path=public']::text[],
+      (p.proconfig @> array['search_path=public']::text[] or p.proconfig @> array['search_path=pg_catalog, public']::text[]),
       false
     ) as search_path_fixed,
     exists (
@@ -85,7 +85,7 @@ with function_inventory as (
       pg_get_function_identity_arguments(p.oid)
     ) as identity,
     coalesce(
-      p.proconfig @> array['search_path=public']::text[],
+      (p.proconfig @> array['search_path=public']::text[] or p.proconfig @> array['search_path=pg_catalog, public']::text[]),
       false
     ) as search_path_fixed,
     exists (

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "duplicateGroups": [
+    {
+      "creditKey": "U0-HISTORICAL-SCOPE",
+      "rows": [
+        "U0-A",
+        "U0-B",
+        "U0-C",
+        "U0-D"
+      ],
+      "disposition": "NO_AUTOMATIC_CREDIT"
+    }
+  ]
+}

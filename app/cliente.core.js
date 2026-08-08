@@ -46,13 +46,23 @@ export async function loadEquipos(sb, id) {
 }
 
 export async function loadTickets(sb, id) {
-  const r = await sb.from("tickets")
-    .select("id,folio,titulo,estado,prioridad,asignado_a,fecha_creacion,fecha_actualizacion,evidencia_count,requiere_consolidacion,tipo")
-    .eq("cliente_id", id).order("fecha_actualizacion", { ascending: false }).limit(100);
+  const [r, activity] = await Promise.all([
+    sb.from("tickets")
+      .select("id,folio,titulo,estado,prioridad,asignado_a,fecha_creacion,fecha_actualizacion,evidencia_count,requiere_consolidacion,tipo")
+      .eq("cliente_id", id).order("fecha_actualizacion", { ascending: false }).limit(100),
+    sb.from("bitacora").select("accion,detalle,fecha,usuario_id")
+      .eq("cliente_id", id).order("fecha", { ascending:false }).limit(100),
+  ]);
   if (r.error) throw r.error;
   const tickets = r.data || [];
   const agentes = await loadAgentes(sb, tickets);
-  return { tickets, agentes };
+  const eventsByTicket = {};
+  for (const event of activity.data || []) {
+    const ticketId = String(event?.detalle?.ticket_id || "");
+    if (!ticketId) continue;
+    (eventsByTicket[ticketId] ||= []).push(event);
+  }
+  return { tickets, agentes, eventsByTicket };
 }
 
 export async function loadBitacora(sb, id) {

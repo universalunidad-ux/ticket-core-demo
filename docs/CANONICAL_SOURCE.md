@@ -29,7 +29,7 @@ node tools/preflight.mjs --mode full
 
 El gate owner sigue disponible como `node tools/canonical-source-gate.mjs --root "$PWD"`; el preflight lo orquesta y no duplica su contrato.
 
-El gate termina con error ante diferencias de repo, remote, política de branch, base Git o common Git dir; worktrees no registradas; operaciones Git incompletas; `index.lock`; fuentes activas ausentes o no canónicas; owners activos duplicados o no versionados; Edge activas sin owner local o externalización explícita; migraciones locales con identificador duplicado; y referencias al producto privado.
+El gate termina con error ante diferencias de repo, remote, política de branch, base Git o common Git dir; worktrees no registradas; operaciones Git incompletas; `index.lock`; fuentes activas ausentes o no canónicas; owners activos duplicados o no versionados; Edge activas sin owner local o externalización explícita; entrypoints Edge tracked sin clasificación; migraciones locales con identificador duplicado; y referencias al producto privado.
 
 La política de HEAD admite únicamente commits descendientes de `fd1336985bd9446c5d28e7d8c6296a2d375ce90b`. La rama de implementación fue `review/backend-security-v2-20260718`; la política futura permite branches `review/` que desciendan de esa base. El checkout CI está permitido de forma explícita, pero conserva las comprobaciones de remote, branch, base y owners.
 
@@ -41,9 +41,32 @@ Los prefijos de implementación permitidos viven únicamente en el manifiesto: `
 
 `--allow-bootstrap` existe solo para validar el primer commit G0. Funciona únicamente sobre el HEAD base exacto, con los cuatro archivos G0 declarados, staged y sin cambios unstaged. Después del commit se ejecuta el gate sin esa opción y se exige un worktree limpio.
 
-## Owners Edge externalizados
+## Owners Edge locales, runtime y externalizados
 
-`crear-cliente-janome`, `ticket-escalar-admin`, `crear-ticket-interno`, `estado-ticket-ts` y `estado-ticket-responder-ts` son dependencias activas que no tienen owner versionado en este worktree. El manifiesto las clasifica `EXTERNALIZED_EXPLICIT` con razón. En particular, las dos Edge de estado no se restauran ni se reconstruyen durante G0. Esta declaración no autoriza despliegues, cambios remotos ni uso de código del producto privado.
+El manifiesto distingue cuatro categorías mutuamente excluyentes:
+
+- `required_edge_owners` (`REQUIRED_LOCAL`): source local tracked con caller estático en el runtime frontend activo.
+- `required_local_runtime_owners` (`REQUIRED_LOCAL_RUNTIME`): entrypoint local tracked que debe existir en runtime, pero que no tiene caller estático activo.
+- `externalized_owners` (`EXTERNALIZED_EXPLICIT`): dependencia con caller activo cuyo source no pertenece al checkout.
+- `historical_not_active_owners` (`HISTORICAL_NOT_ACTIVE`): función histórica sin caller activo ni entrypoint canónico tracked.
+
+La categoría runtime admite dos estados. `REMOTE_ACTIVE` exige `remote_version`, `verify_jwt` y un `source-current.json` tracked con evidencia read-only concordante: slug, estado `ACTIVE`, versión, política JWT, SHA-256, procedencia no vacía y `deployed_by_this_unit=false`. `LOCAL_ONLY_NOT_DEPLOYED` prohíbe esos campos remotos y exige que el source tracked contenga exactamente el marker `PREPARED_NOT_APPLIED`. En ambos estados el gate valida schema cerrado, path dinámico `supabase/functions/<name>/index.(ts|js|mjs)`, archivo regular no vacío y SHA-256 byte-for-byte.
+
+El gate inventaría desde el índice Git todos los paths `supabase/functions/<slug>/index.ts`, `.js` y `.mjs`. La relación es bidireccional: cada entrypoint tracked debe corresponder exactamente a un record local, en `required_edge_owners` o `required_local_runtime_owners`, y cada record local debe resolver a su entrypoint tracked. Dos extensiones para un mismo slug, un entrypoint huérfano, un source local para una categoría externalizada/histórica, un path local duplicado o una colisión entre categorías hacen fallar el gate.
+
+Owner runtime no significa owner con caller estático. Si aparece un caller activo para un `REQUIRED_LOCAL_RUNTIME`, la transición debe ser atómica: retirar el record runtime y registrar el owner como `REQUIRED_LOCAL` con su caller en el mismo cambio. Mientras no exista ese caller, el registro runtime preserva la propiedad local sin inventar reachability frontend.
+
+Tracked no equivale a deployed. El índice Git sólo prueba presencia y clasificación local; el estado remoto requiere la evidencia explícita de `REMOTE_ACTIVE`, y aun esa snapshot no prueba vigencia remota en tiempo real ni autoriza deploy.
+
+`support-orphan-cleanup` está clasificado `REQUIRED_LOCAL_RUNTIME` con estado `LOCAL_ONLY_NOT_DEPLOYED`, source `supabase/functions/support-orphan-cleanup/index.ts`, SHA-256 `528633ffc557e1fdc636a7dfcd05e8901b21058bdf38cbb25397a4bf2045a5ad` y marker `PREPARED_NOT_APPLIED`. Su registro no modifica el source ni lo despliega.
+
+`match-cliente` está clasificada `REQUIRED_LOCAL_RUNTIME` con estado `REMOTE_ACTIVE`, sin caller estático declarado. Su owner canónico es `supabase/functions/match-cliente/index.ts`; `source-current.json` conserva la evidencia read-only de la versión remota 15 con `verify_jwt=true`, SHA-256 `0590b1e683100e45733c5a3e31f253d97598894bb541eaafb1bb2829cdffb01b` y `deployed_by_this_unit=false`. La adopción preserva byte-for-byte la fuente recuperada y no implica hardening, deploy ni cambios remotos.
+
+`crear-cliente-janome` y `crear-ticket-interno` continúan como dependencias activas sin owner versionado en este worktree. El manifiesto las clasifica `EXTERNALIZED_EXPLICIT` con razón. Esta declaración no autoriza despliegues, cambios remotos ni uso de código del producto privado.
+
+`ticket-escalar-admin` está clasificada `REQUIRED_LOCAL`. Su owner canónico es `supabase/functions/ticket-escalar-admin/index.ts`, con caller activo `app/ticket-composer-polish.js`; `source-current.json` conserva la procedencia de la versión remota 5 con `verify_jwt=true`. La adopción preserva los bytes recuperados y no implica deploy, hardening ni cambios remotos.
+
+`estado-ticket-ts` y `estado-ticket-responder-ts` están clasificadas `REQUIRED_LOCAL`. Sus owners canónicos son `supabase/functions/estado-ticket-ts/index.ts` y `supabase/functions/estado-ticket-responder-ts/index.ts`, con caller activo `app/estado.js`; sus archivos `source-current.json` conservan la procedencia de las versiones remotas 37 y 39. La adopción preserva los bytes recuperados y no implica deploy, hardening, cambios remotos ni reconstrucción desde el producto privado.
 
 `support-submit-secure` está clasificada `REQUIRED_LOCAL`, tiene owner en `supabase/functions/support-submit-secure/` y el gate exige conservarlo mientras exista la llamada activa. G0 no usa inventarios históricos: solo clasifica nombres descubiertos en código activo.
 

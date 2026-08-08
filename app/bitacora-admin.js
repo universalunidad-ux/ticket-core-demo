@@ -11,6 +11,6 @@ const init=async()=>{
     return;
   }
   await loadLogSummary(document.querySelector("#bitacoraSummary"));
-  createLogView(document.querySelector("#bitacoraView"),{pageSize:25});
+  createLogView(document.querySelector("#bitacoraView"),{pageSize:10});
 };
 document.addEventListener("DOMContentLoaded",init);

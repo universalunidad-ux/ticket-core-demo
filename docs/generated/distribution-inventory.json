@@ -1,0 +1,770 @@
+{
+  "schemaVersion": 1,
+  "entrypoints": [
+    "index.html",
+    "app/index.html",
+    "app/portal-cliente.html",
+    "app/dashboard.html",
+    "app/bitacora-admin.html",
+    "app/tickets.html",
+    "app/ticket.html",
+    "app/clientes.html",
+    "app/cliente.html",
+    "app/consolidacion-clientes.html",
+    "app/alta-cliente.html",
+    "app/soporte.html",
+    "app/estado.html",
+    "app/aviso-privacidad.html",
+    "app/terminos.html"
+  ],
+  "requiredPublicAssets": [
+    ".nojekyll",
+    "site.webmanifest",
+    "favicon.ico",
+    "favicon-16x16.png",
+    "favicon-32x32.png",
+    "apple-touch-icon.png",
+    "android-chrome-192x192.png",
+    "android-chrome-512x512.png"
+  ],
+  "localReferences": [
+    {
+      "owner": "index.html",
+      "ref": "app/index.html",
+      "target": "app/index.html"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "global.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "index.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01",
+      "target": "app/index.css"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "theme.js?v=frontend-final-20260716-01",
+      "target": "app/theme.js"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "index.js?v=frontend-final-20260716-01",
+      "target": "app/index.js"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "index.html",
+      "target": "app/index.html"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "../IMG/janome.jpg",
+      "target": "IMG/janome.jpg"
+    },
+    {
+      "owner": "app/index.html",
+      "ref": "tickets.html",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/portal-cliente.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/portal-cliente.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/portal-cliente.html",
+      "ref": "theme.js?v=frontend-final-20260716-01",
+      "target": "app/theme.js"
+    },
+    {
+      "owner": "app/portal-cliente.html",
+      "ref": "portal-cliente.js?v=frontend-final-20260716-01",
+      "target": "app/portal-cliente.js"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "dashboard.css?v=frontend-final-20260716-01",
+      "target": "app/dashboard.css"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "operations-journey.css?v=frontend-final-20260716-01",
+      "target": "app/operations-journey.css"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "soporte.html?from=dashboard&amp;returnTo=dashboard.html",
+      "target": "app/soporte.html"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "tickets.html?from=dashboard",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "tickets.html?from=dashboard&amp;scope=mine",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/dashboard.html",
+      "ref": "dashboard.js?v=frontend-final-20260716-01",
+      "target": "app/dashboard.js"
+    },
+    {
+      "owner": "app/bitacora-admin.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/bitacora-admin.html",
+      "ref": "dashboard.css?v=frontend-final-20260716-01",
+      "target": "app/dashboard.css"
+    },
+    {
+      "owner": "app/bitacora-admin.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/bitacora-admin.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/bitacora-admin.html",
+      "ref": "bitacora-admin.js?v=frontend-final-20260716-01",
+      "target": "app/bitacora-admin.js"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../site.webmanifest",
+      "target": "site.webmanifest"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../favicon-32x32.png",
+      "target": "favicon-32x32.png"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../favicon-16x16.png",
+      "target": "favicon-16x16.png"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../apple-touch-icon.png",
+      "target": "apple-touch-icon.png"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "tickets.css?v=frontend-final-20260716-01",
+      "target": "app/tickets.css"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "operations-journey.css?v=frontend-final-20260716-01",
+      "target": "app/operations-journey.css"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "ticket-workspace.css?v=frontend-final-20260716-01",
+      "target": "app/ticket-workspace.css"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/filtro.png",
+      "target": "IMG/filtro.png"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/borrar.webp",
+      "target": "IMG/borrar.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "tickets.html?kpi=urgent",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "tickets.html?kpi=waiting",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "tickets.html?kpi=urgent_stale",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "tickets.html?kpi=resolved",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/listaa.webp",
+      "target": "IMG/listaa.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/configuracion.webp",
+      "target": "IMG/configuracion.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/doblar.webp",
+      "target": "IMG/doblar.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/tema.webp",
+      "target": "IMG/tema.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/notificaciones.webp",
+      "target": "IMG/notificaciones.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/sonido.webp",
+      "target": "IMG/sonido.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "../IMG/undonotificacion.webp",
+      "target": "IMG/undonotificacion.webp"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "./tickets.js?v=frontend-final-20260716-01",
+      "target": "app/tickets.js"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "notif-sound-test.js?v=frontend-final-20260716-01",
+      "target": "app/notif-sound-test.js"
+    },
+    {
+      "owner": "app/tickets.html",
+      "ref": "tickets-assignment.js?v=frontend-final-20260716-01",
+      "target": "app/tickets-assignment.js"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../site.webmanifest",
+      "target": "site.webmanifest"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../favicon-32x32.png",
+      "target": "favicon-32x32.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../favicon-16x16.png",
+      "target": "favicon-16x16.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../apple-touch-icon.png",
+      "target": "apple-touch-icon.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "ticket.css?v=frontend-final-20260716-01",
+      "target": "app/ticket.css"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "operations-journey.css?v=frontend-final-20260716-01",
+      "target": "app/operations-journey.css"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "ticket-workspace.css?v=frontend-final-20260716-01",
+      "target": "app/ticket-workspace.css"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "ticket-resolution-workbench.css?v=frontend-final-20260716-01",
+      "target": "app/ticket-resolution-workbench.css"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../IMG/mas.png",
+      "target": "IMG/mas.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../IMG/bandeja-de-entrada-de-correo.png",
+      "target": "IMG/bandeja-de-entrada-de-correo.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../IMG/copy.png",
+      "target": "IMG/copy.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../IMG/contactos-telefonicos.png",
+      "target": "IMG/contactos-telefonicos.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "../IMG/copy.png",
+      "target": "IMG/copy.png"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "tickets.html",
+      "target": "app/tickets.html"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "ticket.js?v=frontend-final-20260716-01",
+      "target": "app/ticket.js"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "ticket-composer-polish.js?v=frontend-final-20260716-01",
+      "target": "app/ticket-composer-polish.js"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "notif-sound-test.js?v=frontend-final-20260716-01",
+      "target": "app/notif-sound-test.js"
+    },
+    {
+      "owner": "app/ticket.html",
+      "ref": "ticket-assignment.js?v=frontend-final-20260716-01",
+      "target": "app/ticket-assignment.js"
+    },
+    {
+      "owner": "app/clientes.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/clientes.html",
+      "ref": "clientes.css?v=frontend-final-20260716-01",
+      "target": "app/clientes.css"
+    },
+    {
+      "owner": "app/clientes.html",
+      "ref": "operations-journey.css?v=frontend-final-20260716-01",
+      "target": "app/operations-journey.css"
+    },
+    {
+      "owner": "app/clientes.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/clientes.html",
+      "ref": "alta-cliente.html",
+      "target": "app/alta-cliente.html"
+    },
+    {
+      "owner": "app/clientes.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/clientes.html",
+      "ref": "clientes.js?v=frontend-final-20260716-01",
+      "target": "app/clientes.js"
+    },
+    {
+      "owner": "app/cliente.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/cliente.html",
+      "ref": "cliente.css?v=frontend-final-20260716-01",
+      "target": "app/cliente.css"
+    },
+    {
+      "owner": "app/cliente.html",
+      "ref": "operations-journey.css?v=frontend-final-20260716-01",
+      "target": "app/operations-journey.css"
+    },
+    {
+      "owner": "app/cliente.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/cliente.html",
+      "ref": "consolidacion-clientes.html",
+      "target": "app/consolidacion-clientes.html"
+    },
+    {
+      "owner": "app/cliente.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/cliente.html",
+      "ref": "cliente.js?v=frontend-final-20260716-01",
+      "target": "app/cliente.js"
+    },
+    {
+      "owner": "app/consolidacion-clientes.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/consolidacion-clientes.html",
+      "ref": "clientes.css?v=frontend-final-20260716-01",
+      "target": "app/clientes.css"
+    },
+    {
+      "owner": "app/consolidacion-clientes.html",
+      "ref": "consolidacion-clientes.css?v=frontend-final-20260716-01",
+      "target": "app/consolidacion-clientes.css"
+    },
+    {
+      "owner": "app/consolidacion-clientes.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/consolidacion-clientes.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/consolidacion-clientes.html",
+      "ref": "consolidacion-clientes.js?v=frontend-final-20260716-01",
+      "target": "app/consolidacion-clientes.js"
+    },
+    {
+      "owner": "app/alta-cliente.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/alta-cliente.html",
+      "ref": "clientes.css?v=frontend-final-20260716-01",
+      "target": "app/clientes.css"
+    },
+    {
+      "owner": "app/alta-cliente.html",
+      "ref": "alta-cliente.css?v=frontend-final-20260716-01",
+      "target": "app/alta-cliente.css"
+    },
+    {
+      "owner": "app/alta-cliente.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/alta-cliente.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/alta-cliente.html",
+      "ref": "alta-cliente.js?v=frontend-final-20260716-01",
+      "target": "app/alta-cliente.js"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "global.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "soporte.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01",
+      "target": "app/soporte.css"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "janome/janome.css?v=frontend-final-20260716-01",
+      "target": "app/janome/janome.css"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "dashboard.html",
+      "target": "app/dashboard.html"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "soporte.html",
+      "target": "app/soporte.html"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "../IMG/janome.jpg",
+      "target": "IMG/janome.jpg"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "../IMG/whatsapp.svg",
+      "target": "IMG/whatsapp.svg"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "../IMG/whatsapp.svg",
+      "target": "IMG/whatsapp.svg"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "aviso-privacidad.html",
+      "target": "app/aviso-privacidad.html"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "terminos.html",
+      "target": "app/terminos.html"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "aviso-privacidad.html",
+      "target": "app/aviso-privacidad.html"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "terminos.html",
+      "target": "app/terminos.html"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "soporte.js?v=frontend-final-20260716-01",
+      "target": "app/soporte.js"
+    },
+    {
+      "owner": "app/soporte.html",
+      "ref": "client-mobile-trim.js?v=frontend-final-20260716-01",
+      "target": "app/client-mobile-trim.js"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "global.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "estado.css?r=public-responsive-20260717-03&v=frontend-final-20260716-01",
+      "target": "app/estado.css"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "janome/janome.css?v=frontend-final-20260716-01",
+      "target": "app/janome/janome.css"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "soporte.html",
+      "target": "app/soporte.html"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "../IMG/janome.jpg",
+      "target": "IMG/janome.jpg"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "../IMG/whatsapp.svg",
+      "target": "IMG/whatsapp.svg"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "aviso-privacidad.html",
+      "target": "app/aviso-privacidad.html"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "terminos.html",
+      "target": "app/terminos.html"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "supabase.config.public.js?v=frontend-final-20260716-01",
+      "target": "app/supabase.config.public.js"
+    },
+    {
+      "owner": "app/estado.html",
+      "ref": "estado.js?v=frontend-final-20260716-01",
+      "target": "app/estado.js"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "theme.js?v=frontend-final-20260716-01",
+      "target": "app/theme.js"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "index.html",
+      "target": "app/index.html"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "soporte.html",
+      "target": "app/soporte.html"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "aviso-privacidad.html",
+      "target": "app/aviso-privacidad.html"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "terminos.html",
+      "target": "app/terminos.html"
+    },
+    {
+      "owner": "app/aviso-privacidad.html",
+      "ref": "soporte.html",
+      "target": "app/soporte.html"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "../favicon.ico",
+      "target": "favicon.ico"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "global.css?v=frontend-final-20260716-01",
+      "target": "app/global.css"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "theme.js?v=frontend-final-20260716-01",
+      "target": "app/theme.js"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "index.html",
+      "target": "app/index.html"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "soporte.html",
+      "target": "app/soporte.html"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "aviso-privacidad.html",
+      "target": "app/aviso-privacidad.html"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "terminos.html",
+      "target": "app/terminos.html"
+    },
+    {
+      "owner": "app/terminos.html",
+      "ref": "soporte.html",
+      "target": "app/soporte.html"
+    }
+  ],
+  "runtimeRoutes": [
+    "/",
+    "/app/index.html",
+    "/app/tickets.html?readonly=1",
+    "/app/sw.js",
+    "/site.webmanifest"
+  ],
+  "cacheContract": {
+    "authorizationBypass": true,
+    "sensitiveRoutes": [
+      "auth",
+      "rest",
+      "functions",
+      "storage"
+    ],
+    "defaultNoStore": true
+  },
+  "release": "frontend-final-20260716-01",
+  "publicConfigKeys": [
+    "supabaseUrl",
+    "supabasePublishableKey"
+  ],
+  "readonlyLocalFallback": true
+}

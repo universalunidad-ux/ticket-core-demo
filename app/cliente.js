@@ -14,10 +14,13 @@ import { loadIdentidad, loadEquipos, loadTickets, loadBitacora, loadSugeridos } 
 import * as UI from "./cliente.ui.js";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
+import { mountOperationsJourney } from "./shared/operations-journey.js";
+import { mountClientProductRegistration, closeClientProductRegistration } from "./shared/client-product-registration.js";
 
 const $ = q => document.querySelector(q);
 const TABS = ["resumen", "contactos", "equipos", "tickets", "adjuntos", "bitacora", "consolidacion"];
-const ST = { sb: null, id: null, identidad: null, tab: "resumen", cache: {}, seq: {}, loading: {} };
+const ST = { sb: null, id: null, identidad: null, tab: "resumen", ticketPage: 1, cache: {}, seq: {}, loading: {} };
+let clientJourney = null;
 
 function clientListReturn() {
   const requested = new URLSearchParams(location.search).get("return");
@@ -50,7 +53,7 @@ const RENDER = {
   resumen: d => UI.renderResumen(d),
   contactos: d => UI.renderContactos(d),
   equipos: d => UI.renderEquipos(d),
-  tickets: d => UI.renderTickets(d),
+  tickets: d => UI.renderTickets(d, { page: ST.ticketPage, size: 10 }),
   adjuntos: d => UI.renderAdjuntos(d),
   bitacora: d => UI.renderBitacora(d),
   consolidacion: d => UI.renderConsolidacion(d),
@@ -84,6 +87,7 @@ const syncCounts = () => {
 async function openTab(tab, push = true) {
   tab = TABS.includes(tab) ? tab : "resumen";
   ST.tab = tab;
+  closeClientProductRegistration();
   markActive();
   if (push) history.replaceState(null, "", `${location.pathname}${location.search}#tab=${tab}`);
   const body = $("#cfBody");
@@ -137,7 +141,6 @@ const bindClientTabs = () => {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const returnTo = clientListReturn();
-  $("#cfBack").href = returnTo;
   const id = new URLSearchParams(location.search).get("id");
   if (!id) { location.replace(returnTo); return; }
   const ctx = await mountNav("cliente");
@@ -159,6 +162,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   UI.renderHeader(ST.identidad);
+  mountClientProductRegistration({ clientId: ST.id });
+  clientJourney = mountOperationsJourney({
+    page: "cliente",
+    onRefresh: async () => {
+      ST.identidad = await withTimeout(loadIdentidad(ST.sb, ST.id), 12000);
+      ST.cache = {};
+      UI.renderHeader(ST.identidad);
+      syncCounts();
+      await openTab(ST.tab, false);
+    },
+  });
   syncCounts();
   perfPrimaryDone();
   await openTab(hashTab || "resumen", false);
@@ -169,6 +183,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#cfBody").addEventListener("click", e => {
     const rt = e.target.closest?.("[data-tab-retry]");
     if (rt) { delete ST.cache[rt.dataset.tabRetry]; openTab(rt.dataset.tabRetry, false); return; }
+    const pager = e.target.closest?.("[data-client-ticket-page]");
+    if (pager && !pager.disabled && ST.cache.tickets) {
+      const next = Number.parseInt(pager.dataset.clientTicketPage, 10);
+      if (Number.isFinite(next) && next > 0) {
+        ST.ticketPage = next;
+        $("#cfBody").innerHTML = RENDER.tickets(ST.cache.tickets);
+        $("#cfBody").querySelector("[data-client-ticket-page]:not([disabled])")?.focus({ preventScroll: true });
+      }
+      return;
+    }
     const t = e.target.closest?.("[data-ticket]");
     if (t) location.href = `ticket.html?id=${encodeURIComponent(t.dataset.ticket)}`;
   });

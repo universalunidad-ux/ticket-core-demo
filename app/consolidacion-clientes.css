@@ -1,5 +1,5 @@
 /* CLIENTES-02 — lectura comparativa compacta; preview sin mutaciones. */
-.cq-head-actions{display:flex;align-items:center;gap:8px}.cq-back{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;font-size:19px;font-weight:900;padding:0;display:grid;place-items:center;line-height:1;text-decoration:none}
+.cq-head-actions{display:flex;align-items:center;gap:8px}
 .cq-toolbar{grid-template-columns:repeat(2,minmax(160px,240px))}.cq-queue{padding-bottom:10px}
 .cq-card{border:1px solid var(--line);border-radius:15px;background:color-mix(in srgb,var(--panel-2) 96%,transparent);margin-bottom:7px;overflow:hidden}
 .cq-card>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 13px;cursor:pointer;list-style:none}.cq-card>summary::-webkit-details-marker{display:none}.cq-card>summary:before{content:"›";font-size:20px;font-weight:900;color:var(--muted);grid-column:2;grid-row:1}.cq-card[open]>summary:before{transform:rotate(90deg)}

@@ -4,6 +4,7 @@
    RFC, WhatsApp, preferencia y origen usan únicamente códigos canónicos.
    ========================================================================== */
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
 import { esc, toast, debounce } from "./global.js?v=frontend-final-20260716-01";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
 import { probeEdge, noteEdgeResponse } from "./shared/capabilities.js";
@@ -12,6 +13,7 @@ import { JANOME_CATALOGO } from "./janome/janome_catalogo.js";
 
 const $ = q => document.querySelector(q);
 const EDGE = "crear-cliente-janome";
+const AGENT_ASSIGNMENT_DECISION = "OUT_OF_SCOPE_BACKEND_REQUIRED";
 const MACHINE_MODELS = JANOME_CATALOGO
   .filter(group => String(group.grupo).startsWith("Máquinas — "))
   .flatMap(group => group.productos.map(product => ({ id: String(product.id), name: product.nombre, group: group.grupo })));
@@ -64,7 +66,16 @@ function renderModelSuggestions() {
   list.innerHTML = matches.length ? matches.map((model, index) => `<button class="ac-model-option${index === ST.modelIndex ? " is-active" : ""}" id="acModelOption${index}" type="button" role="option" aria-selected="${index === ST.modelIndex}" data-model-id="${esc(model.id)}"><b>${esc(model.name)}</b><small>${esc(model.group)} · Producto válido</small></button>`).join("") : '<div class="ac-model-empty">Sin coincidencias entre las máquinas del catálogo vigente.</div>';
   list.hidden = false;
   $("#acModelo").setAttribute("aria-expanded", "true");
-  if (ST.modelIndex >= 0) $("#acModelo").setAttribute("aria-activedescendant", `acModelOption${ST.modelIndex}`);
+  if (ST.modelIndex >= 0) {
+    $("#acModelo").setAttribute(
+      "aria-activedescendant",
+      `acModelOption${ST.modelIndex}`,
+    );
+  } else {
+    $("#acModelo").removeAttribute(
+      "aria-activedescendant",
+    );
+  }
 }
 
 function chooseModel(id) {
@@ -289,8 +300,16 @@ async function submit(event) {
 document.addEventListener("DOMContentLoaded", async () => {
   const ctx = await mountNav("alta-cliente");
   if (!ctx) return;
-  ST.sb = ctx.sb; ST.isAdmin = String(ctx.rol || "").toLowerCase() === "admin"; ST.idempotencyKey = newIdempotencyKey();
-  if (ST.isAdmin) $("#acAgentBlock").classList.remove("hidden");
+  ST.sb = ctx.sb;
+  ST.isAdmin = isAdminRole(ctx.rol);
+  ST.idempotencyKey = newIdempotencyKey();
+  $("#acAgentBlock")?.classList.toggle(
+    "hidden",
+    !(
+      ST.isAdmin
+      && AGENT_ASSIGNMENT_DECISION === "SUPPORTED_NOW"
+    ),
+  );
   initEquipmentCatalog();
   perfPrimaryDone(); perfPageReady();
 

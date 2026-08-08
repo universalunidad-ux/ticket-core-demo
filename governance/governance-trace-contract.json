@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "unit": "TC-B4451A3-GOVERNANCE-TRACE-CLOSURE-01",
+  "baseHead": "e04d555486cfcb66ca9a67219345666e8630d91a",
+  "prohibitedRequirements": ["U0-A", "U0-B", "U0-C", "U0-D"],
+  "requirements": [
+    {
+      "id": "GOV-G0-003",
+      "claim": "Canonical repository ownership is enforced by an executable fail-closed gate.",
+      "implementationFiles": ["tools/canonical-source.json", "tools/canonical-source-gate.mjs"],
+      "test": "tools/requirement-traceability-contract.test.mjs",
+      "supportingTests": ["tools/canonical-source-gate.test.mjs"],
+      "evidence": "docs/generated/GOVERNANCE_TRACE_EVIDENCE.json",
+      "sourceDecision": "PROMOTABLE_LOCAL",
+      "expectedDelta": 1.65,
+      "disposition": "PROMOTABLE_LOCAL"
+    },
+    {
+      "id": "GOV-TRACE-001",
+      "claim": "Requirement traceability is deterministic and remains zero-delta when the source row requires human adjudication.",
+      "implementationFiles": ["governance/points-first-requirements.json", "tools/generate-requirement-traceability.mjs"],
+      "test": "tools/requirement-traceability-contract.test.mjs",
+      "supportingTests": [],
+      "evidence": "docs/generated/GOVERNANCE_TRACE_EVIDENCE.json",
+      "sourceDecision": "HUMAN_ADJUDICATION_REQUIRED",
+      "expectedDelta": 0,
+      "disposition": "CONTRACT_CLOSED_NO_DELTA"
+    },
+    {
+      "id": "PROD170-002",
+      "claim": "Local operational recovery and evidence procedures are machine-validated and deterministically rendered.",
+      "implementationFiles": ["governance/operations-contract.json", "tools/generate-operations-inventory.mjs"],
+      "test": "tools/operations-contract.test.mjs",
+      "supportingTests": ["tools/requirement-traceability-contract.test.mjs"],
+      "evidence": "docs/generated/GOVERNANCE_TRACE_EVIDENCE.json",
+      "sourceDecision": "PROMOTABLE_LOCAL",
+      "expectedDelta": 1.65,
+      "disposition": "PROMOTABLE_LOCAL"
+    },
+    {
+      "id": "TC-U005",
+      "claim": "The local traceability contract records no automatic delta while human ledger reconciliation remains required.",
+      "implementationFiles": ["governance/points-first-requirements.json", "tools/generate-requirement-traceability.mjs"],
+      "test": "tools/requirement-traceability-contract.test.mjs",
+      "supportingTests": [],
+      "evidence": "docs/generated/GOVERNANCE_TRACE_EVIDENCE.json",
+      "sourceDecision": "HUMAN_ADJUDICATION_REQUIRED",
+      "expectedDelta": 0,
+      "disposition": "PENDING_LEDGER_RECONCILIATION"
+    },
+    {
+      "id": "TC-U078",
+      "claim": "Generated requirement evidence is deterministic, fail-closed, and tied to an exact reachable commit.",
+      "implementationFiles": ["governance/points-first-requirements.json", "tools/generate-requirement-traceability.mjs"],
+      "test": "tools/requirement-traceability-contract.test.mjs",
+      "supportingTests": [],
+      "evidence": "docs/generated/GOVERNANCE_TRACE_EVIDENCE.json",
+      "sourceDecision": "PROMOTABLE_LOCAL",
+      "expectedDelta": 0.25,
+      "disposition": "PROMOTABLE_LOCAL"
+    }
+  ]
+}

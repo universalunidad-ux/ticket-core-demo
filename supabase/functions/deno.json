@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "check": "deno check support-submit-secure/index.ts support-orphan-cleanup/index.ts _shared/upload-contract.ts",
+    "check": "deno check support-submit-secure/index.ts support-orphan-cleanup/index.ts _shared/upload-contract.ts _shared/media-job-contract.ts",
     "test": "deno test --allow-env --allow-net"
   }
 }

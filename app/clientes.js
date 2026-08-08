@@ -1,21 +1,23 @@
 /* ==========================================================================
    CLIENTES-02 — filtros y paginación sobre el directorio completo autorizado.
-   Sistemas se consultan sólo para IDs de clientes ya visibles por RLS. Si ese
+   Productos se consultan sólo para IDs de clientes ya visibles por RLS. Si ese
    contrato no responde, el filtro de equipo se deshabilita de forma honesta.
    ========================================================================== */
 import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
 import { readQS, writeQS } from "./shared/query-state.js";
 import { fmtFecha } from "./shared/formatters.js?v=frontend-final-20260716-01";
 import { esc, debounce } from "./global.js?v=frontend-final-20260716-01";
 import { JANOME_CATALOGO } from "./janome/janome_catalogo.js";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
+import { mountOperationsJourney } from "./shared/operations-journey.js";
 
 const $ = (q, c = document) => c.querySelector(q);
 const OPEN = new Set(["abierto", "en_proceso", "esperando_cliente"]);
-const PAGE_SIZES = new Set([10, 20, 40]);
+const PAGE_SIZE = 12;
 const ORDERS = new Set(["actividad", "tickets", "abiertos", "az", "za"]);
-const FILTER_KEYS = new Set(["recent", "open", "waiting", "priority", "sla", "consolidation"]);
+const FILTER_KEYS = new Set(["recent", "open", "waiting", "priority", "sla", "consolidation", "machines"]);
 const BATCH = 500, SYSTEM_CHUNK = 80;
 const MACHINE_GROUPS = JANOME_CATALOGO.filter(group => String(group.grupo).startsWith("Máquinas — "));
 const MACHINE_MODELS = MACHINE_GROUPS.flatMap(group => group.productos.map(product => ({
@@ -32,8 +34,8 @@ const ST = {
   sb: null, me: null, rol: "soporte", isAdmin: false, agents: [],
   clients: [], tickets: [], systems: [], rows: [], q: "", filters: new Set(),
   agent: "all", equipment: null, equipmentAvailable: true,
-  order: "actividad", vista: "tabla", page: 1, size: 10,
-  draftFilters: new Set(), draftEquipment: null, draftSize: 10,
+  order: "actividad", vista: "tabla", page: 1, size: PAGE_SIZE,
+  draftFilters: new Set(), draftEquipment: null,
   loading: true, error: null, reqSeq: 0, equipmentOptionIndex: -1,
 };
 
@@ -101,9 +103,16 @@ const ticketsForAgent = tickets => {
   return tickets.filter(ticket => String(ticket.asignado_a) === ST.agent);
 };
 
+const machineSystemsFor = systems =>
+  systems.filter(system =>
+    !["accesorio", "refaccion"].includes(
+      normalize(system.tipo_instalacion),
+    ),
+  );
+
 const equipmentMatches = (systems, selection) => {
   if (!selection) return true;
-  const machineSystems = systems.filter(system => !["accesorio", "refaccion"].includes(normalize(system.tipo_instalacion)));
+  const machineSystems = machineSystemsFor(systems);
   const names = new Set(machineSystems.map(system => normalize(system.sistema)).filter(Boolean));
   if (selection.kind === "model") return names.has(normalize(MODEL_BY_ID.get(selection.value)?.name));
   const family = FAMILY_BY_ID.get(selection.value);
@@ -125,7 +134,9 @@ function rebuildRows() {
     const lastTicket = related.reduce((latest, ticket) => String(ticket.fecha_actualizacion || "") > String(latest || "") ? ticket.fecha_actualizacion : latest, null);
     const ultima = [client.ultima_interaccion, lastTicket].filter(Boolean).sort().pop() || null;
     return {
-      ...client, systems, totalTickets: related.length, abiertos: open.length, ultima,
+      ...client, systems,
+      machineCount: machineSystemsFor(systems).length,
+      totalTickets: related.length, abiertos: open.length, ultima,
       recent: Boolean(ultima && now - new Date(ultima).getTime() <= 7 * 864e5),
       waiting: related.some(ticket => ticketState(ticket) === "esperando_cliente"),
       priority: open.some(ticket => ["alta", "urgente"].includes(normalize(ticket.prioridad))),
@@ -141,6 +152,9 @@ function rebuildRows() {
   if (ST.filters.has("priority")) rows = rows.filter(row => row.priority);
   if (ST.filters.has("sla")) rows = rows.filter(row => row.sla);
   if (ST.filters.has("consolidation")) rows = rows.filter(row => row.consolidation);
+  if (ST.filters.has("machines") && ST.equipmentAvailable) {
+    rows = rows.filter(row => row.machineCount > 0);
+  }
   if (ST.equipment && ST.equipmentAvailable) rows = rows.filter(row => equipmentMatches(row.systems, ST.equipment));
   if (ST.order === "tickets") rows.sort((a, b) => b.totalTickets - a.totalTickets || stable(a, b));
   else if (ST.order === "abiertos") rows.sort((a, b) => b.abiertos - a.abiertos || stable(a, b));
@@ -191,11 +205,22 @@ function render() {
     $("#clCount").textContent = "Carga interrumpida"; $("#clPagination").innerHTML = ""; $("#clRetry")?.addEventListener("click", loadDirectory); return;
   }
   rebuildRows();
-  const total = ST.rows.length, totalPages = Math.max(1, Math.ceil(total / ST.size)), from = (ST.page - 1) * ST.size, shown = ST.rows.slice(from, from + ST.size);
+  const total = Number.isFinite(ST.rows.length) ? ST.rows.length : 0;
+  const safeSize = Number.isFinite(ST.size) && ST.size > 0 ? Math.trunc(ST.size) : PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(total / safeSize));
+  const requestedPage = Number.isFinite(ST.page) ? Math.trunc(ST.page) : 1;
+  ST.page = Math.min(Math.max(1, requestedPage), totalPages);
+  const from = (ST.page - 1) * safeSize;
+  const shown = ST.rows.slice(from, from + safeSize);
   $("#clVistaTabla")?.classList.toggle("is-active", ST.vista === "tabla"); $("#clVistaCards")?.classList.toggle("is-active", ST.vista === "cards");
   $("#clCount").textContent = total ? `${total} cliente${total === 1 ? "" : "s"} · ${from + 1}–${from + shown.length}` : "0 clientes";
   if (!shown.length) {
-    box.innerHTML = `<div class="empty-state"><b>Sin resultados</b><span>${hasAnyFilter() ? "No hay clientes que coincidan con los filtros aplicados." : "No hay clientes dentro de tu alcance autorizado."}</span>${hasAnyFilter() ? '<button class="btn btn-ghost" id="clEmptyClear" type="button">Limpiar búsqueda y filtros</button>' : ""}</div>`;
+    const emptyCopy = hasAnyFilter()
+      ? "No hay clientes que coincidan con los filtros aplicados."
+      : ST.isAdmin
+        ? "No hay clientes registrados."
+        : "No hay clientes asignados dentro de su alcance autorizado.";
+    box.innerHTML = `<div class="empty-state"><b>Sin resultados</b><span>${emptyCopy}</span>${hasAnyFilter() ? '<button class="btn btn-ghost" id="clEmptyClear" type="button">Limpiar búsqueda y filtros</button>' : ""}</div>`;
     $("#clEmptyClear")?.addEventListener("click", clearAll);
   } else box.innerHTML = ST.vista === "cards"
     ? `<div class="cl-cards">${shown.map(rowCard).join("")}</div>`
@@ -206,12 +231,12 @@ function render() {
 const persist = () => writeQS({
   q: ST.q, filters: [...ST.filters].sort().join(","), agent: ST.isAdmin && ST.agent !== "all" ? ST.agent : "",
   eq_kind: ST.equipment?.kind || "", eq: ST.equipment?.value || "", order: ST.order === "actividad" ? "" : ST.order,
-  size: ST.size === 10 ? "" : ST.size, page: ST.page === 1 ? "" : ST.page, vista: ST.vista === "tabla" ? "" : ST.vista,
+  size: "", page: ST.page === 1 ? "" : ST.page, vista: ST.vista === "tabla" ? "" : ST.vista,
 });
 
 function refresh({ resetPage = false } = {}) { if (resetPage) ST.page = 1; ST.error = null; render(); renderSummary(); persist(); }
 function clearAll() {
-  ST.q = ""; ST.filters = new Set(); ST.agent = "all"; ST.equipment = null; ST.order = "actividad"; ST.size = 10; ST.page = 1;
+  ST.q = ""; ST.filters = new Set(); ST.agent = "all"; ST.equipment = null; ST.order = "actividad"; ST.size = PAGE_SIZE; ST.page = 1;
   $("#clSearch").value = ""; $("#clOrder").value = ST.order; if ($("#clAgentFilter")) $("#clAgentFilter").value = ST.agent; refresh();
 }
 
@@ -234,25 +259,58 @@ function chooseEquipment(button) {
   if (!item) return;
   ST.draftEquipment = item; $("#clEquipmentInput").value = item.label; $("#clEquipmentList").hidden = true; $("#clEquipmentInput").setAttribute("aria-expanded", "false");
   $("#clFilterStatus").textContent = `${item.kind === "family" ? "Familia" : "Modelo"}: ${item.label}`;
+  $("#clEquipmentInput").focus({ preventScroll: true });
+}
+
+function closeEquipmentSuggestions({ restoreFocus = false } = {}) {
+  const input = $("#clEquipmentInput"), list = $("#clEquipmentList");
+  if (!input || !list || list.hidden) return;
+  list.hidden = true;
+  input.setAttribute("aria-expanded", "false");
+  ST.equipmentOptionIndex = -1;
+  if (restoreFocus) input.focus({ preventScroll: true });
 }
 
 function syncFilterDraft() {
-  document.querySelectorAll("[data-client-filter]").forEach(input => { input.checked = ST.draftFilters.has(input.value); });
-  $("#clFilterAll").classList.toggle("is-active", ST.draftFilters.size === 0);
-  $("#clEquipmentInput").value = ST.draftEquipment?.label || ""; $("#clEquipmentInput").disabled = !ST.equipmentAvailable;
-  $("#clEquipmentFallback").hidden = ST.equipmentAvailable;
-  $("#clFilterPageSize").value = String(ST.draftSize);
-  $("#clFilterStatus").textContent = ST.equipmentAvailable ? "Elige una familia o modelo del catálogo; no se incluyen accesorios." : "El filtro de equipo no está disponible porque la lectura autorizada de sistemas falló.";
+  document.querySelectorAll("[data-client-filter]").forEach(input => {
+    if (input.hasAttribute("data-requires-equipment")) {
+      input.disabled = !ST.equipmentAvailable;
+      if (!ST.equipmentAvailable) {
+        ST.draftFilters.delete(input.value);
+      }
+    }
+
+    input.checked = ST.draftFilters.has(input.value);
+  });
+
+  $("#clFilterAll").classList.toggle(
+    "is-active",
+    ST.draftFilters.size === 0,
+  );
+
+  $("#clEquipmentInput").value =
+    ST.draftEquipment?.label || "";
+
+  $("#clEquipmentInput").disabled =
+    !ST.equipmentAvailable;
+
+  $("#clEquipmentFallback").hidden =
+    ST.equipmentAvailable;
+
+  $("#clFilterStatus").textContent =
+    ST.equipmentAvailable
+      ? "Puedes mostrar sólo clientes con máquinas o elegir una familia o modelo. Accesorios y refacciones quedan excluidos."
+      : "La lectura autorizada de sistemas falló; los filtros de máquinas están deshabilitados.";
 }
 
 function closeFilters({ focusTrigger = true } = {}) {
   const popup = $("#clFiltersPanel"); if (popup.hidden) return;
-  popup.hidden = true; $("#clFiltersBtn").setAttribute("aria-expanded", "false"); $("#clEquipmentList").hidden = true;
+  popup.hidden = true; $("#clFiltersBtn").setAttribute("aria-expanded", "false"); closeEquipmentSuggestions();
   if (focusTrigger) $("#clFiltersBtn").focus();
 }
 
 function openFilters() {
-  ST.draftFilters = new Set(ST.filters); ST.draftEquipment = ST.equipment ? { ...ST.equipment } : null; ST.draftSize = ST.size;
+  ST.draftFilters = new Set(ST.filters); ST.draftEquipment = ST.equipment ? { ...ST.equipment } : null;
   syncFilterDraft(); $("#clFiltersPanel").hidden = false; $("#clFiltersBtn").setAttribute("aria-expanded", "true");
   requestAnimationFrame(() => $("#clFilterAll").focus());
 }
@@ -260,7 +318,12 @@ function openFilters() {
 function applyFilters() {
   const typed = $("#clEquipmentInput").value.trim();
   if (typed && !ST.draftEquipment) { $("#clFilterStatus").textContent = "Selecciona una sugerencia válida del catálogo antes de aplicar."; $("#clEquipmentInput").focus(); return; }
-  ST.filters = new Set(ST.draftFilters); ST.equipment = ST.equipmentAvailable ? ST.draftEquipment : null; ST.size = ST.draftSize; ST.page = 1;
+  ST.filters = new Set(ST.draftFilters);
+  ST.equipment = ST.equipmentAvailable
+    ? ST.draftEquipment
+    : null;
+  ST.size = PAGE_SIZE;
+  ST.page = 1;
   closeFilters(); refresh();
 }
 
@@ -276,7 +339,11 @@ async function loadDirectory() {
     ST.clients = clients; ST.tickets = tickets;
     try { ST.systems = await withTimeout(loadSystems(clients.map(client => client.id)), 15000); ST.equipmentAvailable = true; }
     catch (equipmentError) {
-      ST.systems = []; ST.equipmentAvailable = false; ST.equipment = null;
+      ST.systems = [];
+      ST.equipmentAvailable = false;
+      ST.equipment = null;
+      ST.filters.delete("machines");
+      ST.draftFilters.delete("machines");
       const mapped = mapError(equipmentError, "CLIENT_EQUIPMENT_FILTER_UNAVAILABLE"); devLog("clientes", "load_equipment", `${mapped.code}:${mapped.kind}`);
     }
     if (seq !== ST.reqSeq) return;
@@ -289,17 +356,17 @@ async function loadDirectory() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const ctx = await mountNav("clientes"); if (!ctx) return;
-  ST.sb = ctx.sb; ST.rol = String(ctx.rol || "soporte").toLowerCase(); ST.me = ctx.perfil?.id || ctx.user?.id || null; ST.isAdmin = ST.rol === "admin";
+  ST.sb = ctx.sb; ST.rol = String(ctx.rol || "soporte").toLowerCase(); ST.me = ctx.perfil?.id || ctx.user?.id || null; ST.isAdmin = isAdminRole(ST.rol);
   document.body.dataset.accessRole = ST.rol; if (!ST.isAdmin) document.querySelectorAll(".cl-admin-only").forEach(node => node.remove());
-  const query = readQS({ q: "", filters: "", filter: "", agent: "all", eq_kind: "", eq: "", order: "actividad", size: "10", page: "1", vista: "tabla" });
+  const query = readQS({ q: "", filters: "", filter: "", agent: "all", eq_kind: "", eq: "", order: "actividad", page: "1", vista: "tabla" });
   ST.q = String(query.q || "").trim();
   ST.filters = new Set(String(query.filters || (query.filter === "abiertos" ? "open" : "")).split(",").filter(key => FILTER_KEYS.has(key)));
   ST.agent = ST.isAdmin ? String(query.agent || "all") : "all"; ST.equipment = equipmentFromQuery(query.eq_kind, query.eq);
-  ST.order = ORDERS.has(query.order) ? query.order : "actividad"; ST.size = PAGE_SIZES.has(Number(query.size)) ? Number(query.size) : 10;
+  ST.order = ORDERS.has(query.order) ? query.order : "actividad"; ST.size = PAGE_SIZE;
   ST.page = Math.max(1, Number.parseInt(query.page, 10) || 1); ST.vista = ["tabla", "cards"].includes(query.vista) ? query.vista : "tabla";
   if (window.matchMedia("(max-width:860px)").matches) ST.vista = "cards";
   $("#clSearch").value = ST.q; $("#clOrder").value = ST.order;
-  $("#clScopeNote").textContent = "Filtros y count usan el directorio completo autorizado cargado por lotes; nunca sólo la página visible. Sistemas se intersectan con esos mismos clientes.";
+  $("#clScopeNote").textContent = "Filtros y conteos usan el directorio completo autorizado cargado por lotes. El modo sólo máquinas excluye accesorios y refacciones.";
 
   $("#clSearch").addEventListener("input", debounce(() => { ST.q = $("#clSearch").value.trim(); refresh({ resetPage: true }); }, 350));
   $("#clAgentFilter")?.addEventListener("change", () => { ST.agent = $("#clAgentFilter").value || "all"; refresh({ resetPage: true }); });
@@ -309,10 +376,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#clFiltersClose").addEventListener("click", () => closeFilters());
   $("#clFiltersPanel").addEventListener("change", event => {
     if (event.target.matches("[data-client-filter]")) { event.target.checked ? ST.draftFilters.add(event.target.value) : ST.draftFilters.delete(event.target.value); syncFilterDraft(); }
-    if (event.target.id === "clFilterPageSize") ST.draftSize = Number(event.target.value) || 10;
   });
   $("#clFilterAll").addEventListener("click", () => { ST.draftFilters.clear(); syncFilterDraft(); });
-  $("#clFiltersClear").addEventListener("click", () => { ST.draftFilters.clear(); ST.draftEquipment = null; ST.draftSize = 10; syncFilterDraft(); applyFilters(); });
+  $("#clFiltersClear").addEventListener("click", () => { ST.draftFilters.clear(); ST.draftEquipment = null; syncFilterDraft(); applyFilters(); });
   $("#clFiltersApply").addEventListener("click", applyFilters);
   $("#clEquipmentInput").addEventListener("focus", renderEquipmentSuggestions);
   $("#clEquipmentInput").addEventListener("input", () => { ST.draftEquipment = null; ST.equipmentOptionIndex = -1; renderEquipmentSuggestions(); });
@@ -320,9 +386,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const options = [...document.querySelectorAll("#clEquipmentList [data-equipment-kind]")];
     if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); ST.equipmentOptionIndex = event.key === "ArrowDown" ? Math.min(ST.equipmentOptionIndex + 1, options.length - 1) : Math.max(ST.equipmentOptionIndex - 1, 0); renderEquipmentSuggestions(); }
     else if (event.key === "Enter" && options.length) { event.preventDefault(); chooseEquipment(options[Math.max(0, ST.equipmentOptionIndex)]); }
+    else if (event.key === "Escape" && !$("#clEquipmentList").hidden) { event.preventDefault(); event.stopPropagation(); closeEquipmentSuggestions({ restoreFocus: true }); }
   });
   $("#clEquipmentList").addEventListener("click", event => { const option = event.target.closest("[data-equipment-kind]"); if (option) chooseEquipment(option); });
-  $("#clPagination").addEventListener("click", event => { const button = event.target.closest("[data-page]"); if (!button || button.disabled) return; ST.page = Number(button.dataset.page); refresh(); });
+  $("#clPagination").addEventListener("click", event => {
+    const button = event.target.closest("[data-page]"), page = Number.parseInt(button?.dataset.page, 10);
+    if (!button || button.disabled || !Number.isFinite(page) || page < 1) return;
+    ST.page = page; refresh();
+  });
   const go = row => {
     if (!row) return;
     persist();
@@ -331,6 +402,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   $("#clList").addEventListener("click", event => go(event.target.closest?.(".cl-row"))); $("#clList").addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); go(event.target.closest?.(".cl-row")); } });
   document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#clFiltersPanel").hidden) { event.preventDefault(); closeFilters(); } });
-  document.addEventListener("pointerdown", event => { if (!$("#clFiltersPanel").hidden && !event.target.closest(".cl-filter-wrap")) closeFilters({ focusTrigger: false }); });
+  document.addEventListener("pointerdown", event => {
+    if (!$("#clEquipmentList").hidden && !event.target.closest(".cl-equipment-field")) closeEquipmentSuggestions();
+    if (!$("#clFiltersPanel").hidden && !event.target.closest(".cl-filter-wrap")) closeFilters({ focusTrigger: false });
+  });
+  mountOperationsJourney({ page: "clientes", onRefresh: async () => {
+    await loadDirectory();
+    if (ST.error) throw new Error(ST.error.code || "CLIENTS_REFRESH_FAILED");
+  } });
   await loadDirectory();
 });

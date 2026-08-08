@@ -99,6 +99,13 @@ html[data-theme=dark] input[type=date].input{color-scheme:dark}
   margin-top:8px;
 }
 
+/* Macro-batch 04: header compacto sin texto visual redundante. */
+.app-header,.app-head-inner{min-height:54px}
+.app-brand{min-width:42px;gap:0}
+.app-brand img{width:38px;height:38px}
+.app-page-context{display:none!important}
+@media(max-width:740px){.app-header,.app-head-inner{min-height:58px}}
+
 .tcSoundTestBtn:hover{
   border-color:color-mix(in srgb,var(--brand) 45%,var(--line));
 }
@@ -262,14 +269,14 @@ body[data-surface=client] .jn-wa-pill{
   gap:7px;
   padding:7px 14px;
   border-radius:999px;
-  background:#22c55e;
+  background:#15803d;
   color:#fff;
   font-size:13.5px;
   font-weight:800;
   text-decoration:none;
   box-shadow:0 4px 12px rgba(34,197,94,.28)
 }
-body[data-surface=client] .jn-wa-pill:hover{background:#16a34a}
+body[data-surface=client] .jn-wa-pill:hover{background:#166534}
 body[data-surface=client] .jn-wa-pill img{display:block;filter:brightness(0) invert(1)}
 body[data-surface=client] .jn-top-actions .jn-theme-btn{
   width:96px;

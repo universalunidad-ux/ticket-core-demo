@@ -1,7 +1,6 @@
 /* B19A/B19D — ficha 360 de cliente Janome (header, tabs responsive, filas de
    ticket profesionales, skeletons y estados vacíos por pestaña). */
-.cf-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
-.cf-back{width:34px;height:34px;min-width:34px;min-height:34px;border-radius:15px;font-size:19px;font-weight:900;padding:0;display:grid;place-items:center;line-height:1;text-decoration:none}
+.cf-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
 .cf-id{display:flex;gap:14px;align-items:center;min-width:0}
 .cf-id h1{overflow-wrap:anywhere}
 .cf-avatar{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-weight:900;font-size:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--brand) 22%,var(--panel-2)),var(--panel-2));border:1px solid var(--line);flex:none}
@@ -33,6 +32,13 @@
 .cf-ticket-title{font-weight:850;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cf-ticket-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .cf-ticket-cta{font-size:20px;color:var(--muted);flex:none}
+.cf-ticket-pager{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px}
+.cf-ticket-pager .mini{min-width:38px}
+.cf-product-actions{justify-content:flex-end;margin-top:12px}
+.cf-product-modal{width:min(720px,100%);display:grid;gap:14px}
+.cf-product-kind{display:flex;gap:8px;flex-wrap:wrap;border:0;padding:0;margin:0}.cf-product-kind legend{width:100%;font-weight:850;margin-bottom:5px}.cf-product-kind .pill{cursor:pointer}.cf-product-kind .pill:has(input:checked){border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:color-mix(in srgb,var(--brand) 10%,var(--panel))}
+.cf-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cf-product-grid .field{display:grid;gap:5px}.cf-product-grid .field:nth-child(2){grid-column:span 1}
+.cf-consolidation-note{display:grid;gap:4px;padding:12px 14px;margin-bottom:14px;border:1px solid color-mix(in srgb,var(--info) 30%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--info) 7%,var(--panel));font-size:13px}.cf-consolidation-note span{color:var(--muted)}
 
 /* Skeleton y estado vacío por pestaña (nunca panel blanco) */
 .cf-skel{height:56px;border-radius:14px;background:color-mix(in srgb,var(--panel-2) 92%,transparent);animation:cfPulse 1.2s ease-in-out infinite;margin-bottom:8px}
@@ -42,9 +48,10 @@
 .cf-empty-d{color:var(--muted);font-size:13px;max-width:48ch;line-height:1.45}
 
 @media (max-width:860px){
-  .cf-head{grid-template-columns:auto minmax(0,1fr)}
+  .cf-head{grid-template-columns:minmax(0,1fr)}
   .cf-kpis{grid-column:1/-1}
   .cf-kpis{justify-content:flex-start}
   .cf-ticket{align-items:flex-start}
   .cf-ticket-meta{flex-direction:column;gap:2px}
 }
+@media (max-width:600px){.cf-product-grid{grid-template-columns:1fr}}

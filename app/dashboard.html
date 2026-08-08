@@ -7,6 +7,7 @@
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css?v=frontend-final-20260716-01">
 <link rel="stylesheet" href="dashboard.css?v=frontend-final-20260716-01">
+<link rel="stylesheet" href="operations-journey.css?v=frontend-final-20260716-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
 <!-- B19D: se retiraron tickets.css/estado.css/soporte.css/janome.css. soporte.css
      aplicaba html,body{overflow:hidden} en desktop (patrón de la página pública
@@ -18,10 +19,8 @@
 <div id="appShell"></div>
 
 <main class="wrap">
-  <!-- Hero compacto: máximo 2 filas visuales (kicker+acciones / texto+badge de rol).
-       B20-FABLE-01: el rol vive INLINE dentro de #dashLead (owner: init() en
-       dashboard.js). Se eliminó .dash-hero-meta con #dashRoleBadge y #dashScope:
-       eran redundantes con el badge inline (owner retirado, no oculto con CSS). -->
+  <!-- Hero compacto: el rol vive junto a “Mesa de soporte Janome”; el texto
+       operativo queda en una línea independiente y no repite metadatos. -->
   <section class="panel dash-hero">
     <div class="dash-hero-copy">
       <div class="section-kicker" id="dashKicker">Mesa de soporte Janome</div>
@@ -30,7 +29,7 @@
     </div>
     <div class="dash-hero-actions">
       <a class="btn btn-brand" href="soporte.html?from=dashboard&amp;returnTo=dashboard.html">Nuevo ticket</a>
-      <a class="btn btn-ghost" href="tickets.html" id="dashHeroBandeja">Ir a la bandeja</a>
+      <a class="btn btn-ghost" href="tickets.html?from=dashboard" id="dashHeroBandeja">Ir a la bandeja</a>
     </div>
   </section>
 
@@ -65,26 +64,63 @@
         <div><div class="section-kicker">Mi trabajo</div><h2>Mis Tickets</h2></div>
       </div>
       <div class="dash-mini-kpis" id="dashMiKpis"></div>
-      <div class="actions" style="margin-top:12px"><a class="btn btn-brand" href="tickets.html">Ir a mi bandeja</a></div>
+      <div class="actions" style="margin-top:12px"><a class="btn btn-brand" href="tickets.html?from=dashboard&amp;scope=mine">Ir a mi bandeja</a></div>
     </article>
   </section>
 
   <section class="panel dash-supervision dash-admin-only hidden" id="dashSupervision" style="margin-top:12px">
-    <div class="section-head"><div><div class="section-kicker">Administración</div><h2>Requieren supervisión</h2></div></div>
+    <div class="section-head">
+      <div><div class="section-kicker">Administración</div><h2>Requieren supervisión</h2></div>
+      <div class="dash-act-nav">
+        <span class="mut dash-sup-total" id="dashSupTotal" aria-live="polite"></span>
+        <button class="icon-btn" id="dashSupPrev" type="button" aria-label="Casos anteriores" disabled>‹</button>
+        <button class="icon-btn" id="dashSupNext" type="button" aria-label="Más casos" disabled>›</button>
+      </div>
+    </div>
     <div class="dash-supervision-list" id="dashSupervisionList"><div class="dash-skel"></div></div>
+    <nav class="dash-act-dots" id="dashSupDots" aria-label="Páginas de supervisión"></nav>
   </section>
+
+  <!-- Revisión rápida de supervisión: NO navega de inmediato; el modal resume el caso.
+       Acciones sin contrato backend verificable quedan deshabilitadas y explicadas. -->
+  <div class="overlay" id="dashSupervisionModal" role="dialog" aria-modal="true" aria-labelledby="dashSupTitle" tabindex="-1" hidden>
+    <div class="modal dash-sup-modal">
+      <div class="section-head"><div><div class="section-kicker">Revisión rápida de supervisión</div><h3 id="dashSupTitle">Caso</h3></div><button class="icon-btn" id="dashSupClose" type="button" aria-label="Cerrar">✕</button></div>
+      <div class="dash-sup-body" id="dashSupBody" aria-live="polite"></div>
+      <div class="dash-sup-actions">
+        <a class="btn btn-brand" id="dashSupOpen" href="#">Abrir ticket completo</a>
+        <button class="mini btn-ghost" id="dashSupCopy" type="button">Copiar folio</button>
+        <button class="mini btn-ghost" id="dashSupReviewed" type="button" disabled aria-describedby="dashSupActionsNote">Marcar revisado</button>
+        <button class="mini btn-ghost" id="dashSupAskAgent" type="button" disabled aria-describedby="dashSupActionsNote">Solicitar información al agente</button>
+      </div>
+      <p class="mut dash-sup-actions-note" id="dashSupActionsNote">Marcar revisado y solicitar información al agente estarán disponibles cuando exista una operación backend verificable (rol, revalidación, auditoría y estado). No se simula ninguna escritura.</p>
+    </div>
+  </div>
 
   <section class="panel dash-admin-only hidden" id="dashAgents" style="margin-top:12px">
-    <div class="section-head"><div><div class="section-kicker">Equipo</div><h2>Agentes de soporte</h2></div></div>
-    <p class="sr-only" id="dashSupervisionHelp">Tickets que fueron escalados y todavía requieren revisión administrativa.</p>
-    <div class="dash-agent-grid" id="dashAgentGrid"><div class="dash-skel"></div></div>
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Administración</div>
+        <h2>Resumen por agente</h2>
+        <p class="mut" id="dashSupervisionHelp">Las métricas globales permiten revisar la carga y los casos que requieren supervisión.</p>
+      </div>
+    </div>
+    <div class="dash-agent-grid" id="dashAgentGrid" aria-live="polite"><div class="dash-skel"></div><div class="dash-skel"></div></div>
   </section>
 
-  <div class="overlay" id="dashAgentModal" role="dialog" aria-modal="true" aria-labelledby="dashAgentTitle" aria-describedby="dashAgentMetricTitle" tabindex="-1" hidden>
+  <div class="overlay" id="dashAgentModal" role="dialog" aria-modal="true" aria-labelledby="dashAgentTitle" tabindex="-1" hidden>
     <div class="modal dash-agent-modal">
-      <div class="section-head"><div><div class="section-kicker" id="dashAgentRole">Soporte</div><h3 id="dashAgentTitle">Agente</h3><p class="mut" id="dashAgentMetricTitle">Tickets · 0</p></div><button class="icon-btn" id="dashAgentClose" type="button" aria-label="Cerrar">✕</button></div>
+      <div class="section-head">
+        <div><div class="section-kicker">Detalle de métrica</div><h3 id="dashAgentTitle">Agente</h3><span class="tag" id="dashAgentRole">Soporte</span></div>
+        <button class="icon-btn" id="dashAgentClose" type="button" aria-label="Cerrar detalle del agente">✕</button>
+      </div>
+      <h4 id="dashAgentMetricTitle">Tickets de la métrica</h4>
       <div class="dash-agent-detail" id="dashAgentDetail" aria-live="polite"></div>
-      <div class="dash-agent-pager"><button class="mini btn-ghost" id="dashAgentPrev" type="button">Anterior</button><span class="mut" id="dashAgentPage">Página 1 de 1</span><button class="mini btn-ghost" id="dashAgentNext" type="button">Siguiente</button></div>
+      <div class="dash-agent-pager">
+        <button class="mini btn-ghost" id="dashAgentPrev" type="button" disabled>Anterior</button>
+        <span class="mut" id="dashAgentPage" aria-live="polite">Página 1 de 1</span>
+        <button class="mini btn-ghost" id="dashAgentNext" type="button" disabled>Siguiente</button>
+      </div>
     </div>
   </div>
 
@@ -92,14 +128,14 @@
   <section class="panel dash-admin-only hidden" id="dashAdmin" style="margin-top:12px">
     <div class="section-head">
       <div><div class="section-kicker">Administración</div><h2>Configuración de la mesa</h2></div>
+      <div class="actions" id="dashAdminActions"></div>
     </div>
     <nav class="adm-tabs" id="admTabs" role="tablist" aria-label="Secciones de administración">
       <button class="adm-tab" data-adm="avisos" id="admTabAvisos" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Avisos del sitio</button>
       <button class="adm-tab" data-adm="personalizacion" id="admTabPersonalizacion" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Personalización</button>
       <button class="adm-tab" data-adm="reglas" id="admTabReglas" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Reglas de asignación</button>
-      <button class="adm-tab" data-adm="bitacora" id="admTabBitacora" role="tab" aria-controls="admPanel" aria-selected="false" tabindex="-1" type="button">Bitácora</button>
     </nav>
-    <div class="adm-panel" id="admPanel" role="tabpanel"><div class="mut">Elige una sección. Cada sección carga sus datos solo al abrirla.</div></div>
+    <div class="adm-panel" id="admPanel" role="tabpanel"><div class="mut">Cargando Avisos del sitio…</div></div>
   </section>
 </main>
 

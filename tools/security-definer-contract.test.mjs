@@ -56,7 +56,7 @@ for (const { path, source } of sources) {
 
     assert.match(
       block,
-      /set\s+search_path\s*(?:=|to)\s*'?public'?/i,
+      /set\s+search_path\s*(?:=|to)\s*(?:'?pg_catalog'?\s*,\s*)?'?public'?/i,
       `${name} lacks fixed public search_path in ${path}`,
     );
 
@@ -144,6 +144,12 @@ for (const [name, definitions] of discovered) {
       !granted.has("authenticated"),
       `${name} must not grant authenticated execute`,
     );
+    if (exposure === "service_only") {
+      assert.ok(
+        granted.has("service_role"),
+        `${name} must explicitly grant execute to service_role`,
+      );
+    }
   }
 
   console.log(

@@ -16,6 +16,9 @@ test("global header page map and human labels",()=>{
   for(const label of ["DASHBOARD","TICKETS","CLIENTES","CLIENTE NUEVO","CONSOLIDACIÓN DE CLIENTES","BITÁCORA ADMINISTRATIVA"])assert.ok(files.global.includes(label),`missing ${label}`);
   has(files.global,/setTicketPageContext=title=>setPageContextLabel\(title\?`TICKET · \$\{title\}`:"TICKET"\)/,"dynamic ticket contract missing");
   has(files.global,/id="appPageContext"[^>]*title=/,"context full title missing");
+  has(files.global,/id="appPageContext" title="\$\{esc\(context\)\}"/,"initial context title must be escaped");
+  has(files.global,/el\.textContent=label;el\.title=label/,"dynamic context text and title must stay synchronized");
+  assert.equal((files.global.match(/id="appPageContext"/g)||[]).length,1,"one context owner required");
 });
 test("global header single-line ellipsis contract",()=>{
   has(files.globalCss,/\.app-page-context\{[^}]*overflow:hidden;[^}]*text-overflow:ellipsis;[^}]*white-space:nowrap/,"single-line CSS missing");
@@ -66,6 +69,8 @@ test("dedicated admin audit route and single query owner",()=>{
   assert.ok(files.bitJs.includes("Acceso reservado para administración"));
   assert.ok(files.dash.includes("export function createLogView"));
   assert.ok(files.dash.includes('href="bitacora-admin.html"'));
+  assert.equal((files.dash.match(/href="bitacora-admin\.html"/g)||[]).length,1,"one audit link owner required");
+  assert.match(files.dashHtml,/id="dashAdmin"[\s\S]*id="dashAdminActions"/,"audit link host must remain inside the admin-only surface");
   not(files.dash,/host\.addEventListener\("keydown"[\s\S]{0,300}modal/ ,"parallel audit focus trap remains");
 });
 test("client counts and canonical alta mappings",()=>{

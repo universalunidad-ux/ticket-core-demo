@@ -6,16 +6,16 @@
 <script>!function(){try{document.documentElement.setAttribute("data-theme",localStorage.getItem("tc_theme")||"light")}catch(e){}}();</script>
 <link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="clientes.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="consolidacion-clientes.css?v=frontend-final-20260716-01">
 <link rel="icon" href="../favicon.ico" type="image/x-icon">
-<!-- CONSOLIDACIÓN: análisis y preview sin escrituras. El CTA permanece
+<!-- TC-U15C-A: análisis y preview sin escrituras. El backend de ejecución no existe; el CTA permanece
      deshabilitado hasta existir un contrato backend transaccional verificable. -->
 </head>
 <body data-surface="admin" data-shell="app" data-page="consolidacion">
 <div id="appShell"></div>
 <main class="wrap">
   <section class="panel">
-    <div class="section-head"><div><div class="section-kicker">Módulo interno</div><h1>Consolidación de clientes</h1></div><div class="cq-head-actions"><span class="tag warn" id="cqTotal">—</span><a class="mini btn-ghost cq-back" href="clientes.html" aria-label="Volver a Clientes" title="Volver a Clientes">‹</a></div></div>
+    <div class="section-head"><div><div class="section-kicker" aria-hidden="true">CONSOLIDACIÓN DE CLIENTES</div><h1>Consolidación de clientes</h1></div><div class="cq-head-actions"><span class="tag warn" id="cqTotal">—</span></div></div>
     <p class="mut">Compara la identidad capturada con el candidato visible, selecciona el registro principal y revisa conflictos. El score sólo propone; nunca decide.</p>
-    <div class="cq-gate" id="cqGate"><b>Modo análisis: consolidación deshabilitada</b><span>Falta una operación backend versionada que autorice admin, bloquee el ticket, revalide duplicados y versión esperada, aplique cliente/contacto/asociación/auditoría en una sola transacción idempotente y devuelva el resultado verificable. Un probe de existencia no satisface este contrato.</span></div>
+    <div class="cq-gate" id="cqGate" data-backend-decision="BACKEND_NOT_PRESENT"><b>Modo análisis: ejecución no disponible</b><span>No existe todavía una operación backend de consolidación. Esta vista compara información y prepara una decisión humana, pero no modifica clientes, contactos ni tickets.</span></div>
     <div class="cl-toolbar cq-toolbar">
       <select class="select" id="cqNivel" aria-label="Nivel de candidato"><option value="">Candidato: todos</option><option value="none">Sin candidato</option><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select>
       <select class="select" id="cqOrden" aria-label="Orden"><option value="oldest">Más antiguos primero</option><option value="recent">Más recientes primero</option><option value="score">Mejor score primero</option></select>

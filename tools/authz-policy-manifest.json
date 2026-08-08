@@ -1,17 +1,82 @@
 {
   "legacy_to_drop": {
+    "public.archivos_ticket": [
+      "admin_select",
+      "archivos_support_scope"
+    ],
+    "public.avisos_globales": [
+      "admin_select",
+      "public_active_notices_anon_select",
+      "public_active_notices_authenticated_select"
+    ],
+    "public.bitacora": [
+      "bitacora_admin_select",
+      "bitacora_support_own_select"
+    ],
+    "public.cliente_accesos": [
+      "accesos_support_scope",
+      "admin_select"
+    ],
+    "public.cliente_aliases": [
+      "admin_select",
+      "aliases_support_scope"
+    ],
     "public.cliente_sistemas": [
-      "cliente_sistemas_select_staff"
+      "admin_select",
+      "cliente_sistemas_select_staff",
+      "sistemas_support_scope"
     ],
     "public.clientes": [
-      "clientes_admin_select_ticket_core"
+      "admin_select",
+      "clientes_admin_select_ticket_core",
+      "clientes_support_scope"
+    ],
+    "public.clientes_contactos": [
+      "admin_select",
+      "contactos_support_scope"
+    ],
+    "public.perfiles": [
+      "profiles_admin_safe_update",
+      "profiles_admin_select",
+      "profiles_self_update",
+      "profiles_team_select"
+    ],
+    "public.reglas_asignacion": [
+      "admin_select",
+      "assignment_rules_support_select"
+    ],
+    "public.site_config": [
+      "admin_select",
+      "public_site_config_anon_select",
+      "public_site_config_authenticated_select"
+    ],
+    "public.solicitudes_soporte": [
+      "admin_select",
+      "solicitudes_support_scope"
+    ],
+    "public.ticket_archivos": [
+      "ticket_archivos_admin_read",
+      "ticket_archivos_support_read"
+    ],
+    "public.ticket_eventos": [
+      "admin_select",
+      "eventos_support_scope"
+    ],
+    "public.ticket_respuestas_rapidas": [
+      "admin_select",
+      "quick_replies_support_select"
+    ],
+    "public.tickets": [
+      "admin_select",
+      "tickets_support_select"
     ]
   },
   "recognized": {
     "public.archivos_ticket": [
       "archivos_ticket_staff_select",
       "archivos_ticket_staff_insert",
-      "archivos_ticket_staff_delete"
+      "archivos_ticket_staff_delete",
+      "archivos_ticket_client_owner_select"
     ],
     "public.avisos_globales": [
       "avisos_globales_read",
@@ -40,7 +105,8 @@
       "clientes_support_select_assigned"
     ],
     "public.clientes_contactos": [
-      "clientes_contactos_select_scoped"
+      "clientes_contactos_select_scoped",
+      "contactos_client_self_select"
     ],
     "public.perfiles": [
       "perfiles_select_self",
@@ -61,11 +127,13 @@
     "public.ticket_archivos": [
       "ticket_archivos_staff_select",
       "ticket_archivos_staff_insert",
-      "ticket_archivos_staff_delete"
+      "ticket_archivos_staff_delete",
+      "ticket_archivos_client_owner_select"
     ],
     "public.ticket_eventos": [
       "ticket_eventos_staff_select",
-      "ticket_eventos_staff_insert"
+      "ticket_eventos_staff_insert",
+      "ticket_eventos_client_public_select"
     ],
     "public.ticket_respuestas_rapidas": [
       "quick_replies_staff_select",
@@ -75,11 +143,48 @@
       "tickets_manager_select",
       "tickets_support_select_assigned",
       "tickets_admin_update",
-      "tickets_manager_assign"
+      "tickets_manager_assign",
+      "tickets_client_owner_select"
     ],
     "storage.objects": [
       "soporte_adjuntos_staff_read",
       "certificados_staff_read"
+    ],
+    "public.staff_teams": [
+      "staff_teams_admin_select",
+      "staff_teams_support_select"
+    ],
+    "public.staff_team_memberships": [
+      "staff_team_memberships_admin_select",
+      "staff_team_memberships_self_select"
+    ],
+    "public.staff_conversations": [
+      "staff_conversations_admin_select",
+      "staff_conversations_support_select"
+    ],
+    "public.staff_messages": [
+      "staff_messages_admin_select",
+      "staff_messages_support_select"
+    ],
+    "public.staff_message_revisions": [
+      "staff_message_revisions_admin_select",
+      "staff_message_revisions_support_select"
+    ],
+    "public.staff_announcements": [
+      "staff_announcements_admin_select",
+      "staff_announcements_support_select"
+    ],
+    "public.staff_announcement_targets": [
+      "staff_announcement_targets_admin_select",
+      "staff_announcement_targets_self_select"
+    ],
+    "public.staff_message_receipts": [
+      "staff_message_receipts_admin_select",
+      "staff_message_receipts_self_select"
+    ],
+    "public.support_agent_scopes": [
+      "support_agent_scopes_admin_select",
+      "support_agent_scopes_self_select"
     ]
   }
 }

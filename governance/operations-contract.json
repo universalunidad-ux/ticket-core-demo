@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "logContract": {
+    "allowedFields": ["timestamp", "unit", "phase", "scenario", "step", "result", "code", "head"],
+    "forbiddenKeyPatterns": ["email", "phone", "name", "token", "secret", "password", "authorization", "cookie", "payload", "body"],
+    "results": ["PASS", "FAIL", "STOP"]
+  },
+  "runbooks": [
+    {
+      "id": "OPS-LOCAL-DB-MIGRATION",
+      "title": "Local migration failure",
+      "trigger": "A local migration or SQL contract exits non-zero.",
+      "diagnose": ["Capture the failing migration name and semantic error code.", "Confirm the command targeted only the ephemeral local project id."],
+      "contain": ["Stop later migrations and dependent tests.", "Do not link, push, or contact a remote Supabase project."],
+      "recover": ["Tear down the ephemeral local stack without retaining fixtures.", "Fix only the owning migration or contract before starting a fresh local stack."],
+      "verify": ["Apply every migration from an empty local database.", "Run SQL contracts, fixture rollback, teardown, and residual scan."],
+      "evidence": ["runtime/migrations.log", "runtime/sql-contracts.log", "teardown/teardown.log", "residues/residual-scan.json"]
+    },
+    {
+      "id": "OPS-LOCAL-EVIDENCE-FAILURE",
+      "title": "Evidence or gate failure",
+      "trigger": "A targeted gate, preflight, or evidence validator exits non-zero.",
+      "diagnose": ["Record the exact command, exit status, HEAD, and first semantic failure marker.", "Check index locks and worktree cleanliness without deleting or bypassing either."],
+      "contain": ["Do not run the full regression again.", "Do not promote any row whose required evidence is incomplete."],
+      "recover": ["Correct only the owning source or generated artifact.", "Regenerate documentation from its canonical machine-readable source."],
+      "verify": ["Rerun the failed targeted owner.", "Run preflight in the mode required by the checkpoint."],
+      "evidence": ["targeted/targeted.log", "preflight/preflight.log", "residues/worktree-status.txt"]
+    },
+    {
+      "id": "OPS-LOCAL-DISTRIBUTION",
+      "title": "Local distribution contract failure",
+      "trigger": "The local artifact, service worker, readonly, or missing-backend contract fails.",
+      "diagnose": ["Identify the first missing tracked asset or unsafe cache route.", "Confirm public config contains no privileged credential."],
+      "contain": ["Do not publish, push, deploy, or claim hosted evidence.", "Keep the last validated local artifact available for comparison."],
+      "recover": ["Regenerate the local distribution inventory from tracked files.", "Repair only the failing cache, config, or entrypoint contract."],
+      "verify": ["Run distribution targeted tests against exact HEAD.", "Confirm teardown and zero listener/process residue."],
+      "evidence": ["distribution/distribution-contract.json", "targeted/distribution.log", "teardown/teardown.log"]
+    }
+  ]
+}
