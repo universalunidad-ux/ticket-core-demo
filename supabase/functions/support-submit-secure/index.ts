@@ -70,14 +70,14 @@ async function verifyTurnstile(
   expected:{hostname:string;action:string;nowMs:number},
 ):Promise<ContractResult<Readonly<{challengeTs:string;hostname:string;action:string}>>>{
   if(!token||token.length>TURNSTILE_TOKEN_MAX_LENGTH)return{ok:false,code:"TURNSTILE_TOKEN_INVALID"};
-  const form=new FormData();
-  form.append("secret",TURNSTILE_SECRET);
-  form.append("response",token);
-  if(ip&&ip!=="unknown")form.append("remoteip",ip);
+  const form=new URLSearchParams();
+  form.set("secret",TURNSTILE_SECRET);
+  form.set("response",token);
+  if(ip&&ip!=="unknown")form.set("remoteip",ip);
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),TURNSTILE_FETCH_TIMEOUT_MS);
   try{
-    const res=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form,signal:controller.signal});
+    const res=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form,signal:controller.signal});
     if(!res.ok)return{ok:false,code:"TURNSTILE_UNAVAILABLE"};
     let value:unknown;
     try{value=await res.json()}catch{return{ok:false,code:"TURNSTILE_UNAVAILABLE"}}
