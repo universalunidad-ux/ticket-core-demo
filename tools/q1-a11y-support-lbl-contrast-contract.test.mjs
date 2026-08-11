@@ -6,7 +6,6 @@ const css = fs.readFileSync(
   "utf8",
 );
 const estadoCss = fs.readFileSync(new URL("../app/estado.css", import.meta.url), "utf8");
-const workspaceCss = fs.readFileSync(new URL("../app/ticket-workspace.css", import.meta.url), "utf8");
 
 const expected =
   ".lbl{font-size:11.5px;font-weight:800;letter-spacing:.06em;" +
@@ -46,10 +45,4 @@ assert.match(
   /html\[data-theme=dark\] \.estado-status-pill\{color:#86efac\}/,
   "Public status pill must retain an AA dark-theme foreground.",
 );
-assert.match(
-  workspaceCss,
-  /\.tk-workspace-status \{ color: color-mix\(in srgb, var\(--text, #0f172a\) 72%, var\(--muted, #64748b\)\);/,
-  "Ticket workspace status must not use the borderline muted foreground.",
-);
-
 console.log("PASS exact-head rendered contrast owners remain opaque and theme-safe");

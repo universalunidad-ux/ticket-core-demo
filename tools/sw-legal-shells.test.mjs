@@ -23,7 +23,7 @@ assert.match(
 
 assert.match(
   sw,
-  /const RELEASE="frontend-final-20260716-01";/,
+  /const RELEASE="frontend-p0-20260811-01";/,
   "Debe conservarse el release canónico validado",
 );
 

@@ -28,7 +28,7 @@ function assertCanonicalJourneyRelease(source, page, release) {
 
 test("todas las superficies cargan el estilo operativo con la release canónica", () => {
   const release = canonicalRelease();
-  assert.equal(release, "frontend-final-20260716-01");
+  assert.equal(release, "frontend-p0-20260811-01");
 
   // This tightens the legacy test to the owner gate; it does not relax the
   // contract by accepting either release.
@@ -46,7 +46,7 @@ test("mutante: la release operativa legacy sigue siendo rechazada", () => {
     );
     assert.throws(
       () => assertCanonicalJourneyRelease(mutant, page, release),
-      /must use operations-journey\.css\?v=frontend-final-20260716-01/,
+      /must use operations-journey\.css\?v=frontend-p0-20260811-01/,
       `${page} mutant must fail when the legacy release is reintroduced`,
     );
   }

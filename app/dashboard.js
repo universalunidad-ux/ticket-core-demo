@@ -16,12 +16,12 @@
      (solo admin, nunca como KPI roto).
    ============================================================================ */
 import { supabase, esc } from "./supabase.js";
-import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
-import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
-import { evaluateAssignment, matchingRules, OUTCOME, REASON } from "./shared/assignment-rules.js?v=frontend-final-20260716-01";
-import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel, copyTxt } from "./global.js?v=frontend-final-20260716-01";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-p0-20260811-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-p0-20260811-01";
+import { evaluateAssignment, matchingRules, OUTCOME, REASON } from "./shared/assignment-rules.js?v=frontend-p0-20260811-01";
+import { ticketStateLabel, ticketStateCls, ticketStateKey, ticketPriorityCls, ago, prettyBytes, setRailOpenCount, openDialog, closeDialog, setPageContextLabel, copyTxt } from "./global.js?v=frontend-p0-20260811-01";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
-import { classifyLoadError, describeLoadError, paginate, pageItems, createSequence, keepLastValid, evidenceView, evidenceStoragePath, internalMessagePreview } from "./shared/dashboard-resilience.js?v=frontend-final-20260716-01";
+import { classifyLoadError, describeLoadError, paginate, pageItems, createSequence, keepLastValid, evidenceView, evidenceStoragePath, internalMessagePreview } from "./shared/dashboard-resilience.js?v=frontend-p0-20260811-01";
 import { mountOperationsJourney } from "./shared/operations-journey.js";
 
 const $ = (q, c = document) => c.querySelector(q);

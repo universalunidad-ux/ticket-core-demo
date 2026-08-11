@@ -1,12 +1,10 @@
 import{supabase as s,guardSession,getProfile,logAction,msg}from"./supabase.js";
-import{$,toast,esc,norm,openDialog,closeDialog,ensureAppShell,setAppRole,setRailOpenCount,pushRecentClient,setGlobalSearchData,setBreadcrumb,setTicketPageContext,ticketStateKey,ticketStateLabel,ticketStateCls,prettyBytes}from"./global.js?v=frontend-final-20260716-01";
+import{$,toast,esc,norm,openDialog,closeDialog,ensureAppShell,setAppRole,setRailOpenCount,pushRecentClient,setGlobalSearchData,setBreadcrumb,setTicketPageContext,ticketStateKey,ticketStateLabel,ticketStateCls,prettyBytes}from"./global.js?v=frontend-p0-20260811-01";
 import{montarFichaAgente}from"./janome/janome_ticket.js";
 import{qrTpl as qrTplShared,qrCanon,qrDefaults as qrDefaultsShared}from"./quick-replies.shared.js";
 import{JANOME_CATALOGO}from"./janome/janome_catalogo.js";
-import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-final-20260716-01";
+import{registerInternalSearchProvider}from"./shared/nav-interna.js?v=frontend-p0-20260811-01";
 import{mountOperationsJourney}from"./shared/operations-journey.js";
-import{createTicketWorkspaceStore,ticketWorkspaceReturnHref,ticketWorkspaceSummary}from"./shared/ticket-workspace.js";
-import{createResolutionWorkbench}from"./shared/ticket-resolution-workbench.js";
 import{describeSystemEvent,mergeTicketEventHistory}from"./shared/ticket-event-timeline.js";
 
 let CLIENT_SYSTEMS=[];
@@ -31,34 +29,6 @@ const syncChannelIcon = globalThis.syncChannelIcon || (globalThis.syncChannelIco
 const QS=new URLSearchParams(location.search),ID=QS.get("id")||"",QK=(QS.get("qk")||"").trim().toLowerCase(),MUTE_KEY=`tc_ticket_mute_${ID}`,ST={busy:false,linkedContact:null,logFiles:[],portalMeta:null,notif:null,lastNotifSig:"",poller:null,ticketMuted:false,quickBootDone:false,quickBootKey:"",quickBootText:""};let T=null,C=null,LOGS=[],HEAT={periodDays:30,rows:[],total30:0,urgent30:0,waitOpen:0,level:"Normal"},FILES=[],QRS=[],CLIENT_ACCESSES=[];
 const ticketListReturnUrl=()=>{const raw=QS.get("return")||"tickets.html";try{const url=new URL(raw,location.href);if(url.origin!==location.origin||!/\/tickets\.html$/.test(url.pathname))return"tickets.html";return url.pathname+url.search+url.hash}catch{return"tickets.html"}};
 const TICKET_LIST_RETURN=ticketListReturnUrl();
-const TICKET_WORKSPACE_STORE=createTicketWorkspaceStore();
-let resolutionWorkbench=null;
-const syncTicketWorkspaceReturn=()=>{
-  const state=TICKET_WORKSPACE_STORE.read(),link=$("#tkWorkspaceReturn"),summary=document.querySelector("[data-ticket-workspace-summary]");
-  if(link)link.href=QS.has("return")?TICKET_LIST_RETURN:ticketWorkspaceReturnHref(state);
-  if(summary)summary.textContent=state.savedAt?ticketWorkspaceSummary(state,0).replace(/^0 tickets · /,"Vista guardada · "):"Volverás a la mesa general.";
-};
-const applyResolutionMessage=(text,{close=false}={})=>{
-  const field=$("#logText");
-  if(!field)return;
-  setComposerMode(close?"solucion":"seguimiento",close?"resuelto":"");
-  field.value=String(text||"");
-  field.dispatchEvent(new Event("input",{bubbles:true}));
-  field.focus();
-};
-const mountResolutionWorkbench=()=>{
-  const root=$("#tkResolutionWorkbench");
-  if(!root||resolutionWorkbench)return;
-  resolutionWorkbench=createResolutionWorkbench({
-    root,
-    getTicket:()=>T||{id:ID},
-    getClientName:()=>C?.nombre||T?.nombre_capturado||"cliente",
-    onApplyMessage:applyResolutionMessage,
-    onStatus:text=>toast(text,"ok"),
-    openDialogOwner:openDialog,
-    closeDialogOwner:closeDialog,
-  });
-};
 export const canManageQuickReplies=(scope="global",profile=ST.profile)=>["global","producto"].includes(String(scope||"").toLowerCase())&&["admin","owner","administrador"].includes(String(profile?.rol||"").toLowerCase());
 const denyQuickReplyManagement=()=>{toast("Las respuestas Globales y de Producto son administradas por Administrador.","warn");return false};
 const syncQuickReplyAdminUi=()=>{const allowed=canManageQuickReplies("global"),edit=$("#tkQrEditBtn");if(edit){edit.hidden=!allowed;edit.disabled=!allowed}if(!allowed&&!$("#tkQrModal")?.hidden)qrClose()};
@@ -913,7 +883,7 @@ const softenHeat=()=>{
 
 const renderMetaBits=()=>{renderClientSystems();applyNotifUi();saveTicketMute(ST.ticketMuted);syncChannelIcon();softenHeat()};
 
-const render=()=>{renderShellBits();renderThreadBits();renderMetaBits();resolutionWorkbench?.update();applyAutoComposer();/* B17C16_CLOSED_RENDER_LOCK */try{applyTicketClosedComposerLock?.()}catch(e){}};
+const render=()=>{renderShellBits();renderThreadBits();renderMetaBits();applyAutoComposer();/* B17C16_CLOSED_RENDER_LOCK */try{applyTicketClosedComposerLock?.()}catch(e){}};
 
 const loadTicketCore=async()=>{if(!ID)return null;const tk=await s.from("tickets").select("*").eq("id",ID).single();if(tk.error||!tk.data)return null;setTicketPageContext(tk.data.titulo||"");return tk.data};
 const loadTicketContext=async()=>{const since365=new Date(Date.now()-365*864e5).toISOString();const[cl,legacyLogs,heatRows,legacyArchRows,eventRows,newArchRows]=await Promise.all([T?.cliente_id?s.from("clientes").select("id,nombre").eq("id",T.cliente_id).single():Promise.resolve({data:null}),s.from("bitacora").select("*").eq("detalle->>ticket_id",String(ID)).order("fecha",{ascending:true}),T?.cliente_id?s.from("tickets").select("id,prioridad,estado,fecha_creacion,fecha_actualizacion").eq("cliente_id",T.cliente_id).gte("fecha_creacion",since365):Promise.resolve({data:[]}),s.from("ticket_archivos").select("*").eq("ticket_id",ID).order("fecha_subida",{ascending:true}),s.from("ticket_eventos").select("*").eq("ticket_id",ID).order("created_at",{ascending:true}),s.from("archivos_ticket").select("*").eq("ticket_id",ID).order("creado_en",{ascending:true})]);C=cl.data||null;const ev=Array.isArray(eventRows?.data)?eventRows.data:[];const legacy=legacyLogs?.data||[];/* B19B: paridad de citas — eventos del portal con meta.reply_to (canónico) se normalizan
@@ -1331,7 +1301,7 @@ window.addEventListener("tc:admin-escalated",event=>{
   withLogScrollPreserved(renderLogs);
   setTimeout(async()=>{try{const{data,error}=await s.from("ticket_eventos").select("id,ticket_id,autor_tipo,visibilidad,kind,texto,created_at,created_by,meta").eq("id",eventId).eq("ticket_id",ID).maybeSingle();if(error)throw error;if(data){LOGS=LOGS.map(x=>String(x?.id)===eventId?data:x);withLogScrollPreserved(renderLogs)}console.info("ADMIN_STAGE=BACKGROUND_RECONCILE",{evento_id:eventId,found:!!data})}catch(err){console.warn("ADMIN_RECONCILE_ERROR",err?.message||"query_failed")}},250);
 });
-document.addEventListener("DOMContentLoaded",()=>{const _st=document.createElement("style");_st.textContent="@keyframes tkspin{to{transform:rotate(360deg)}}";document.head.appendChild(_st);ensureAppShell({page:"ticket",title:"",kicker:"",role:"soporte",actionsHtml:""});syncTicketWorkspaceReturn();mountResolutionWorkbench();document.addEventListener("click",e=>{if(e.target?.closest?.("#tkConversationRetry"))location.reload()});const _la=document.getElementById("logArea");if(_la)_la.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:48px 16px;color:var(--muted,#64748b);font:600 14px Inter,system-ui,sans-serif"><span style="width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;display:inline-block;animation:tkspin .7s linear infinite"></span> Cargando conversación…</div>';try{bind();renderLogFilesMeta();renderComposerMode();setComposerMode("seguimiento","");load().catch(err=>{const e=document.getElementById("logArea");if(e)e.innerHTML='<div class="empty-state">No se pudo cargar la conversación. <button class="mini btn-ghost" id="tkConversationRetry" type="button">Reintentar</button></div>';toast(msg(err),"bad")});startTicketPolling()}catch(err){console.error("TICKET_BOOT_ERROR",err);toast(msg(err),"bad")}});window.addEventListener("beforeunload",()=>{resolutionWorkbench?.destroy();stopTicketPolling()},{passive:true});
+document.addEventListener("DOMContentLoaded",()=>{const _st=document.createElement("style");_st.textContent="@keyframes tkspin{to{transform:rotate(360deg)}}";document.head.appendChild(_st);ensureAppShell({page:"ticket",title:"",kicker:"",role:"soporte",actionsHtml:""});document.addEventListener("click",e=>{if(e.target?.closest?.("#tkConversationRetry"))location.reload()});const _la=document.getElementById("logArea");if(_la)_la.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:48px 16px;color:var(--muted,#64748b);font:600 14px Inter,system-ui,sans-serif"><span style="width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;display:inline-block;animation:tkspin .7s linear infinite"></span> Cargando conversación…</div>';try{bind();renderLogFilesMeta();renderComposerMode();setComposerMode("seguimiento","");load().catch(err=>{const e=document.getElementById("logArea");if(e)e.innerHTML='<div class="empty-state">No se pudo cargar la conversación. <button class="mini btn-ghost" id="tkConversationRetry" type="button">Reintentar</button></div>';toast(msg(err),"bad")});startTicketPolling()}catch(err){console.error("TICKET_BOOT_ERROR",err);toast(msg(err),"bad")}});window.addEventListener("beforeunload",()=>{stopTicketPolling()},{passive:true});
 
 // D2F: Enter label lo normaliza ticket-composer-polish.js.
 

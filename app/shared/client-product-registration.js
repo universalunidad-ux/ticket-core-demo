@@ -1,4 +1,4 @@
-import { openDialog, closeDialog } from "../global.js?v=frontend-final-20260716-01";
+import { openDialog, closeDialog } from "../global.js?v=frontend-p0-20260811-01";
 import { JANOME_CATALOGO } from "../janome/janome_catalogo.js";
 
 const $ = selector => document.querySelector(selector);
