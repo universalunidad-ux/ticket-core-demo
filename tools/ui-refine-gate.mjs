@@ -120,7 +120,7 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   for(const id of ["stChatCompose","stReplyTextPop","stAttachBtn","stReplySendPop","stReplyFilesPop","stFileChips","stReplyStatusPop","stChatReplyHelp","stChatHelpToggle","stHelpPop","stHelpBtn","stNotifyPanel","stLastSupportCard","stLastSupportText","stLastSupportMeta","stOpenChatBtn2"])
     (new RegExp(`id="${id}"`).test(html))?ok(`estado: ID requerido presente #${id}`):bad(`estado: falta ID requerido por JS #${id}`);
   // B17C47: versión de assets incrementada (rompe caché mezclada)
-  has(html,/estado\.js\?v=frontend-final-20260716-01/,"estado: versión de assets incrementada (20260716-01)");
+  has(html,/estado\.js\?v=frontend-p0-20260811-01/,"estado: versión de assets incrementada (20260716-01)");
   // B17C46: límite de mensajes — copy breve, encabezado redundante fuera
   has(html,/Puedes enviar hasta 2 mensajes seguidos/,"estado: copy de límite presente");
   not(html,/Envía lo que te pedimos para avanzar/,"estado: encabezado redundante retirado");
@@ -184,7 +184,7 @@ const not=(s,re,m)=>re.test(s)?bad(m):ok(m);
   for(const [page,html] of [["estado",estadoHtml],["soporte",soporteHtml]])
     has(html,/class="jn-wa-pill"[^>]*aria-label="WhatsApp 55 6843 7918"/,`${page}: WhatsApp conserva nombre accesible al ocultar el teléfono visual`);
   for(const [page,html] of [["estado",estadoHtml],["soporte",soporteHtml]])
-    has(html,/global\.css\?r=public-responsive-20260717-03&v=frontend-final-20260716-01/,`${page}: carga la versión corregida del owner compartido dentro de la release canónica`);
+    has(html,/global\.css\?r=public-responsive-20260717-03&v=frontend-p0-20260811-01/,`${page}: carga la versión corregida del owner compartido dentro de la release canónica`);
 }
 
 // ---- TICKETS (Commit C) ----

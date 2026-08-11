@@ -4,7 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>U10 visual fixture</title>
 <script>document.documentElement.dataset.theme=new URLSearchParams(location.search).get("theme")==="dark"?"dark":"light";</script>
-<link rel="stylesheet" href="../app/global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="../app/dashboard.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="../app/clientes.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="../app/alta-cliente.css?v=frontend-final-20260716-01">
+<link rel="stylesheet" href="../app/global.css?v=frontend-p0-20260811-01"><link rel="stylesheet" href="../app/dashboard.css?v=frontend-p0-20260811-01"><link rel="stylesheet" href="../app/clientes.css?v=frontend-p0-20260811-01"><link rel="stylesheet" href="../app/alta-cliente.css?v=frontend-p0-20260811-01">
 </head>
 <body data-surface="admin" data-shell="app" data-page="u10-fixture">
 <div id="appShell"></div>
@@ -21,7 +21,7 @@
 </main>
 <div class="overlay" id="fixtureModal" role="dialog" aria-modal="true" aria-labelledby="fixtureTitle" hidden><div class="modal dash-agent-modal"><div class="section-head"><div><div class="section-kicker">Soporte</div><h2 id="fixtureTitle">Soporte Demo</h2><p class="mut">Abiertos · 11</p></div><button class="icon-btn" type="button" data-close-fixture aria-label="Cerrar">✕</button></div><article class="dash-agent-ticket"><span class="tag warn">alta</span><div><b>Empresa con nombre largo para reflow</b><span>TK-100 · Título largo del ticket de demostración</span><small>Abierto · hace 2 días · SLA vencido</small></div><a class="mini btn-ghost" href="#">Ver ticket</a></article><div class="dash-agent-pager"><button class="mini" disabled>Anterior</button><span>1 de 2</span><button class="mini">Siguiente</button></div></div></div>
 <script type="module">
-import {ensureAppShell,openDialog,closeDialog,setPageContextLabel} from "../app/global.js?v=frontend-final-20260716-01";
+import {ensureAppShell,openDialog,closeDialog,setPageContextLabel} from "../app/global.js?v=frontend-p0-20260811-01";
 ensureAppShell({page:"dashboard",role:"admin"});setPageContextLabel("ADMINISTRACIÓN");
 document.querySelector("[data-open-fixture]").addEventListener("click",event=>openDialog("#fixtureModal",{trigger:event.currentTarget,initialFocus:"[data-close-fixture]"}));
 document.querySelector("[data-close-fixture]").addEventListener("click",()=>closeDialog("#fixtureModal"));

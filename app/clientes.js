@@ -3,11 +3,11 @@
    Productos se consultan sólo para IDs de clientes ya visibles por RLS. Si ese
    contrato no responde, el filtro de equipo se deshabilita de forma honesta.
    ========================================================================== */
-import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
-import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-p0-20260811-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-p0-20260811-01";
 import { readQS, writeQS } from "./shared/query-state.js";
-import { fmtFecha } from "./shared/formatters.js?v=frontend-final-20260716-01";
-import { esc, debounce } from "./global.js?v=frontend-final-20260716-01";
+import { fmtFecha } from "./shared/formatters.js?v=frontend-p0-20260811-01";
+import { esc, debounce } from "./global.js?v=frontend-p0-20260811-01";
 import { JANOME_CATALOGO } from "./janome/janome_catalogo.js";
 import { perfPrimaryDone, perfSecondaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";

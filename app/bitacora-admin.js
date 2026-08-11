@@ -1,5 +1,5 @@
-import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
-import { createLogView, loadLogSummary } from "./dashboard.js?v=frontend-final-20260716-01";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-p0-20260811-01";
+import { createLogView, loadLogSummary } from "./dashboard.js?v=frontend-p0-20260811-01";
 
 const init=async()=>{
   const ctx=await mountNav("bitacora-admin");

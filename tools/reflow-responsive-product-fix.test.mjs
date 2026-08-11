@@ -28,11 +28,10 @@ test("ticket detail keeps its 320px thread inside the viewport", () => {
   assert.match(ticketFix, /\.ticket-thread > \*\s*\{[^}]*min-width:0!important;[^}]*max-width:100%!important;/s);
   assert.match(ticketFix, /\.thread-topbar\s*\{[^}]*grid-template-columns:34px minmax\(0,1fr\) minmax\(0,213px\)!important;/s);
   assert.match(ticketFix, /\.thread-actions\s*\{[^}]*min-width:0!important;[^}]*gap:4px!important;/s);
-  assert.match(ticketFix, /\.resolution-launch\s*\{[^}]*max-width:108px!important;[^}]*text-overflow:ellipsis!important;/s);
+  assert.match(ticketFix, /\.tk-resolve-head\s*\{[^}]*min-width:0!important;[^}]*padding-inline:8px!important;/s);
 });
 
 test("ticket detail exposes the required pointer target sizes", () => {
-  assert.match(ticketFix, /#tkWorkspaceReturn\s*\{[^}]*min-height:24px!important;[^}]*display:inline-flex!important;/s);
   assert.match(ticketFix, /\.composer-input-wrap\s*\{[^}]*min-height:48px!important;/s);
   assert.match(ticketFix, /#saveLogBtn\s*\{[^}]*width:44px!important;[^}]*min-width:44px!important;[^}]*height:44px!important;[^}]*min-height:44px!important;/s);
 });

@@ -10,7 +10,7 @@ body[data-shell=app]{min-height:100dvh;padding:68px 0 0!important;overflow-x:hid
 body[data-shell=app] #pageMount,body[data-shell=app] main{margin-top:0!important}
 .app-rail,.app-scrim,.rail-toggle,.rail-brand,.rail-nav,.rail-foot{display:none!important}
 .app-header{position:fixed;inset:0 0 auto;z-index:120;height:68px;background:color-mix(in srgb,var(--panel) 95%,transparent);border-bottom:1px solid var(--line);box-shadow:0 12px 32px rgba(15,23,42,.09);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-.app-head-inner{height:100%;max-width:1440px;margin:0 auto;padding:0 18px 0 12px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px}
+.app-head-inner{height:100%;max-width:1440px;margin:0 auto;padding:0 14px 0 8px;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,250px);align-items:center;gap:10px}
 .app-head-start,.app-history,.app-head-tools,.app-nav{display:flex;align-items:center}
 .app-head-start{gap:12px;min-width:0}
 .app-page-context{display:block;min-width:0;max-width:clamp(92px,14vw,220px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.09em;line-height:1;text-transform:uppercase}
@@ -20,9 +20,9 @@ body[data-shell=app] #pageMount,body[data-shell=app] main{margin-top:0!important
 .app-history-btn:disabled{opacity:.32;cursor:not-allowed}
 .app-history-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .app-brand{display:flex;align-items:center;gap:9px;min-width:0;color:var(--text);text-decoration:none}
-.app-brand img{width:40px;height:40px;display:block;object-fit:contain;flex:0 0 40px;border-radius:10px}
-.app-brand strong{display:block;color:var(--muted);font-size:13px;font-weight:900;line-height:1;letter-spacing:.13em;white-space:nowrap}
-.app-nav{justify-content:center;gap:3px;min-width:0}
+.app-brand img{width:78px;height:52px;display:block;object-fit:contain;flex:0 0 78px;border-radius:10px}
+.app-brand strong{display:none!important}
+.app-nav{justify-content:flex-start;gap:3px;min-width:0;overflow:hidden}
 .app-nav-link{position:relative;min-height:40px;padding:0 10px;border-radius:12px;border:1px solid transparent;background:transparent;color:var(--text);display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;font-weight:850;white-space:nowrap}
 .app-nav-link span{display:none!important}
 .app-nav-link b{font-size:13px;font-weight:850}
@@ -35,7 +35,7 @@ body[data-shell=app] #pageMount,body[data-shell=app] main{margin-top:0!important
 .app-nav-menu a,.app-nav-menu button{width:100%;min-height:40px;padding:0 12px;border:0;border-radius:11px;background:transparent;color:var(--text);display:flex;align-items:center;text-align:left;font-weight:800;text-decoration:none}
 .app-nav-menu a:hover,.app-nav-menu button:hover{background:color-mix(in srgb,var(--brand) 9%,var(--panel-2))}
 .app-head-tools{justify-content:flex-end;gap:6px;min-width:0}
-.app-search{position:relative;width:156px}
+.app-search{position:relative;width:clamp(150px,14vw,220px)}
 .app-search .input{height:40px;min-height:40px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,var(--panel) 96%,transparent)}
 .app-head-btn,.app-burger,.app-drawer-close{height:40px;min-width:40px;border-radius:13px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .app-theme-btn{width:40px;padding:0;font-size:18px}
@@ -101,8 +101,8 @@ html[data-theme=dark] input[type=date].input{color-scheme:dark}
 
 /* Macro-batch 04: header compacto sin texto visual redundante. */
 .app-header,.app-head-inner{min-height:54px}
-.app-brand{min-width:42px;gap:0}
-.app-brand img{width:38px;height:38px}
+.app-brand{min-width:78px;gap:0}
+.app-brand img{width:78px;height:52px;object-fit:contain}
 .app-page-context{display:none!important}
 @media(max-width:740px){.app-header,.app-head-inner{min-height:58px}}
 
@@ -156,7 +156,7 @@ input.btn-brand,
 .app-nav-link .app-attention-dot,.app-drawer-item .app-attention-dot{display:inline-block!important;width:8px;height:8px;min-width:8px;border-radius:999px;background:#ef4444;box-shadow:0 0 0 3px color-mix(in srgb,#ef4444 18%,transparent);animation:appAttention 1s ease-in-out 4}
 .app-attention-dot[hidden]{display:none!important}
 @keyframes appAttention{50%{transform:scale(1.22);box-shadow:0 0 0 6px color-mix(in srgb,#ef4444 10%,transparent)}}
-.app-search{width:clamp(220px,24vw,360px)}
+.app-search{width:clamp(150px,14vw,220px)}
 .app-search .input{padding-left:34px;padding-right:34px}
 .app-search-icon{position:absolute;left:11px;top:50%;z-index:2;transform:translateY(-50%);font-size:18px;color:var(--muted);pointer-events:none}
 .app-search-clear{position:absolute;right:6px;top:50%;z-index:3;transform:translateY(-50%);display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
@@ -171,7 +171,7 @@ input.btn-brand,
 .app-search .item-meta{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
 .app-search-state{padding:14px 12px;color:var(--muted);font-size:12px;font-weight:750}
 @media(prefers-reduced-motion:reduce){.app-attention-dot{animation:none!important}}
-@media(max-width:1180px) and (min-width:981px){.app-search{width:190px}}
+@media(max-width:1180px) and (min-width:981px){.app-search{width:150px}.app-head-inner{grid-template-columns:auto minmax(0,1fr) minmax(0,250px)}}
 /* B17C48: SHELL PÚBLICO — estado.html y soporte.html (data-surface=client).
    El topbar conserva su fondo de ancho completo; solo el CONTENIDO interior
    (inner del topbar y el main .wrap con resumen/progreso/lateral/chat o el

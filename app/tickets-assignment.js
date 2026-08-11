@@ -1,6 +1,6 @@
 import { supabase as s } from "./supabase.js";
-import { openDialog, closeDialog } from "./global.js?v=frontend-final-20260716-01";
-import { isAdminRole, scopeLabel, TICKET_SCOPES } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
+import { openDialog, closeDialog } from "./global.js?v=frontend-p0-20260811-01";
+import { isAdminRole, scopeLabel, TICKET_SCOPES } from "./shared/ticket-scope.js?v=frontend-p0-20260811-01";
 
 const esc = v => String(v ?? "").replace(/[&<>"']/g, m => ({
   "&":"&amp;",

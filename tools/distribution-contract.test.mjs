@@ -45,7 +45,7 @@ test("readonly fallback must remain local and explicit", () => {
 });
 
 test("release version and no-store fallback are mandatory", () => {
-  const mutant = sw.replace('const RELEASE="frontend-final-20260716-01";', "const RELEASE=null;").replaceAll('fetch(request,{cache:"no-store"})', "fetch(request)");
+  const mutant = sw.replace('const RELEASE="frontend-p0-20260811-01";', "const RELEASE=null;").replaceAll('fetch(request,{cache:"no-store"})', "fetch(request)");
   const failures = validateDistribution(source, root, { sw: mutant }).failures.join("\n");
   assert.match(failures, /RELEASE_VERSION_MISSING/);
   assert.match(failures, /NO_STORE_FALLBACK_MISSING/);
@@ -53,7 +53,7 @@ test("release version and no-store fallback are mandatory", () => {
 
 test("every active CSS and JS reference uses the service-worker release", () => {
   const dashboard = readFileSync(join(root, "app/dashboard.html"), "utf8");
-  const mutant = dashboard.replace("operations-journey.css?v=frontend-final-20260716-01", "operations-journey.css?v=stale-release");
+  const mutant = dashboard.replace("operations-journey.css?v=frontend-p0-20260811-01", "operations-journey.css?v=stale-release");
   const failures = validateDistribution(source, root, { entrypoints: { "app/dashboard.html": mutant } }).failures.join("\n");
   assert.match(failures, /ENTRYPOINT_RELEASE_MISMATCH:app\/dashboard\.html/);
 });

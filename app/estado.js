@@ -1,7 +1,7 @@
-import{$,toast,esc,fmtDT,ticketStateKey,ticketStateCls,prettyBytes}from"./global.js?v=frontend-final-20260716-01";
-import{INITIAL_REQUEST_RECEIVED_TEXT as RECV_TXT,isInitialRequestReceivedEvent}from"./shared/status-event.js?v=frontend-final-20260716-01";
+import{$,toast,esc,fmtDT,ticketStateKey,ticketStateCls,prettyBytes}from"./global.js?v=frontend-p0-20260811-01";
+import{INITIAL_REQUEST_RECEIVED_TEXT as RECV_TXT,isInitialRequestReceivedEvent}from"./shared/status-event.js?v=frontend-p0-20260811-01";
 export{isInitialRequestReceivedEvent};
-import{formatProductoPublic}from"./shared/producto.js?v=frontend-final-20260716-01";
+import{formatProductoPublic}from"./shared/producto.js?v=frontend-p0-20260811-01";
 
 const cfg = globalThis.TICKET_CORE_CONFIG || {};
 const API_BASE = String(cfg.supabaseUrl || "").trim()

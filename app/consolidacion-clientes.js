@@ -3,11 +3,11 @@
    update ni delete. CLIENT_CONSOLIDATION_BLOCKED_BACKEND=YES.
    Contactos siguen fuera del contrato integral: CLIENT_RLS_BLOCKED=YES.
    ========================================================================== */
-import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
-import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-p0-20260811-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-p0-20260811-01";
 import { readQS, writeQS } from "./shared/query-state.js";
-import { fmtFecha, estadoTag } from "./shared/formatters.js?v=frontend-final-20260716-01";
-import { esc } from "./global.js?v=frontend-final-20260716-01";
+import { fmtFecha, estadoTag } from "./shared/formatters.js?v=frontend-p0-20260811-01";
+import { esc } from "./global.js?v=frontend-p0-20260811-01";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
 import { perfPrimaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
 

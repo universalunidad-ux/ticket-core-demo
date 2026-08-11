@@ -1776,26 +1776,3 @@ body[data-page="tickets"] #tkNewBtn{
     grid-template-columns:minmax(54px,72px) minmax(48px,1fr) 34px 34px 44px!important;
   }
 }
-
-
-/* ==========================================================
-   HOTFIX 2026-08-10
-   The persisted ticket workspace control was product-regressive
-   on the Tickets surface. Keep markup temporarily for contract
-   compatibility, but it must never occupy layout or receive input.
-   ========================================================== */
-body[data-page="tickets"] #tkWorkspace,
-body[data-page="tickets"] .tk-workspace#tkWorkspace {
-  display: none !important;
-  visibility: hidden !important;
-  position: absolute !important;
-  width: 0 !important;
-  height: 0 !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  overflow: hidden !important;
-  pointer-events: none !important;
-}

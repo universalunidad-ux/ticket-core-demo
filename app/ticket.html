@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="es" data-theme="light">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Ticket | Ticket Core</title><meta name="theme-color" content="#0a1018"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><script>try{document.documentElement.dataset.theme=localStorage.getItem("tc_theme")||"light"}catch(e){}</script><link rel="manifest" href="../site.webmanifest"><link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png"><link rel="apple-touch-icon" href="../apple-touch-icon.png"><link rel="stylesheet" href="global.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="ticket.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="operations-journey.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="ticket-workspace.css?v=frontend-final-20260716-01"><link rel="stylesheet" href="ticket-resolution-workbench.css?v=frontend-final-20260716-01"><script>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Ticket | Ticket Core</title><meta name="theme-color" content="#0a1018"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><script>try{document.documentElement.dataset.theme=localStorage.getItem("tc_theme")||"light"}catch(e){}</script><link rel="manifest" href="../site.webmanifest"><link rel="icon" type="image/x-icon" href="../favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png"><link rel="apple-touch-icon" href="../apple-touch-icon.png"><link rel="stylesheet" href="global.css?v=frontend-p0-20260811-01"><link rel="stylesheet" href="ticket.css?v=frontend-p0-20260811-01"><link rel="stylesheet" href="operations-journey.css?v=frontend-p0-20260811-01"><script>
 if("serviceWorker" in navigator){
   addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 }
@@ -67,17 +67,12 @@ if("serviceWorker" in navigator){
 
 </aside>
 <section class="ticket-main">
-<section class="panel tk-return-context" id="tkReturnContext" aria-label="Contexto de regreso">
-  <a href="tickets.html" id="tkWorkspaceReturn">← Volver a la mesa</a>
-  <span class="mut" data-ticket-workspace-summary role="status" aria-live="polite">Recuperando la vista anterior…</span>
-</section>
 <section class="panel ticket-thread">
 <div class="thread-topbar">
 <div class="thread-left-actions"><button class="mini btn-ghost tk-side-btn" id="tkSideToggle" type="button" aria-label="Abrir panel">☰</button></div>
 <div class="log-sys" id="tkThreadStamp">Caso recibido · —</div>
 
 <div class="thread-actions">
-<button class="mini btn-ghost resolution-launch" type="button" data-resolution-open aria-haspopup="dialog" aria-controls="tkResolutionWorkbench">Guía de resolución</button>
 <button class="mini btn-ghost tk-resolve-head" type="button" id="tkResolveBtn">Cierre</button>
 <div class="thread-gear-wrap">
 <button class="mini btn-ghost icon-only" id="tkThreadGearBtn" type="button" aria-label="Opciones" title="Opciones">⚙️</button>
@@ -161,47 +156,10 @@ if("serviceWorker" in navigator){
 
 
 <div class="overlay" id="tkQrModal" role="dialog" aria-modal="true" aria-labelledby="tkQrTitle" aria-hidden="true" tabindex="-1" hidden><div class="modal tk-qr-modal"><div class="section-head"><div><div class="section-kicker" id="tkQrTitle">Editor respuestas rápidas</div></div><div class="tk-qr-vars-wrap"><button class="mini btn-ghost tk-qr-vars-btn" type="button" id="tkQrVarsBtn" aria-label="Variables disponibles" aria-expanded="false">{…}</button><div class="tk-qr-vars-pop hidden" id="tkQrVarsPop" role="tooltip"><strong class="tk-qr-vars-title">Variables disponibles</strong><div class="tk-qr-vars-row"><code>{cliente}</code><span>Cliente / negocio</span></div><div class="tk-qr-vars-row"><code>{producto}</code><span>Máquina, accesorio o producto</span></div><div class="tk-qr-vars-row"><code>{folio}</code><span>Folio del ticket</span></div><div class="tk-qr-vars-row"><code>{contacto}</code><span>Contacto</span></div></div></div><button class="icon-btn" id="tkQrClose" type="button" aria-label="Cerrar editor de respuestas rápidas">✕</button></div><div class="tk-qr-top"><div class="tk-qr-tabs"><button class="mini btn-ghost is-on" type="button" data-qrmode="seguimiento">Respuesta</button><button class="mini btn-ghost" type="button" data-qrmode="nota">Nota interna</button><button class="mini btn-ghost" type="button" data-qrmode="solucion">Cierre</button></div><div class="tk-qr-scope"><button class="mini btn-ghost is-on" type="button" data-qrscope="global">Globales</button><button class="mini btn-ghost" type="button" data-qrscope="producto">Producto</button></div></div><div class="stack-sm" id="tkQrRows"></div><div class="actions mt8"><button class="btn btn-ghost" id="tkQrAddRow" type="button">Agregar respuesta</button><button class="btn btn-brand" id="tkQrSaveAll" type="button">Guardar</button></div></div></div>
-<div class="overlay resolution-workbench" id="tkResolutionWorkbench" role="dialog" aria-modal="true" aria-labelledby="tkResolutionTitle" aria-describedby="tkResolutionIntro" aria-hidden="true" tabindex="-1" hidden>
-  <div class="modal resolution-modal">
-    <div class="section-head">
-      <div><div class="section-kicker">Diagnóstico guiado</div><h2 id="tkResolutionTitle">Guía de resolución</h2></div>
-      <button class="icon-btn" type="button" data-resolution-close aria-label="Cerrar guía de resolución">✕</button>
-    </div>
-    <p class="mut" id="tkResolutionIntro">Clasifica el síntoma, completa el playbook y prepara una encuesta de cierre revisable.</p>
-    <div class="resolution-layout">
-      <section class="resolution-section" aria-labelledby="tkResolutionTaxonomyTitle">
-        <h4 id="tkResolutionTaxonomyTitle">1. Taxonomía de la falla</h4>
-        <p class="mut">La sugerencia usa el texto del ticket; confirma siempre la categoría.</p>
-        <div class="resolution-choices" data-resolution-categories></div>
-        <p class="resolution-evidence"><b>Evidencia recomendada:</b> <span data-resolution-evidence>Selecciona una categoría.</span></p>
-      </section>
-      <section class="resolution-section" aria-labelledby="tkResolutionPlaybookTitle">
-        <h4 id="tkResolutionPlaybookTitle">2. Playbook del agente</h4>
-        <div class="resolution-progress">
-          <progress value="0" max="3" data-resolution-meter aria-label="Avance del playbook"></progress>
-          <span data-resolution-summary role="status" aria-live="polite">0/3 pasos · diagnóstico en curso</span>
-        </div>
-        <div class="resolution-steps" data-resolution-steps></div>
-        <div class="field mt12">
-          <label class="lbl" for="tkResolutionFinding">Hallazgo o solución aplicada</label>
-          <textarea class="area resolution-finding" id="tkResolutionFinding" data-resolution-finding placeholder="Ej. Se corrigió el enhebrado y la muestra quedó uniforme."></textarea>
-        </div>
-      </section>
-    </div>
-    <div class="actions mt12 resolution-actions">
-      <button class="btn btn-ghost" type="button" data-resolution-reset>Reiniciar guía</button>
-      <div class="resolution-actions-main">
-        <button class="btn btn-ghost" type="button" data-resolution-next>Preparar siguiente paso</button>
-        <button class="btn btn-brand" type="button" data-resolution-survey disabled>Preparar encuesta de cierre</button>
-        <button class="btn btn-ghost" type="button" data-resolution-close>Cerrar</button>
-      </div>
-    </div>
-  </div>
-</div>
-<script src="supabase.config.public.js?v=frontend-final-20260716-01"></script>
-<script type="module" src="ticket.js?v=frontend-final-20260716-01"></script>
-<script src="ticket-composer-polish.js?v=frontend-final-20260716-01"></script>
-<script src="notif-sound-test.js?v=frontend-final-20260716-01"></script>
-<script type="module" src="ticket-assignment.js?v=frontend-final-20260716-01"></script>
+<script src="supabase.config.public.js?v=frontend-p0-20260811-01"></script>
+<script type="module" src="ticket.js?v=frontend-p0-20260811-01"></script>
+<script src="ticket-composer-polish.js?v=frontend-p0-20260811-01"></script>
+<script src="notif-sound-test.js?v=frontend-p0-20260811-01"></script>
+<script type="module" src="ticket-assignment.js?v=frontend-p0-20260811-01"></script>
 </body>
 </html>

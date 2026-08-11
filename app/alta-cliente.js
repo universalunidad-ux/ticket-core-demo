@@ -3,9 +3,9 @@
    transaccional. No hay escrituras directas a clientes/contactos/sistemas.
    RFC, WhatsApp, preferencia y origen usan únicamente códigos canónicos.
    ========================================================================== */
-import { mountNav } from "./shared/nav-interna.js?v=frontend-final-20260716-01";
-import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-final-20260716-01";
-import { esc, toast, debounce } from "./global.js?v=frontend-final-20260716-01";
+import { mountNav } from "./shared/nav-interna.js?v=frontend-p0-20260811-01";
+import { isAdminRole } from "./shared/ticket-scope.js?v=frontend-p0-20260811-01";
+import { esc, toast, debounce } from "./global.js?v=frontend-p0-20260811-01";
 import { mapError, devLog, withTimeout } from "./shared/errors.js";
 import { probeEdge, noteEdgeResponse } from "./shared/capabilities.js";
 import { perfPrimaryDone, perfPageReady, perfCountRequest } from "./shared/perf.js";
